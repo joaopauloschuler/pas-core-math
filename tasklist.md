@@ -10,7 +10,8 @@ Goal: bit-exact, correctly-rounded results matching the C reference for all 2^32
 ```
 pas-core-math/
 ├── src/
-│   ├── paspascoremathtypes.pas    # TUInt128, builtins, trig helpers (rbig, etc.)
+│   ├── pascoremath.inc         # compiler directives + CPU/AVX capability flags ({$I pascoremath.inc})
+│   ├── pascoremathtypes.pas    # TUInt128, builtins, trig helpers (rbig, etc.)
 │   ├── pascoremath.pas         # Pascal implementations (pcr_* functions)
 │   ├── ccoremath.pas           # C reference external declarations (cr_* functions)
 │   ├── laz-project/
@@ -20,7 +21,8 @@ pas-core-math/
 │   │   └── HexFloatConvert.pas
 │   └── tests/
 │       ├── TestHarness.pas
-│       └── TestMulWide.pas
+│       ├── TestMulWide.pas
+│       └── Benchmark.pas       # single-threaded Mops/s comparison: cr_* (C) vs pcr_* (Pascal)
 ├── bin/
 └── tasklist.md
 ```
@@ -29,7 +31,96 @@ pas-core-math/
 
 ## Phase 0 — Infrastructure (prerequisite for everything)
 
-- [ ] **0.1** Define `TUInt128` as a pure record in `pascoremathtypes.pas`:
+- [ ] **0.1** Create `src/pascoremath.inc` containing the compiler directives and CPU/AVX
+  capability flags. Include it at the top of every unit with `{$I pascoremath.inc}` —
+  placed before the `unit` keyword so the mode directives take effect in time:
+  ```pascal
+  {$I pascoremath.inc}
+  unit pascoremathtypes;
+  ```
+  Content of `pascoremath.inc`:
+  ```pascal
+  {$IFDEF FPC}
+    {$COPERATORS ON}
+    {$MODE OBJFPC}
+    {$INLINE ON}
+    {$MACRO ON}
+    {$LONGSTRINGS ON}
+    {$CODEPAGE UTF8}
+    {$IFDEF CPU32BITS}
+      {$DEFINE CPU32}
+    {$ENDIF}
+    {$IFDEF CPU64BITS}
+      {$DEFINE CPU64}
+    {$ENDIF}
+    {$IFDEF CPUARM}
+      {$DEFINE NOTAVX}
+    {$ENDIF}
+    {$IFDEF CPUAARCH64}
+      {$DEFINE NOTAVX}
+    {$ENDIF}
+    {$IFDEF CPUPOWERPC}
+      {$DEFINE NOTAVX}
+    {$ENDIF}
+    {$IFDEF CPUM68K}
+      {$DEFINE NOTAVX}
+    {$ENDIF}
+    {$IFDEF NOTAVX}
+      {$UNDEF AVX}
+      {$UNDEF AVX2}
+      {$UNDEF AVX512}
+      {$UNDEF AVXANY}
+    {$ENDIF}
+  {$ELSE}
+    // AVX code is supported only under FPC
+    {$UNDEF AVX}
+    {$UNDEF AVX2}
+    {$UNDEF AVX512}
+    {$UNDEF AVXANY}
+    {$IFDEF CPU32BITS}
+      {$DEFINE CPU32}
+    {$ENDIF}
+    {$IFDEF CPU64BITS}
+      {$DEFINE CPU64}
+    {$ENDIF}
+  {$ENDIF}
+
+  {$IFDEF CPU32}
+    {$IFDEF AVX}
+      {$DEFINE AVX32}
+    {$ENDIF}
+    {$IFDEF AVX2}
+      {$DEFINE AVX32}
+    {$ENDIF}
+  {$ENDIF}
+
+  {$IFDEF CPU64}
+    {$IFDEF AVX}
+      {$DEFINE AVX64}
+    {$ENDIF}
+    {$IFDEF AVX2}
+      {$DEFINE AVX64}
+    {$ENDIF}
+  {$ENDIF}
+
+  {$IFDEF AVX512}
+    {$DEFINE AVX64}
+    {$UNDEF AVX32}
+  {$ENDIF}
+
+  {$IFDEF AVX32}
+    {$DEFINE AVXANY}
+  {$ENDIF}
+
+  {$IFDEF AVX64}
+    {$DEFINE AVXANY}
+  {$ENDIF}
+  ```
+  AVX/AVX2/AVX512 are never defined by the code itself — they must be passed externally
+  via the compiler command line (e.g. `-dAVX2`). The block above only derives the
+  secondary flags (`AVX32`, `AVX64`, `AVXANY`) and disables AVX on non-x86 targets.
+
+- [ ] **0.1b** Define `TUInt128` as a pure record in `pascoremathtypes.pas`:
   ```pascal
   type TUInt128 = record
     lo, hi: UInt64;
@@ -79,6 +170,35 @@ pas-core-math/
 - [ ] **0.7** Set up a test harness that compiles and runs both the C reference and the
   Pascal implementation, then compares results bit-for-bit for all 2^32 `Single`
   inputs (exhaustive). For bivariate functions, agree on a sampling strategy.
+
+- [ ] **0.8** Set up `Benchmark.pas`: single-threaded, 10 million calls per function, two
+  independent timed loops. Reports Mops/s for `cr_*` (C) and `pcr_*` (Pascal) and
+  validates agreement via XOR sink. Pattern:
+  ```pascal
+  sink_c   := 0;
+  sink_pas := 0;
+
+  t1 := Now;
+  for i := 0 to 10_000_000 - 1 do
+  begin
+    v.u    := i * stride;
+    sink_c := sink_c xor Tb32u32(cr_rsqrtf(v.f)).u;
+  end;
+  t2 := Now;
+  for i := 0 to 10_000_000 - 1 do
+  begin
+    v.u      := i * stride;
+    sink_pas := sink_pas xor Tb32u32(pcr_rsqrtf(v.f)).u;
+  end;
+  t3 := Now;
+
+  if sink_c = sink_pas then WriteLn('OK') else WriteLn('MISMATCH');
+  WriteLn('C:      ', 10_000_000 / MillisecondsBetween(t2,t1) / 1000 :0:2, ' Mops/s');
+  WriteLn('Pascal: ', 10_000_000 / MillisecondsBetween(t3,t2) / 1000 :0:2, ' Mops/s');
+  ```
+  The sink doubles as a quick sanity check — `MISMATCH` means the two implementations
+  disagree on at least one input in the sample. Full correctness is validated by
+  `TestHarness.pas` (exhaustive 2^32).
 
 ---
 
@@ -255,3 +375,15 @@ Apply this checklist to every function before marking it done:
 
 7. **Work sequentially within each phase.** The ordering within each phase is chosen
    to build familiarity gradually. Do not skip ahead.
+
+8. **ASM is allowed and encouraged where beneficial.** Use inline assembly for
+   performance-critical infrastructure (`MulWide`, `BsfDWord`/`BsfQWord`, etc.).
+   Always provide a portable Pascal fallback for non-x86-64 targets.
+
+9. **Inline everything possible.** Mark all small helpers, wrappers, type-punning
+   accessors, and operator overloads as `inline`. The compiler ignores the hint when
+   inlining is not beneficial — the cost of marking `inline` unnecessarily is zero.
+
+10. **Benchmark every function.** After each function passes exhaustive testing, run
+    `Benchmark.pas` and record the Mops/s ratio (Pascal vs C). A large gap is a signal
+    to investigate missed inlining or suboptimal code generation.
