@@ -5,16 +5,38 @@ Goal: bit-exact, correctly-rounded results matching the C reference for all 2^32
 
 ---
 
+## Folder structure
+
+```
+pas-core-math/
+├── src/
+│   ├── paspascoremathtypes.pas    # TUInt128, builtins, trig helpers (rbig, etc.)
+│   ├── pascoremath.pas         # Pascal implementations (pcr_* functions)
+│   ├── ccoremath.pas           # C reference external declarations (cr_* functions)
+│   ├── laz-project/
+│   │   ├── pas-core-math.lpi
+│   │   └── pas-core-math.lps
+│   ├── tools/
+│   │   └── HexFloatConvert.pas
+│   └── tests/
+│       ├── TestHarness.pas
+│       └── TestMulWide.pas
+├── bin/
+└── tasklist.md
+```
+
+---
+
 ## Phase 0 — Infrastructure (prerequisite for everything)
 
-- [ ] **0.1** Define `TUInt128` as a pure record in `CoreMathTypes.pas`:
+- [ ] **0.1** Define `TUInt128` as a pure record in `pascoremathtypes.pas`:
   ```pascal
   type TUInt128 = record
     lo, hi: UInt64;
   end;
   ```
 
-- [ ] **0.2** Implement `MulWide(a, b: UInt64): TUInt128` in `CoreMathTypes.pas`.
+- [ ] **0.2** Implement `MulWide(a, b: UInt64): TUInt128` in `pascoremathtypes.pas`.
   - Primary path: x86-64 inline assembly using the `MUL` instruction (`rdx:rax = rax * src`).
   - Portable fallback: four 32-bit partial products for non-x86-64 targets (ARM, etc.).
 
@@ -29,7 +51,7 @@ Goal: bit-exact, correctly-rounded results matching the C reference for all 2^32
   ```
   Mark `inline` — it is a hot-path operation called inside `MulWide`. Also try marking `MulWide` itself as `inline`; trust the compiler to handle it.
 
-- [ ] **0.4** Define type-punning records in `CoreMathTypes.pas`:
+- [ ] **0.4** Define type-punning records in `pascoremathtypes.pas`:
   ```pascal
   type Tb32u32 = record case Boolean of
     False: (f: Single);  True: (u: LongWord); end;
@@ -37,7 +59,7 @@ Goal: bit-exact, correctly-rounded results matching the C reference for all 2^32
     False: (f: Double);  True: (u: UInt64);   end;
   ```
 
-- [ ] **0.5** Implement builtin equivalents in `CoreMathBuiltins.pas`:
+- [ ] **0.5** Implement builtin equivalents in `pascoremathtypes.pas`:
   | C | Pascal |
   |---|---|
   | `__builtin_roundeven(x)` | `RoundEven(x: Double): Double` |
@@ -62,7 +84,7 @@ Goal: bit-exact, correctly-rounded results matching the C reference for all 2^32
 
 ## Phase 1 — Simple univariate (no u128, no FMA, ≤ 130 lines)
 
-Port in this order. Each function lives in its own `.pas` unit named after the function.
+Port in this order. All functions live in `pascoremath.pas`, named `pcr_<name>f`.
 
 - [ ] **1.01** `rsqrt`   — 89 lines
 - [ ] **1.02** `tanh`    — 89 lines
@@ -138,20 +160,20 @@ Apply this checklist to every function before marking it done:
 
 - [ ] Hex float literals converted via the conversion utility (0.6), not by hand
 - [ ] Lookup tables moved to unit-level `const` (no `static` locals)
-- [ ] All type-punning uses `Tb32u32` / `Tb64u64` records (no unsafe casts)
+- [ ] All type-punning uses `Tb32u32` / `Tb64u64` records from `pascoremathtypes.pas` (no unsafe casts)
 - [ ] `__builtin_expect` wrappers removed entirely
 - [ ] `__attribute__((noinline))` replaced with `[noinline]`
 - [ ] `CORE_MATH_SUPPORT_ERRNO` blocks omitted (out of scope for Pascal port)
 - [ ] Exhaustive test passes (bit-exact match against C reference for all inputs)
-- [ ] Function named `cr_<name>f` in C becomes `cr_<name>f` in Pascal for traceability
+- [ ] C function `cr_<name>f` declared in `ccoremath.pas`; Pascal equivalent named `pcr_<name>f` in `pascoremath.pas`
 
 ---
 
 ## Architectural notes and known pitfalls
 
-1. **`rbig()` must be extracted into a shared unit.** The large-argument range-reduction
-   helper `rbig()` is byte-for-byte identical in `sin`, `cos`, `tan`, and `sincos`. It must
-   live in one shared unit (e.g. `CoreMathTrig.pas`) and be called by all four, not duplicated.
+1. **`rbig()` must not be duplicated.** The large-argument range-reduction helper `rbig()` is
+   byte-for-byte identical in `sin`, `cos`, `tan`, and `sincos`. It must live once in
+   `pascoremathtypes.pas` and be called by all four functions in `pascoremath.pas`, not duplicated.
    Duplication would make any future bug fix require four parallel edits.
 
 2. **`sincos` has a different API — an explicit decision is required.** The C signature is
@@ -164,7 +186,7 @@ Apply this checklist to every function before marking it done:
 3. **Rounding mode support needs a Phase 0 infrastructure task.** Phase 4 functions (`hypot`,
    `compound`, `pow`, `atan2`, `atan2pi`) call `fesetround`/`FE_TONEAREST` from `<fenv.h>`.
    The Pascal equivalent is `SetRoundMode` from the `Math` unit. This must be evaluated and
-   wrapped in `CoreMathBuiltins.pas` before Phase 4 starts — it is not safe to defer until
+   wrapped in `pascoremathtypes.pas` before Phase 4 starts — it is not safe to defer until
    then.
 
 4. **`BsfDWord` is 32-bit only — use `BsfQWord` for 64-bit values.** The builtins table maps
