@@ -12,6 +12,7 @@ type
 
 var
   TotalPass, TotalFail: Integer;
+  Stride: Cardinal;
 
 procedure ReportResult(const FuncName: string; Tested, Mismatches: Int64);
 begin
@@ -50,18 +51,22 @@ var
   u: Cardinal;
   v: Tb32u32;
   cr, pr: Single;
-  mismatches: Int64;
+  mismatches, tested: Int64;
 begin
   mismatches := 0;
-  for u := 0 to High(Cardinal) do
-  begin
+  tested := 0;
+  u := 0;
+  repeat
     v.u := u;
     cr := pfC(v.f);
     pr := pfP(v.f);
     if not BitsMatch(cr, pr) then
       Inc(mismatches);
-  end;
-  ReportResult(name, Int64(High(Cardinal)) + 1, mismatches);
+    Inc(tested);
+    if u > High(Cardinal) - Stride then Break;
+    Inc(u, Stride);
+  until False;
+  ReportResult(name, tested, mismatches);
 end;
 
 // ---- bivariate sampled tests ----
@@ -101,11 +106,12 @@ var
   u: Cardinal;
   v: Tb32u32;
   cs, cc, ps, pc: Single;
-  mismatches: Int64;
+  mismatches, tested: Int64;
 begin
   mismatches := 0;
-  for u := 0 to High(Cardinal) do
-  begin
+  tested := 0;
+  u := 0;
+  repeat
     v.u := u;
     cr_sincosf(v.f, @cs, @cc);
     pcr_sincosf(v.f, ps, pc);
@@ -113,8 +119,11 @@ begin
       Inc(mismatches)
     else if not BitsMatch(cc, pc) then
       Inc(mismatches);
-  end;
-  ReportResult('sincosf', Int64(High(Cardinal)) + 1, mismatches);
+    Inc(tested);
+    if u > High(Cardinal) - Stride then Break;
+    Inc(u, Stride);
+  until False;
+  ReportResult('sincosf', tested, mismatches);
 end;
 
 // Pascal wrappers for bivariate C functions (adapts cdecl -> register)
@@ -131,15 +140,43 @@ function wrap_hypot_p(x, y: Single): Single;    begin Result := pcr_hypotf(x, y)
 function wrap_pow_p(x, y: Single): Single;      begin Result := pcr_powf(x, y);      end;
 function wrap_compound_p(x, y: Single): Single; begin Result := pcr_compoundf(x, y); end;
 
+function ParsePct: Cardinal;
+var
+  i: Integer;
+  pct: Integer;
+begin
+  Result := 1; // default: 100% => stride 1
+  i := 1;
+  while i <= ParamCount do
+  begin
+    if (ParamStr(i) = '--pct') and (i < ParamCount) then
+    begin
+      pct := StrToIntDef(ParamStr(i + 1), 100);
+      if (pct < 1) or (pct > 100) then
+      begin
+        WriteLn('Error: --pct must be between 1 and 100');
+        Halt(1);
+      end;
+      Result := 100 div pct;
+      Exit;
+    end;
+    Inc(i);
+  end;
+end;
+
 begin
   // Mask all FP exceptions: we iterate over all bit patterns including NaN/Inf
   SetExceptionMask([exInvalidOp, exDenormalized, exZeroDivide,
                     exOverflow, exUnderflow, exPrecision]);
 
+  Stride := ParsePct;
+
   TotalPass := 0;
   TotalFail := 0;
 
   WriteLn('=== TestHarness: comparing Pascal (pcr_*) vs C (cr_*) ===');
+  if Stride > 1 then
+    WriteLn(Format('(sampling mode: stride=%d, ~%d%% of inputs)', [Stride, 100 div Stride]));
   WriteLn;
 
   // Univariate exhaustive (36 functions)
