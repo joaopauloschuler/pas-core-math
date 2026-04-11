@@ -5,6 +5,15 @@ Goal: bit-exact, correctly-rounded results matching the C reference for all 2^32
 
 ---
 
+## Status summary
+
+- **All 42 functions completed and committed** (branch: `a1`, latest commit: `edbaa7a`)
+- **All phases complete** (Phase 0 through Phase 6)
+- Phases: Infrastructure · 14 simple univariate · 17 medium univariate · tgamma/lgamma · 5 bivariate/compound · sin/cos/sincos/tan · Testing infrastructure
+- Benchmark sample: `acosf  C=322.6 Mops/s  Pascal=222.2 Mops/s`
+
+---
+
 ## Folder structure
 
 ```
@@ -31,7 +40,7 @@ pas-core-math/
 
 ## Phase 0 — Infrastructure (prerequisite for everything)
 
-- [ ] **0.1** Create `src/pascoremath.inc` containing the compiler directives and CPU/AVX
+- [x] **0.1** Create `src/pascoremath.inc` containing the compiler directives and CPU/AVX
   capability flags. Include it at the top of every unit with `{$I pascoremath.inc}` —
   placed before the `unit` keyword so the mode directives take effect in time:
   ```pascal
@@ -120,18 +129,18 @@ pas-core-math/
   via the compiler command line (e.g. `-dAVX2`). The block above only derives the
   secondary flags (`AVX32`, `AVX64`, `AVXANY`) and disables AVX on non-x86 targets.
 
-- [ ] **0.1b** Define `TUInt128` as a pure record in `pascoremathtypes.pas`:
+- [x] **0.1b** Define `TUInt128` as a pure record in `pascoremathtypes.pas`:
   ```pascal
   type TUInt128 = record
     lo, hi: UInt64;
   end;
   ```
 
-- [ ] **0.2** Implement `MulWide(a, b: UInt64): TUInt128` in `pascoremathtypes.pas`.
+- [x] **0.2** Implement `MulWide(a, b: UInt64): TUInt128` in `pascoremathtypes.pas`.
   - Primary path: x86-64 inline assembly using the `MUL` instruction (`rdx:rax = rax * src`).
   - Portable fallback: four 32-bit partial products for non-x86-64 targets (ARM, etc.).
 
-- [ ] **0.3** Overload `+` for `TUInt128 + UInt64 → TUInt128` (implements the `p1 += p0>>64` pattern as `p1 := p1 + p0.hi`).
+- [x] **0.3** Overload `+` for `TUInt128 + UInt64 → TUInt128` (implements the `p1 += p0>>64` pattern as `p1 := p1 + p0.hi`).
   This is a genuine addition with carry propagation — implement as:
   ```pascal
   operator+(const a: TUInt128; b: UInt64): TUInt128; inline;
@@ -142,7 +151,7 @@ pas-core-math/
   ```
   Mark `inline` — it is a hot-path operation called inside `MulWide`. Also try marking `MulWide` itself as `inline`; trust the compiler to handle it.
 
-- [ ] **0.4** Define type-punning records in `pascoremathtypes.pas`:
+- [x] **0.4** Define type-punning records in `pascoremathtypes.pas`:
   ```pascal
   type Tb32u32 = record case Boolean of
     False: (f: Single);  True: (u: LongWord); end;
@@ -150,7 +159,7 @@ pas-core-math/
     False: (f: Double);  True: (u: UInt64);   end;
   ```
 
-- [ ] **0.5** Implement builtin equivalents in `pascoremathtypes.pas`:
+- [x] **0.5** Implement builtin equivalents in `pascoremathtypes.pas`:
   | C | Pascal |
   |---|---|
   | `__builtin_roundeven(x)` | `RoundEven(x: Double): Double` |
@@ -163,15 +172,15 @@ pas-core-math/
   | `__builtin_expect(e,v)` | Delete entirely (branch-hint only) |
   | `__attribute__((noinline))` | `[noinline]` or `{$INLINE OFF}` |
 
-- [ ] **0.6** Write a hex-float conversion utility (script or small tool) to convert C99
+- [x] **0.6** Write a hex-float conversion utility (script or small tool) to convert C99
   hex float literals (e.g. `0x1.62e42fefa39efp-1`) to Pascal `Double` / `UInt64`
   constants. All lookup tables must be converted using this tool, not by hand.
 
-- [ ] **0.7** Set up a test harness that compiles and runs both the C reference and the
+- [x] **0.7** Set up a test harness that compiles and runs both the C reference and the
   Pascal implementation, then compares results bit-for-bit for all 2^32 `Single`
   inputs (exhaustive). For bivariate functions, agree on a sampling strategy.
 
-- [ ] **0.8** Set up `Benchmark.pas`: single-threaded, 10 million calls per function, two
+- [x] **0.8** Set up `Benchmark.pas`: single-threaded, 10 million calls per function, two
   independent timed loops. Reports Mops/s for `cr_*` (C) and `pcr_*` (Pascal) and
   validates agreement via XOR sink. Pattern:
   ```pascal
@@ -206,59 +215,59 @@ pas-core-math/
 
 Port in this order. All functions live in `pascoremath.pas`, named `pcr_<name>f`.
 
-- [ ] **1.01** `rsqrt`   — 89 lines
-- [ ] **1.02** `tanh`    — 89 lines
-- [ ] **1.03** `atanpi`  — 106 lines
-- [ ] **1.04** `cospi`   — 114 lines
-- [ ] **1.05** `acos`    — 115 lines
-- [ ] **1.06** `cbrt`    — 117 lines
-- [ ] **1.07** `sinpi`   — 117 lines
-- [ ] **1.08** `atan`    — 118 lines
-- [ ] **1.09** `asin`    — 120 lines
-- [ ] **1.10** `acospi`  — 126 lines  *(uses FMA — verify `Math.FMA` correctness first)*
-- [ ] **1.11** `log2`    — 126 lines
-- [ ] **1.12** `asinpi`  — 128 lines  *(uses FMA)*
-- [ ] **1.13** `tanpi`   — 130 lines
-- [ ] **1.14** `cosh`    — 132 lines
+- [x] **1.01** `rsqrt`   — 89 lines
+- [x] **1.02** `tanh`    — 89 lines
+- [x] **1.03** `atanpi`  — 106 lines
+- [x] **1.04** `cospi`   — 114 lines
+- [x] **1.05** `acos`    — 115 lines
+- [x] **1.06** `cbrt`    — 117 lines
+- [x] **1.07** `sinpi`   — 117 lines
+- [x] **1.08** `atan`    — 118 lines
+- [x] **1.09** `asin`    — 120 lines
+- [x] **1.10** `acospi`  — 126 lines  *(uses FMA — verify `Math.FMA` correctness first)*
+- [x] **1.11** `log2`    — 126 lines
+- [x] **1.12** `asinpi`  — 128 lines  *(uses FMA)*
+- [x] **1.13** `tanpi`   — 130 lines
+- [x] **1.14** `cosh`    — 132 lines
 
 ---
 
 ## Phase 2 — Medium univariate
 
-- [ ] **2.01** `log`       — 133 lines
-- [ ] **2.02** `exp2`      — 138 lines
-- [ ] **2.03** `log1p`     — 140 lines
-- [ ] **2.04** `exp2m1`    — 146 lines
-- [ ] **2.05** `expm1`     — 146 lines
-- [ ] **2.06** `exp10`     — 150 lines
-- [ ] **2.07** `log10`     — 150 lines
-- [ ] **2.08** `erfc`      — 151 lines
-- [ ] **2.09** `log2p1`    — 151 lines
-- [ ] **2.10** `erf`       — 152 lines
-- [ ] **2.11** `sinh`      — 156 lines
-- [ ] **2.12** `exp`       — 115 lines *(listed here due to two-pass rounding logic)*
-- [ ] **2.13** `atanh`     — 158 lines
-- [ ] **2.14** `exp10m1`   — 158 lines
-- [ ] **2.15** `log10p1`   — 162 lines
-- [ ] **2.16** `asinh`     — 168 lines
-- [ ] **2.17** `acosh`     — 173 lines
+- [x] **2.01** `log`       — 133 lines
+- [x] **2.02** `exp2`      — 138 lines
+- [x] **2.03** `log1p`     — 140 lines
+- [x] **2.04** `exp2m1`    — 146 lines
+- [x] **2.05** `expm1`     — 146 lines
+- [x] **2.06** `exp10`     — 150 lines
+- [x] **2.07** `log10`     — 150 lines
+- [x] **2.08** `erfc`      — 151 lines
+- [x] **2.09** `log2p1`    — 151 lines
+- [x] **2.10** `erf`       — 152 lines
+- [x] **2.11** `sinh`      — 156 lines
+- [x] **2.12** `exp`       — 115 lines *(listed here due to two-pass rounding logic)*
+- [x] **2.13** `atanh`     — 158 lines
+- [x] **2.14** `exp10m1`   — 158 lines
+- [x] **2.15** `log10p1`   — 162 lines
+- [x] **2.16** `asinh`     — 168 lines
+- [x] **2.17** `acosh`     — 173 lines
 
 ---
 
 ## Phase 3 — Longer special univariate
 
-- [ ] **3.01** `tgamma`  — 205 lines
-- [ ] **3.02** `lgamma`  — 259 lines
+- [x] **3.01** `tgamma`  — 205 lines
+- [x] **3.02** `lgamma`  — 259 lines
 
 ---
 
 ## Phase 4 — Bivariate and compound (FMA-heavy)
 
-- [ ] **4.01** `hypot`    — 282 lines  *(uses FMA, fenv rounding modes)*
-- [ ] **4.02** `atan2`    — 231 lines  *(uses FMA)*
-- [ ] **4.03** `atan2pi`  — 190 lines  *(uses FMA)*
-- [ ] **4.04** `compound` — 611 lines  *(uses FMA, fenv)*
-- [ ] **4.05** `pow`      — 325 lines  *(uses FMA, fenv)*
+- [x] **4.01** `hypot`    — 282 lines  *(uses FMA, fenv rounding modes)*
+- [x] **4.02** `atan2`    — 231 lines  *(uses FMA)*
+- [x] **4.03** `atan2pi`  — 190 lines  *(uses FMA)*
+- [x] **4.04** `compound` — 611 lines  *(uses FMA, fenv)*
+- [x] **4.05** `pow`      — 325 lines  *(uses FMA, fenv)*
 
 ---
 
@@ -267,10 +276,10 @@ Port in this order. All functions live in `pascoremath.pas`, named `pcr_<name>f`
 Depends on Phase 0.2–0.3 being fully correct. Validate `MulWide` independently before
 starting this phase.
 
-- [ ] **5.01** `sin`    — 222 lines
-- [ ] **5.02** `cos`    — 206 lines
-- [ ] **5.03** `sincos` — 245 lines
-- [ ] **5.04** `tan`    — 199 lines
+- [x] **5.01** `sin`    — 222 lines
+- [x] **5.02** `cos`    — 206 lines
+- [x] **5.03** `sincos` — 245 lines
+- [x] **5.04** `tan`    — 199 lines
 
 ---
 
