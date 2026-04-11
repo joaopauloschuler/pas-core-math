@@ -89,11 +89,13 @@ const
 var
   i: Integer;
   ux, uy: Cardinal;
-  vx, vy: Tb32u32;
+  vx, vy, rc, rp: Tb32u32;
   cr, pr: Single;
   mismatches: Int64;
+  diagShown: Integer;
 begin
   mismatches := 0;
+  diagShown := 0;
   ux := 0;
   uy := High(Cardinal) div 3;
   for i := 1 to SAMPLES do
@@ -103,7 +105,16 @@ begin
     cr := pfC(vx.f, vy.f);
     pr := pfP(vx.f, vy.f);
     if not BitsMatch(cr, pr) then
+    begin
       Inc(mismatches);
+      if diagShown < DiagMax then
+      begin
+        rc.f := cr; rp.f := pr;
+        WriteLn(Format('  [%s] x=$%8.8x y=$%8.8x  C=$%8.8x  P=$%8.8x',
+                       [name, ux, uy, rc.u, rp.u]));
+        Inc(diagShown);
+      end;
+    end;
     Inc(ux, STRIDE);
     Inc(uy, STRIDE + 1);
   end;
