@@ -41,6 +41,7 @@ function pcr_lgammaf(x: Single): Single;
 function pcr_hypotf(x, y: Single): Single;
 function pcr_atan2f(y, x: Single): Single;
 function pcr_atan2pif(y, x: Single): Single;
+function pcr_powf(x0, y0: Single): Single;
 
 implementation
 
@@ -3879,6 +3880,585 @@ begin
     end;
   end;
   Result := Single(r_a2p);
+end;
+
+
+{ ── pcr_powf helpers ───────────────────────────────────────────────────── }
+
+function mulddd_pf(xh, xl, ch: Double; out l: Double): Double;
+var ahlh, ahhh, ahhl: Double;
+begin
+  ahlh := ch * xl;
+  ahhh := ch * xh;
+  ahhl := pcr_fma(ch, xh, -ahhh);
+  ahhl := ahhl + ahlh;
+  ch := ahhh + ahhl;
+  l := (ahhh - ch) + ahhl;
+  Result := ch;
+end;
+
+function isint_pf(y0: Single): Boolean;
+var wy: Tb32u32; ey, s: Integer;
+begin
+  wy.f := y0;
+  ey := Integer((wy.u shr 23) and $FF) - 127;
+  s := ey + 9;
+  if ey >= 0 then begin
+    if s >= 32 then begin Result := True; Exit; end;
+    Result := (wy.u shl s) = 0;
+    Exit;
+  end;
+  Result := (wy.u shl 1) = 0;
+end;
+
+function isodd_pf(y0: Single): Boolean;
+var wy: Tb32u32; ey, s: Integer; oddb: UInt32;
+begin
+  wy.f := y0;
+  ey := Integer((wy.u shr 23) and $FF) - 127;
+  s := ey + 9;
+  oddb := 0;
+  if ey >= 0 then begin
+    if (s < 32) and ((wy.u shl s) = 0) then oddb := (wy.u shr (32-s)) and 1;
+    if s = 32 then oddb := wy.u and 1;
+  end;
+  Result := oddb <> 0;
+end;
+
+function is_signalingf_pf(x: Single): Boolean;
+var u: Tb32u32;
+begin
+  u.f := x;
+  u.u := u.u xor $00400000;
+  Result := (u.u and $7FFFFFFF) > $7FC00000;
+end;
+
+function is_exact_pf(x0, y0: Single): Integer;
+const
+  xmax_ie: array[0..15] of UInt32 = (0, $FFFFFF, 4095, 255, 63, 27, 15, 9,
+                                      7, 5, 5, 3, 3, 3, 3, 3);
+var
+  vw, ww: Tb32u32;
+  m_ie, n_ie: UInt32;
+  t_ie, y_int_ie: Integer;
+  e_ie, f_ie: Int32;
+  my64: UInt64;
+  my32, n0_ie: UInt32;
+  ez_ie: Int32;
+  dm_ie: Single;
+  sf_ie: Single;
+begin
+  vw.f := x0; ww.f := y0;
+  { Early exit if |x|<>1 and low 16 bits of y.u are non-zero }
+  if ((vw.u shl 1) <> $7F000000) and ((ww.u shl 16) <> 0) then begin
+    Result := 0; Exit;
+  end;
+  { |x| = 1 }
+  if (vw.u shl 1) = $7F000000 then begin
+    Result := 1; Exit;
+  end;
+  { y >= 0 and y is an integer }
+  if (y0 >= 0) and isint_pf(y0) then begin
+    m_ie := vw.u and $7FFFFF;
+    e_ie := Int32((vw.u shl 1) shr 24) - $96;
+    if e_ie >= -149 then m_ie := m_ie or $800000
+    else Inc(e_ie);
+    t_ie := pcr_bsf32(m_ie);
+    m_ie := m_ie shr t_ie;
+    e_ie := e_ie + t_ie;
+    if (y0 = 0) or (y0 = 1) then begin Result := 1; Exit; end;
+    if m_ie = 1 then begin
+      Result := Ord((-149 <= Int32(Trunc(y0)) * e_ie) and
+                    (Int32(Trunc(y0)) * e_ie < 128));
+      Exit;
+    end;
+    if (y0 < 0) or (y0 > 15) then begin Result := 0; Exit; end;
+    y_int_ie := Integer(Trunc(y0));
+    if m_ie > xmax_ie[y_int_ie] then begin Result := 0; Exit; end;
+    my64 := UInt64(m_ie) * UInt64(m_ie);
+    t_ie := 2;
+    while t_ie < y_int_ie do begin my64 := my64 * UInt64(m_ie); Inc(t_ie); end;
+    t_ie := pcr_bsr32(m_ie) + 1;  { 32 - clz(m_ie) }
+    ez_ie := e_ie * y_int_ie + t_ie;
+    if (ez_ie <= -149) or (128 < ez_ie) then begin Result := 0; Exit; end;
+    Result := Ord(e_ie * y_int_ie >= -149);
+    Exit;
+  end;
+  { Decompose |y| = n * 2^f with n odd }
+  n_ie := ww.u and $7FFFFF;
+  f_ie := Int32((ww.u shl 1) shr 24) - $96;
+  if f_ie >= -149 then n_ie := n_ie or $800000
+  else Inc(f_ie);
+  t_ie := pcr_bsf32(n_ie);
+  n_ie := n_ie shr t_ie;
+  f_ie := f_ie + t_ie;
+  { Decompose |x| = m * 2^e with m odd }
+  m_ie := vw.u and $7FFFFF;
+  e_ie := Int32((vw.u shl 1) shr 24) - $96;
+  if e_ie >= -149 then m_ie := m_ie or $800000
+  else Inc(e_ie);
+  t_ie := pcr_bsf32(m_ie);
+  m_ie := m_ie shr t_ie;
+  e_ie := e_ie + t_ie;
+  if y0 < 0 then begin
+    if m_ie <> 1 then begin Result := 0; Exit; end;
+    if f_ie >= 0 then begin
+      if e_ie >= 0 then ez_ie := -(Int32(e_ie) shl f_ie) * Int32(n_ie)
+      else ez_ie := (Int32(-e_ie) shl f_ie) * Int32(n_ie);
+    end else begin
+      t_ie := pcr_bsf32(UInt32(e_ie));
+      if (-f_ie) > t_ie then begin Result := 0; Exit; end;
+      ez_ie := sar_i32(-e_ie, -f_ie) * Int32(n_ie);
+    end;
+    Result := Ord((-149 <= ez_ie) and (ez_ie < 128));
+    Exit;
+  end;
+  { y > 0, not integer, y = n*2^f with n odd and f < 0 }
+  while f_ie <> 0 do begin
+    Inc(f_ie);
+    if (e_ie and 1) <> 0 then begin Result := 0; Exit; end;
+    e_ie := e_ie div 2;
+    dm_ie := Single(m_ie);
+    sf_ie := Single(Round(pcr_sqrtf(dm_ie)));
+    if sf_ie * sf_ie <> dm_ie then begin Result := 0; Exit; end;
+    m_ie := UInt32(Round(sf_ie));
+  end;
+  if m_ie > 1 then begin
+    if n_ie > 15 then begin Result := 0; Exit; end;
+    if m_ie > xmax_ie[n_ie] then begin Result := 0; Exit; end;
+  end;
+  my32 := m_ie; n0_ie := n_ie;
+  while n0_ie > 1 do begin Dec(n0_ie); my32 := my32 * m_ie; end;
+  t_ie := pcr_bsr32(my32) + 1;  { 32 - clz(my32) }
+  Result := Ord((-149 <= e_ie * Int32(n_ie)) and
+                (e_ie * Int32(n_ie) + t_ie <= 128));
+end;
+
+{ ── pcr_powf_accurate2 ──────────────────────────────────────────────────── }
+
+function pcr_powf_accurate2(x0, y0: Single; is_exact_val: Integer): Single;
+const
+  o_a2: array[0..1] of Double = (1.0, 2.0);
+  { ch[][2] flat: 13 pairs }
+  ch_a2: array[0..25] of Double = (
+    2.8853900817779268,   4.071054748191002e-17,    { 0x1.71547652b82fep+1, 0x1.777d0ffda2b89p-55 }
+    0.9617966939259756,   5.057761609823965e-17,    { 0x1.ec709dc3a03fdp-1, 0x1.d27f04ff73b3ap-55 }
+    0.5770780163555853,   5.2552074957089844e-17,   { 0x1.2776c50ef9bfep-1, 0x1.e4b514251d0ecp-55 }
+    0.4121985831111324,   1.2966716928545934e-17,   { 0x1.a61762a7aded9p-2, 0x1.de632dc7f6998p-57 }
+    0.3205988979753255,   2.2721007160373763e-17,   { 0x1.484b13d7c02aep-2, 0x1.a320ec342ddb3p-56 }
+    0.26230818925246924, -1.3180082845309455e-17,   { 0x1.0c9a84993fd48p-2, -0x1.e6425ce9a74a4p-57 }
+    0.22195308322397042, -7.03730411210251e-18,     { 0x1.c68f568d8beafp-3, -0x1.03a175487feabp-57 }
+    0.19235933776779732,  1.3451966316321192e-17,   { 0x1.89f3b14657dfbp-3, 0x1.f04a3acf0bcf7p-57 }
+    0.16972889712828465, -4.892356301506132e-18,    { 0x1.5b9ad2f2d12ap-3, -0x1.68fdff6815a6fp-58 }
+    0.15185945002402543,  1.1034764462533595e-18,   { 0x1.3702165b88acbp-3, 0x1.45b052ace6c8ep-60 }
+    0.13749878152691522, -1.0236531880234422e-17,   { 0x1.1998f60f2f005p-3, -0x1.79a94f62fb524p-57 }
+    0.12347055433477307, -2.2899638320795317e-18,   { 0x1.f9bc428e30809p-4, -0x1.51f063387e47p-59 }
+    0.13806280141791244,  8.12205453916993e-18      { 0x1.1ac0ab871296ap-3, 0x1.2ba6a2e1a625bp-57 }
+  );
+  { ce[][2] flat: 18 pairs }
+  ce_a2: array[0..35] of Double = (
+    1.0,                   6.210306603644812e-30,   { 0x1p+0, 0x1.f7d70599926c4p-98 }
+    0.6931471805599453,    2.3190468138467075e-17,  { 0x1.62e42fefa39efp-1, 0x1.abc9e3b39856bp-56 }
+    0.24022650695910072,  -9.493931257207092e-18,   { 0x1.ebfbdff82c58fp-3, -0x1.5e43a540c283dp-57 }
+    0.05550410866482158,  -3.1658222912778202e-18,  { 0x1.c6b08d704a0cp-5, -0x1.d3316277451e6p-59 }
+    0.009618129107628477,  2.8324649708472296e-19,  { 0x1.3b2ab6fba4e77p-7, 0x1.4e66003ba7f85p-62 }
+    0.0013333558146428443, 1.392811665254468e-20,   { 0x1.5d87fe78a6731p-10, 0x1.07183d46a9697p-66 }
+    0.0001540353039338161, 1.1765991431639673e-20,  { 0x1.430912f86c787p-13, 0x1.bc81afca4c93p-67 }
+    1.5252733804059841e-05,-8.0442948550066915e-22, { 0x1.ffcbfc588b0c7p-17, -0x1.e63f6f0116f4cp-71 }
+    1.3215486790144314e-06,-6.293372509344185e-23,  { 0x1.62c0223a5c826p-20, -0x1.30542d98ea4a5p-74 }
+    1.0178086009239703e-07,-1.3006186993534895e-24, { 0x1.b5253d395e7c6p-24, -0x1.9285a132ce05ep-80 }
+    7.054911620796934e-09, -1.659037271615654e-25,  { 0x1.e4cf5158b7b01p-28, -0x1.9ac1facae1b88p-83 }
+    4.4455382718682324e-10,-5.296718261089315e-28,  { 0x1.e8cac7351a7a8p-32, -0x1.4fb82adebd76bp-91 }
+    2.5678436021925767e-11, 6.132224146744111e-28,  { 0x1.c3bd65182746dp-36, 0x1.84ad0689d30ep-91 }
+    1.3691488868804127e-12,-2.8921457069199386e-29, { 0x1.8161931d765c3p-40, -0x1.254c6535279cep-95 }
+    6.778715106350512e-14, -6.174675424236808e-30,  { 0x1.314943a26c9e2p-44, -0x1.f4f2fdc14fb82p-98 }
+    3.132431569193972e-15,  1.9136583918642863e-31, { 0x1.c36e53b459602p-49, 0x1.f0d06a5a63c41p-103 }
+    1.3594238037092167e-16,-8.23812497323582e-33,   { 0x1.397637b3876a4p-53, -0x1.5632c551ae458p-107 }
+    5.542771640076379e-18, -4.787321441390354e-35   { 0x1.98fbfefdddb51p-58, -0x1.fd134923d52b4p-115 }
+  );
+var
+  x_a2, y_a2: Double;
+  t_a2: Tb64u64;
+  e_a2, k_a2: Integer;
+  xm_a2, xp_a2, zh_a2, zl_a2, z2l_a2, z2h_a2: Double;
+  ey_a2, eh_a2, el_a2, ee_a2: Double;
+  r_a2: Tb64u64;
+  ty_a2: Tb32u32;
+  et_a2: Integer;
+  kk_a2: UInt32;
+  isintflag_a2: Boolean;
+  ll_a2, lh_a2: Tb64u64;
+  res_a2: Single;
+begin
+  x_a2 := x0; y_a2 := y0;
+  t_a2.f := x_a2;
+  e_a2 := Integer((t_a2.u shr 52) and $7FF) - $3FF;
+  t_a2.u := t_a2.u and ($FFFFFFFFFFFFFFFF shr 12);  { clear exponent+sign }
+  k_a2 := Ord(t_a2.u > UInt64($6a09e667f3bcd));
+  e_a2 := e_a2 + k_a2;
+  t_a2.u := t_a2.u or (UInt64($3FF) shl 52);
+  x_a2 := t_a2.f;
+  xm_a2 := x_a2 - o_a2[k_a2];
+  xp_a2 := x_a2 + o_a2[k_a2];
+  zh_a2 := xm_a2 / xp_a2;
+  zl_a2 := pcr_fma(zh_a2, -xp_a2, xm_a2) / xp_a2;
+  z2h_a2 := muldd(zh_a2, zl_a2, zh_a2, zl_a2, z2l_a2);
+  z2h_a2 := polydd(z2h_a2, z2l_a2, 13, ch_a2, z2l_a2);
+  zh_a2 := muldd(zh_a2, zl_a2, z2h_a2, z2l_a2, zl_a2);
+  zh_a2 := mulddd_pf(zh_a2, zl_a2, y_a2, zl_a2);
+  ey_a2 := Double(e_a2) * y_a2;
+  eh_a2 := ey_a2 + zh_a2;
+  el_a2 := ((ey_a2 - eh_a2) + zh_a2) + zl_a2;
+  ee_a2 := pcr_roundeven(eh_a2);
+  eh_a2 := eh_a2 - ee_a2;
+  eh_a2 := polydd(eh_a2, el_a2, 18, ce_a2, el_a2);
+  r_a2.u := UInt64(Int64($3FF) + Int64(Trunc(ee_a2))) shl 52;
+  { Check if y is an odd integer }
+  ty_a2.f := y0;
+  et_a2 := Integer((ty_a2.u shr 23) and $FF) - $7F;
+  if (8 + et_a2) >= 0 then kk_a2 := ty_a2.u shl (8 + et_a2)
+  else kk_a2 := ty_a2.u shr (-8 - et_a2);
+  isintflag_a2 := (((kk_a2 shl 1) or UInt32(sar_i32(et_a2, 31))) = 0) or (et_a2 >= 23);
+  ll_a2.f := el_a2;
+  lh_a2.f := eh_a2;
+  { Adjust for borderline rounding }
+  if ((ll_a2.u shr 23) and UInt64($1FFFFFFF)) = UInt64($1FFFFFFF) then begin
+    if eh_a2 < 1 then begin
+      if el_a2 >= 5.551115123125783e-17 then begin    { 0x1p-54 }
+        el_a2 := el_a2 - 1.1102230246251565e-16;     { 0x1p-53 }
+        eh_a2 := eh_a2 + 1.1102230246251565e-16;
+      end else if el_a2 <= -5.551115123125783e-17 then begin
+        el_a2 := el_a2 + 1.1102230246251565e-16;
+        eh_a2 := eh_a2 - 1.1102230246251565e-16;
+      end;
+    end else begin
+      if el_a2 >= 1.1102230246251565e-16 then begin   { 0x1p-53 }
+        el_a2 := el_a2 - 2.220446049250313e-16;      { 0x1p-52 }
+        eh_a2 := eh_a2 + 2.220446049250313e-16;
+      end else if el_a2 <= -1.1102230246251565e-16 then begin
+        el_a2 := el_a2 + 2.220446049250313e-16;
+        eh_a2 := eh_a2 - 2.220446049250313e-16;
+      end;
+    end;
+  end else if ((ll_a2.u shr 23) and UInt64($1FFFFFFF)) = 0 then begin
+    if el_a2 > 0 then begin
+      if eh_a2 < 1 then begin
+        if el_a2 >= 1.1102230246251565e-16 then begin  { 0x1p-53 }
+          el_a2 := el_a2 - 1.1102230246251565e-16;
+          eh_a2 := eh_a2 + 1.1102230246251565e-16;
+        end;
+      end else begin
+        if el_a2 >= 2.220446049250313e-16 then begin   { 0x1p-52 }
+          el_a2 := el_a2 - 2.220446049250313e-16;
+          eh_a2 := eh_a2 + 2.220446049250313e-16;
+        end;
+      end;
+    end else begin
+      if eh_a2 < 1 then begin
+        if el_a2 <= -1.1102230246251565e-16 then begin
+          el_a2 := el_a2 + 1.1102230246251565e-16;
+          eh_a2 := eh_a2 - 1.1102230246251565e-16;
+        end;
+      end else begin
+        if el_a2 <= -2.220446049250313e-16 then begin
+          el_a2 := el_a2 + 2.220446049250313e-16;
+          eh_a2 := eh_a2 - 2.220446049250313e-16;
+        end;
+      end;
+    end;
+  end;
+  ll_a2.f := el_a2;
+  lh_a2.f := eh_a2;
+  if (lh_a2.u and $FFFFFFF) = 0 then begin
+    if pcr_fabs(ll_a2.f) > 4.0389678347315804e-28 then begin  { 0x1p-91 }
+      if el_a2 < 0 then begin
+        lh_a2.u := lh_a2.u - 1;
+        eh_a2 := lh_a2.f;
+      end else begin
+        lh_a2.u := lh_a2.u + 1;
+        eh_a2 := lh_a2.f;
+      end;
+    end;
+  end;
+  eh_a2 := eh_a2 * r_a2.f;
+  el_a2 := el_a2 * r_a2.f;
+  if isintflag_a2 and (kk_a2 <> 0) then
+    eh_a2 := pcr_copysign(eh_a2, Double(x0));
+  res_a2 := Single(eh_a2);
+  Result := res_a2;
+end;
+
+{ ── pcr_powf ─────────────────────────────────────────────────────────────── }
+
+function pcr_powf(x0, y0: Single): Single;
+const
+  ix_pf: array[0..32] of Double = (
+    1.0,                   { 0x1p+0 }
+    0.9696969696960878,    { 0x1.f07c1f07cp-1 }
+    0.9411764705873793,    { 0x1.e1e1e1e1ep-1 }
+    0.9142857142869616,    { 0x1.d41d41d42p-1 }
+    0.8888888888905058,    { 0x1.c71c71c72p-1 }
+    0.8648648648668313,    { 0x1.bacf914c2p-1 }
+    0.8421052631601924,    { 0x1.af286bca2p-1 }
+    0.8205128205154324,    { 0x1.a41a41a42p-1 }
+    0.8000000000029104,    { 0x1.99999999ap-1 }
+    0.7804878048773389,    { 0x1.8f9c18f9cp-1 }
+    0.7619047619082266,    { 0x1.861861862p-1 }
+    0.7441860465114587,    { 0x1.7d05f417dp-1 }
+    0.7272727272720658,    { 0x1.745d1745dp-1 }
+    0.711111111108039,     { 0x1.6c16c16c1p-1 }
+    0.6956521739120944,    { 0x1.642c8590bp-1 }
+    0.6808510638293228,    { 0x1.5c9882b93p-1 }
+    0.6666666666642413,    { 0x1.555555555p-1 }
+    0.6530612244896474,    { 0x1.4e5e0a72fp-1 }
+    0.6399999999994179,    { 0x1.47ae147aep-1 }
+    0.6274509803915862,    { 0x1.414141414p-1 }
+    0.6153846153829363,    { 0x1.3b13b13b1p-1 }
+    0.6037735849022283,    { 0x1.3521cfb2bp-1 }
+    0.5925925925912452,    { 0x1.2f684bda1p-1 }
+    0.5818181818176527,    { 0x1.29e4129e4p-1 }
+    0.571428571427532,     { 0x1.249249249p-1 }
+    0.5614035087710363,    { 0x1.1f7047dc1p-1 }
+    0.551724137927522,     { 0x1.1a7b9611ap-1 }
+    0.5423728813548223,    { 0x1.15b1e5f75p-1 }
+    0.5333333333328483,    { 0x1.111111111p-1 }
+    0.5245901639354997,    { 0x1.0c9714fbdp-1 }
+    0.5161290322575951,    { 0x1.084210842p-1 }
+    0.5079365079363924,    { 0x1.041041041p-1 }
+    0.5                    { 0x1p-1 }
+  );
+  { lix[][2] flat: 33 pairs; lix[j][0]=lix[j*2], lix[j][1]=lix[j*2+1] }
+  lix_pf: array[0..65] of Double = (
+     0.0,                   0.0,                     { j=0 }
+    -0.04443359375,         3.9474390234438854e-05,  { j=1 }
+    -0.08740234375,        -6.049750165153175e-05,   { j=2 }
+    -0.12890625,           -3.767669429982701e-04,   { j=3 }
+    -0.169921875,          -3.1264396881159154e-06,  { j=4 }
+    -0.208984375,          -4.689906256694731e-04,   { j=5 }
+    -0.248046875,           1.193615603508767e-04,   { j=6 }
+    -0.28515625,           -2.459688576559096e-04,   { j=7 }
+    -0.322265625,           3.375301178861461e-04,   { j=8 }
+    -0.357421875,          -1.3012961939581666e-04,  { j=9 }
+    -0.392578125,           2.607022278003286e-04,   { j=10 }
+    -0.42578125,           -4.8350470242596976e-04,  { j=11 }
+    -0.458984375,          -4.472436386093797e-04,   { j=12 }
+    -0.4921875,             3.3440366409270264e-04,  { j=13 }
+     0.4765625,            -1.2445605898105753e-04,  { j=14 }
+     0.4453125,             9.86483213785352e-05,    { j=15 }
+     0.4140625,             9.749992735953246e-04,   { j=16 }
+     0.384765625,           5.245308844637542e-04,   { j=17 }
+     0.35546875,            6.750602239631808e-04,   { j=18 }
+     0.328125,             -5.503419728077132e-04,   { j=19 }
+     0.298828125,           7.321568549714691e-04,   { j=20 }
+     0.271484375,           5.951704286000489e-04,   { j=21 }
+     0.2451171875,         -4.689666748853101e-06,   { j=22 }
+     0.21875,              -1.0971352597172757e-04,  { j=23 }
+     0.1923828125,          2.6226543977164556e-04,  { j=24 }
+     0.1669921875,          1.1779833296210864e-04,  { j=25 }
+     0.1416015625,          4.174423632430148e-04,   { j=26 }
+     0.1171875,             1.6945063520646333e-04,  { j=27 }
+     0.09326171875,        -1.5231435983065282e-04,  { j=28 }
+     0.0693359375,         -7.32750599339986e-05,    { j=29 }
+     0.0458984375,         -9.47478881873323e-05,    { j=30 }
+     0.022705078125,        1.4998374755498776e-05,  { j=31 }
+     0.0,                   0.0                      { j=32 }
+  );
+  { c[]: log2 polynomial, 8 coefficients }
+  c_pf: array[0..7] of Double = (
+     1.4426950408889634,   { 0x1.71547652b82fep+0 }
+    -0.7213475204444817,   { -0x1.71547652b82fep-1 }
+     0.4808983469635712,   { 0x1.ec709dc3a2d0bp-2 }
+    -0.36067376022317404,  { -0x1.71547652bc4a9p-2 }
+     0.28853899623008594,  { 0x1.2776c441b72ep-2 }
+    -0.24044915938489397,  { -0x1.ec709bdf453ecp-3 }
+     0.20617758474822143,  { 0x1.a6406efd4b877p-3 }
+    -0.1804151705675918    { -0x1.717d824a520f7p-3 }
+  );
+  { ce[]: exp2 polynomial, 6 coefficients }
+  ce_pf: array[0..5] of Double = (
+    0.043321698784995886,  { 0x1.62e42fefa398bp-5 }
+    0.0009383847928200837, { 0x1.ebfbdff84555ap-11 }
+    1.3550807712983854e-05,{ 0x1.c6b08d4ad86d3p-17 }
+    1.4676119301623784e-07,{ 0x1.3b2ad1b1716a2p-23 }
+    1.271309415715539e-09, { 0x1.5d7472718ce9dp-30 }
+    9.382438953978075e-12  { 0x1.4a1d7f457ac56p-37 }
+  );
+  { tb[]: 2^(j/16) for j=0..15 }
+  tb_pf: array[0..15] of Double = (
+    1.0,                   { 0x1p+0 }
+    1.0442737824274138,    { 0x1.0b5586cf9890fp+0 }
+    1.0905077326652577,    { 0x1.172b83c7d517bp+0 }
+    1.1387886347566916,    { 0x1.2387a6e756238p+0 }
+    1.189207115002721,     { 0x1.306fe0a31b715p+0 }
+    1.241857812073484,     { 0x1.3dea64c123422p+0 }
+    1.2968395546510096,    { 0x1.4bfdad5362a27p+0 }
+    1.3542555469368927,    { 0x1.5ab07dd485429p+0 }
+    1.4142135623730951,    { 0x1.6a09e667f3bcdp+0 }
+    1.4768261459394993,    { 0x1.7a11473eb0187p+0 }
+    1.5422108254079407,    { 0x1.8ace5422aa0dbp+0 }
+    1.6104903319492543,    { 0x1.9c49182a3f09p+0 }
+    1.681792830507429,     { 0x1.ae89f995ad3adp+0 }
+    1.7562521603732995,    { 0x1.c199bdd85529cp+0 }
+    1.8340080864093424,    { 0x1.d5818dcfba487p+0 }
+    1.9152065613971474     { 0x1.ea4afa2a490dap+0 }
+  );
+var
+  x_pf, y_pf: Double;
+  tx_pf, ty_pf: Tb64u64;
+  m_pf: UInt64;
+  e_pf, j_pf, k_pf: Integer;
+  xd_pf: Tb64u64;
+  z_pf, z2_pf, z4_pf: Double;
+  c6_pf, c4_pf, c2_pf, c0_pf: Double;
+  l_pf, zt_pf: Double;
+  ia_pf: Double;
+  h_pf, h2_pf: Double;
+  il_pf, jl_pf, el_pf: Int64;
+  s_pf: Double;
+  su_pf: Tb64u64;
+  w_pf: Double;
+  rr_pf: Tb64u64;
+  off_pf: UInt64;
+  et_pf: Integer;
+  kk_pf: UInt64;
+  res_pf: Single;
+begin
+  x_pf := x0; y_pf := y0;
+  tx_pf.f := x_pf; ty_pf.f := y_pf;
+  { |x| = 1 }
+  if (tx_pf.u shl 1) = (UInt64($3FF) shl 53) then begin
+    if (tx_pf.u shr 63) <> 0 then begin  { x = -1 }
+      if (ty_pf.u shl 1) > (UInt64($7FF) shl 53) then begin
+        Result := y0 + y0; Exit;  { y = NaN }
+      end;
+      if isint_pf(y0) then begin
+        if isodd_pf(y0) then Result := x0
+        else Result := -x0;
+        Exit;
+      end;
+      Result := (x_pf - x_pf) / (x_pf - x_pf); Exit;  { NaN }
+    end;
+    { x = +1 }
+    if is_signalingf_pf(y0) then Result := x0 + y0
+    else Result := x0;
+    Exit;
+  end;
+  { y = 0 }
+  if (ty_pf.u shl 1) = 0 then begin
+    if is_signalingf_pf(x0) then Result := x0 + y0
+    else Result := 1.0;
+    Exit;
+  end;
+  { y = Inf or NaN }
+  if (ty_pf.u shl 1) >= (UInt64($7FF) shl 53) then begin
+    if (tx_pf.u shl 1) > (UInt64($7FF) shl 53) then begin
+      Result := x0 + y0; Exit;  { x = NaN }
+    end;
+    if (ty_pf.u shl 1) = (UInt64($7FF) shl 53) then begin  { y = +-Inf }
+      if (((tx_pf.u shl 1) < (UInt64($3FF) shl 53)) xor ((ty_pf.u shr 63) <> 0)) then
+        Result := 0.0
+      else
+        Result := Single(1.0/0.0);
+      Exit;
+    end;
+    Result := x0 + y0; Exit;  { y = NaN }
+  end;
+  { x = Inf, NaN, or negative }
+  if tx_pf.u >= (UInt64($7FF) shl 52) then begin
+    if (tx_pf.u shl 1) = (UInt64($7FF) shl 53) then begin  { x = +-Inf }
+      if not isodd_pf(y0) then x0 := pcr_fabsf(x0);
+      if (ty_pf.u shr 63) <> 0 then Result := 1.0/x0
+      else Result := x0;
+      Exit;
+    end;
+    if (tx_pf.u shl 1) > (UInt64($7FF) shl 53) then begin
+      Result := x0 + x0; Exit;  { x = NaN }
+    end;
+    if tx_pf.u > (UInt64($7FF) shl 52) then begin  { x <= 0 }
+      if (not isint_pf(y0)) and (x_pf <> 0) then begin
+        Result := (x_pf - x_pf) / (x_pf - x_pf); Exit;  { NaN }
+      end;
+    end;
+  end;
+  { x = +0 or -0 }
+  if (tx_pf.u shl 1) = 0 then begin
+    if (ty_pf.u shr 63) <> 0 then begin  { y < 0 }
+      if isodd_pf(y0) then Result := 1.0 / pcr_copysignf(0.0, x0)
+      else Result := 1.0 / 0.0;
+    end else begin  { y > 0 }
+      if isodd_pf(y0) then Result := pcr_copysignf(1.0, x0) * 0.0
+      else Result := 0.0;
+    end;
+    Exit;
+  end;
+  { Main path: x > 0 finite, y finite nonzero }
+  m_pf := tx_pf.u and (not UInt64(0)) shr 12;  { 52-bit mantissa }
+  e_pf := Integer((tx_pf.u shr 52) and $7FF) - $3FF;
+  j_pf := Integer((Int64(m_pf) + (Int64(1) shl 46)) shr 47);
+  k_pf := Ord(j_pf > 13);
+  e_pf := e_pf + k_pf;
+  xd_pf.u := m_pf or (UInt64($3FF) shl 52);
+  z_pf := pcr_fma(xd_pf.f, ix_pf[j_pf], -1.0);
+  z2_pf := z_pf * z_pf; z4_pf := z2_pf * z2_pf;
+  c6_pf := c_pf[6] + z_pf * c_pf[7];
+  c4_pf := c_pf[4] + z_pf * c_pf[5];
+  c2_pf := c_pf[2] + z_pf * c_pf[3];
+  c0_pf := c_pf[0] + z_pf * c_pf[1];
+  c0_pf := c0_pf + z2_pf * c2_pf;
+  c4_pf := c4_pf + z2_pf * c6_pf;
+  c0_pf := c0_pf + z4_pf * c4_pf;
+  l_pf := z_pf * c0_pf - lix_pf[j_pf*2+1];
+  y_pf := y_pf * 16.0;
+  zt_pf := (Double(e_pf) - lix_pf[j_pf*2]) * y_pf;
+  z_pf := l_pf * y_pf + zt_pf;
+  { Overflow check }
+  if z_pf > 2048.0 then begin
+    if isodd_pf(y0) then
+      Result := pcr_copysignf(Single(1.7014118346046923e+38), x0) * Single(1.7014118346046923e+38)
+    else
+      Result := Single(1.7014118346046923e+38) * Single(1.7014118346046923e+38);
+    Exit;
+  end;
+  { Underflow check }
+  if z_pf < -2400.0 then begin
+    if isodd_pf(y0) then
+      Result := pcr_copysignf(Single(1.1754943508222875e-38), x0) * Single(1.1754943508222875e-38)
+    else
+      Result := Single(1.1754943508222875e-38) * Single(1.1754943508222875e-38);
+    Exit;
+  end;
+  { Near 1: return 1 + z }
+  if pcr_fabs(z_pf) < 1.4901161193847656e-08 then begin  { 0x1p-26 }
+    Result := 1.0 + z_pf; Exit;
+  end;
+  ia_pf := Floor(z_pf);
+  h_pf := pcr_fma(l_pf, y_pf, zt_pf - ia_pf);
+  il_pf := Int64(Trunc(ia_pf));
+  jl_pf := il_pf and $F;
+  el_pf := sar_i64(il_pf - jl_pf, 4);
+  s_pf := tb_pf[jl_pf];
+  su_pf.u := UInt64(Int64($3FF) + el_pf) shl 52;
+  s_pf := s_pf * su_pf.f;
+  h2_pf := h_pf * h_pf;
+  c0_pf := ce_pf[0] + h_pf * ce_pf[1];
+  c2_pf := ce_pf[2] + h_pf * ce_pf[3];
+  c4_pf := ce_pf[4] + h_pf * ce_pf[5];
+  c0_pf := c0_pf + h2_pf * (c2_pf + h2_pf * c4_pf);
+  w_pf := s_pf * h_pf;
+  rr_pf.f := s_pf + w_pf * c0_pf;
+  off_pf := 468;
+  if ((rr_pf.u + off_pf) and $FFFFFFF) <= 2 * off_pf then begin
+    Result := pcr_powf_accurate2(x0, y0, is_exact_pf(x0, y0));
+    Exit;
+  end;
+  { Sign correction for odd integer y }
+  et_pf := Integer((ty_pf.u shr 52) and $7FF) - $3FF;
+  if et_pf >= -11 then kk_pf := ty_pf.u shl (11 + et_pf)
+  else kk_pf := ty_pf.u shr (-11 - et_pf);
+  if ((kk_pf shl 1) = 0) and (kk_pf <> 0) then
+    rr_pf.f := pcr_copysign(rr_pf.f, x_pf);
+  res_pf := Single(rr_pf.f);
+  Result := res_pf;
 end;
 
 end.
