@@ -1,0 +1,19 @@
+﻿{
+  "name": "pas-core-math: Free Pascal",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "workspaceFolder": "/workspaces/pas-core-math",
+  "postCreateCommand": "./install_dependencies.sh",
+  "remoteUser": "vscode",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "alefragnani.pascal",
+        "davidanson.vscode-markdownlint",
+        "ms-vscode.vscode-container-tools"
+      ]
+    }
+  }
+}
