@@ -1,4 +1,12 @@
 sudo apt update
+# install build-essential if not already installed
+if ! dpkg -s build-essential &> /dev/null
+then
+    echo "build-essential could not be found, installing..."
+    sudo apt install -y build-essential
+else
+    echo "build-essential is already installed"
+fi
 # install fpc only if it not already installed
 if ! command -v fpc &> /dev/null
 then
