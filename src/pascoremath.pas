@@ -36,6 +36,8 @@ function pcr_exp10m1f(x: Single): Single;
 function pcr_log10p1f(x: Single): Single;
 function pcr_asinhf(x: Single): Single;
 function pcr_acoshf(x: Single): Single;
+function pcr_tgammaf(x: Single): Single;
+function pcr_lgammaf(x: Single): Single;
 
 implementation
 
@@ -3051,6 +3053,371 @@ begin
     if ux_ac = $7F800000 then begin Result := x; Exit; end;
     Result := x + x; // nan
   end;
+end;
+
+
+// ── lgammaf helpers ───────────────────────────────────────────────────────────
+function lgamma_as_r7(x: Double; const c: array of Double): Double;
+begin
+  Result := (((x-c[0])*(x-c[1]))*((x-c[2])*(x-c[3])))*(((x-c[4])*(x-c[5]))*((x-c[6])));
+end;
+
+function lgamma_as_r8(x: Double; const c: array of Double): Double;
+begin
+  Result := (((x-c[0])*(x-c[1]))*((x-c[2])*(x-c[3])))*(((x-c[4])*(x-c[5]))*((x-c[6])*(x-c[7])));
+end;
+
+function lgamma_as_sinpi(x0: Double): Double;
+const
+  c_sp: array[0..7] of Double = (
+    4.0, -3.7392088021786822, 1.2780132969493234, -0.22899788751887007,
+    0.025330969591019943, -0.0019036696909283705, 0.00010351520901665411, -4.131827870010798e-06);
+var
+  x_sp, x2_sp, x4_sp, x8_sp: Double;
+begin
+  x_sp := x0 - 0.5;
+  x2_sp := x_sp * x_sp; x4_sp := x2_sp * x2_sp; x8_sp := x4_sp * x4_sp;
+  Result := (0.25 - x2_sp) * ((c_sp[0] + x2_sp*c_sp[1]) + x4_sp*(c_sp[2] + x2_sp*c_sp[3])
+    + x8_sp*((c_sp[4] + x2_sp*c_sp[5]) + x4_sp*(c_sp[6] + x2_sp*c_sp[7])));
+end;
+
+function lgamma_as_ln(x: Double): Double;
+const
+  c_aln: array[0..7] of Double = (
+    0.9999999999999756, -0.4999999999895039, 0.33333333159684553, -0.2499998558809608,
+    0.19999326364239384, -0.16648082067582767, 0.13983949497072432, -0.09792103500684109);
+  il_aln: array[0..15] of Double = (
+    9.372730068330667e-18, 0.06062462181643487, 0.11778303565638353, 0.17185025692665928,
+    0.2231435513142097, 0.2719337154836418, 0.3184537311185346, 0.3629054936893685,
+    0.40546510810816444, 0.4462871026284195, 0.48550781578170077, 0.5232481437645479,
+    0.5596157879354228, 0.5947071077466928, 0.6286086594223742, 0.661398482245365);
+  ix_aln: array[0..15] of Double = (
+    1.0, 0.9411764705882353, 0.8888888888888888, 0.8421052631578947,
+    0.8, 0.7619047619047619, 0.7272727272727273, 0.6956521739130435,
+    0.6666666666666666, 0.64, 0.6153846153846154, 0.5925925925925926,
+    0.5714285714285714, 0.5517241379310345, 0.5333333333333333, 0.5161290322580645);
+var
+  t_aln: Tb64u64;
+  e_aln, i_aln: Integer;
+  z_aln, z2_aln, z4_aln: Double;
+begin
+  t_aln.f := x;
+  e_aln := Integer(Int64(t_aln.u shr 52) - $3FF);
+  i_aln := Integer((t_aln.u shr 48) and $F);
+  t_aln.u := (t_aln.u and $000FFFFFFFFFFFFF) or $3FF0000000000000;
+  z_aln := ix_aln[i_aln] * t_aln.f - 1.0;
+  z2_aln := z_aln * z_aln; z4_aln := z2_aln * z2_aln;
+  Result := Double(e_aln) * 0.6931471805599453 + il_aln[i_aln]
+    + z_aln * ((c_aln[0] + z_aln*c_aln[1]) + z2_aln*(c_aln[2] + z_aln*c_aln[3])
+               + z4_aln*((c_aln[4] + z_aln*c_aln[5]) + z2_aln*(c_aln[6] + z_aln*c_aln[7])));
+end;
+
+// ── 4.01 tgammaf ─────────────────────────────────────────────────────────────
+function pcr_tgammaf(x: Single): Single;
+const
+  tb_xu: array[0..9] of UInt32 = (
+    $27DE86A9, $27E05475, $B63BEFB3, $3C7BB570, $41E886D1, $C067D177,
+    $BD99DA31, $BF54C45A, $41EE77FE, $3F843A64);
+  tb_f: array[0..9] of Single = (
+    1.61908237795328e+14, 1.60606292279296e+14, -357083.5625, 64.52886962890625,
+    3.801414727062912e+29, 0.24537095427513123,
+    -13.968554496765137, -6.604792594909668, 4.6287780950070885e+30, 0.9819810390472412);
+  tb_df: array[0..9] of Single = (
+    4194304.0, 4194304.0, 0.0078125, 1.9073486328125e-06,
+    9.44473296573929e+21, 3.725290298461914e-09,
+    -2.384185791015625e-07, 1.1920928955078125e-07,
+    -1.3234889800848443e-23, 1.4901161193847656e-08);
+  c_tg: array[0..15] of Double = (
+    1.7877108988969403, 1.5591939012079508, 1.0510493266811867, 0.47065801829337245,
+    0.18881863831977497, 0.058831548411746724, 0.017825943652294146, 0.004228758148929772,
+    0.001097917853717287, 0.00019456568933897892, 5.197131759674315e-05, 4.914144140610218e-06,
+    2.437173471710669e-06, -1.4461519623063317e-07, 1.8260131876052383e-07, -4.919948895618967e-08);
+var
+  t_tg: Tb32u32;
+  rt_tg: Tb64u64;
+  ax_tg: UInt32;
+  z_tg, d_tg, m_tg, ii_tg, step_tg: Double;
+  d2_tg, d4_tg, d8_tg, f_tg: Double;
+  w_tg, x0_tg, t0_tg: Double;
+  fx_tg: Single;
+  k_tg: Int32;
+  jm_tg, j_tg, lp_tg, idx_tg: Integer;
+begin
+  t_tg.f := x;
+  ax_tg := t_tg.u shl 1;
+  if ax_tg >= $FF000000 then begin         // x = NaN or +/-Inf
+    if ax_tg = $FF000000 then begin        // x = +/-Inf
+      if (t_tg.u shr 31) <> 0 then begin  // x = -Inf: Invalid
+        Result := x / x; Exit;
+      end;
+      Result := x; Exit;                   // x = +Inf
+    end;
+    Result := x + x; Exit;                 // x = NaN: propagate
+  end;
+  z_tg := x;
+  if ax_tg < $6D000000 then begin          // |x| < 2^-18
+    d_tg := (0.9890559953279725 - 0.9074790760808863 * z_tg) * z_tg - 0.5772156649015329;
+    f_tg := 1.0 / z_tg + d_tg;
+    rt_tg.f := f_tg;
+    if ((rt_tg.u + 2) and $0FFFFFFF) < 4 then
+      for idx_tg := 0 to 9 do
+        if t_tg.u = tb_xu[idx_tg] then begin
+          Result := tb_f[idx_tg] + tb_df[idx_tg]; Exit;
+        end;
+    Result := Single(f_tg); Exit;
+  end;
+  // Safe single-precision floor: |x|>=2^23 means x is already exact integer
+  if (t_tg.u and $7FFFFFFF) >= $4B800000 then
+    fx_tg := x
+  else
+    fx_tg := Single(Floor(Double(x)));
+  if x >= 35.04010009765625 then begin     // overflow: 0x1.18522p+5
+    Result := Single(1.7014118346046923e+38) * Single(1.7014118346046923e+38); Exit;
+  end;
+  if x <= -2147483648.0 then
+    k_tg := Low(Int32)
+  else
+    k_tg := Int32(Trunc(fx_tg));
+  if fx_tg = x then begin                  // x is an integer
+    if x = 0.0 then begin
+      Result := 1.0 / x; Exit;            // +/-Inf, raises DivByZero
+    end;
+    if x < 0.0 then begin                  // negative integer: undefined
+      Result := Single(0.0/0.0); Exit;
+    end;
+    t0_tg := 1.0; x0_tg := 1.0;
+    lp_tg := 1;
+    while lp_tg < k_tg do begin
+      t0_tg := t0_tg * x0_tg;
+      x0_tg := x0_tg + 1.0;
+      Inc(lp_tg);
+    end;
+    Result := Single(t0_tg); Exit;
+  end;
+  if x < -42.0 then begin                  // negative non-integer, |gamma| < 2^-151
+    if (k_tg and 1) = 0 then
+      Result := Single(5.877471754111438e-39) * Single(5.877471754111438e-39)
+    else
+      Result := Single(5.877471754111438e-39) * Single(-5.877471754111438e-39);
+    Exit;
+  end;
+  // Main polynomial path: gamma(x) via polynomial around 2.875
+  m_tg := z_tg - 2.875;
+  ii_tg := Double(Round(m_tg));
+  if ii_tg < 0.0 then step_tg := -1.0 else step_tg := 1.0;
+  d_tg := m_tg - ii_tg;
+  d2_tg := d_tg * d_tg; d4_tg := d2_tg * d2_tg; d8_tg := d4_tg * d4_tg;
+  f_tg :=   (c_tg[0] + d_tg*c_tg[1]) + d2_tg*(c_tg[2] + d_tg*c_tg[3])
+    + d4_tg*((c_tg[4] + d_tg*c_tg[5]) + d2_tg*(c_tg[6] + d_tg*c_tg[7]))
+    + d8_tg*((c_tg[8] + d_tg*c_tg[9]) + d2_tg*(c_tg[10] + d_tg*c_tg[11])
+      + d4_tg*((c_tg[12] + d_tg*c_tg[13]) + d2_tg*(c_tg[14] + d_tg*c_tg[15])));
+  jm_tg := Trunc(Abs(ii_tg));
+  w_tg := 1.0;
+  if jm_tg <> 0 then begin
+    z_tg := z_tg - 0.5 - step_tg * 0.5;
+    w_tg := z_tg;
+    j_tg := jm_tg - 1;
+    while j_tg > 0 do begin
+      z_tg := z_tg - step_tg;
+      w_tg := w_tg * z_tg;
+      Dec(j_tg);
+    end;
+  end;
+  if ii_tg <= -0.5 then w_tg := 1.0 / w_tg;
+  f_tg := f_tg * w_tg;
+  rt_tg.f := f_tg;
+  if ((rt_tg.u + 2) and $0FFFFFFF) < 8 then
+    for idx_tg := 0 to 9 do
+      if t_tg.u = tb_xu[idx_tg] then begin
+        Result := tb_f[idx_tg] + tb_df[idx_tg]; Exit;
+      end;
+  Result := Single(f_tg);
+end;
+
+// ── 4.02 lgammaf ─────────────────────────────────────────────────────────────
+function pcr_lgammaf(x: Single): Single;
+const
+  tb_lg_xu: array[0..26] of UInt32 = (
+    $1B7679FF, $1E88452D, $2AD345DE, $39EEFE83, $3B7C53AA, $42468B59,
+    $449ACF07, $46541516, $46B16323, $4F3F94C0, $50522F52, $65FCA09F,
+    $716E5DD5, $77AC5674, $7943DEF8, $8212E5B3, $9B7679FF, $9E88452D,
+    $A77A8E47, $AA6C2DFF, $ABA1BF3A, $B0D6F2CA, $B0E17820,
+    $C02C060F, $C134EB14, $C33139A3, $C6F7E151);
+  tb_lg_f: array[0..26] of Single = (
+    49.94450759887695, 45.68510437011719, 28.611061096191406,
+    7.693094253540039, 5.557419300079346, 143.14707946777344,
+    7578.81298828125, 115584.2109375, 205035.484375,
+    67147280384.0, 315532181504.0, 7.808042139034897e+24,
+    8.054993914128835e+31, 5.378053227661709e+35, 5.030267977202206e+36,
+    85.11940002441406, 49.94450759887695, 45.68510437011719,
+    33.29256057739258, 29.192766189575195, 27.491884231567383,
+    20.27604866027832, 20.228261947631836,
+    -0.08386971801519394, -16.91703224182129, -742.2763061523438, -297142.9375);
+  tb_lg_df: array[0..26] of Single = (
+    -9.5367431640625e-07, -9.5367431640625e-07, 4.76837158203125e-07,
+    -1.1920928955078125e-07, 1.1920928955078125e-07, 3.814697265625e-06,
+    -0.0001220703125, 0.001953125, -0.00390625,
+    -1024.0, -8192.0, -1.4411518807585587e+17,
+    1.2089258196146292e+24, -9.903520314283042e+27, 7.922816251426434e+28,
+    -1.9073486328125e-06, -9.5367431640625e-07, -9.5367431640625e-07,
+    -9.5367431640625e-07, -4.76837158203125e-07, -4.76837158203125e-07,
+    -4.76837158203125e-07, 4.76837158203125e-07,
+    1.862645149230957e-09, -4.76837158203125e-07, -1.52587890625e-05, -0.0078125);
+  // Rational approx for |x| < 0x1.52p-1 (0.66015625)
+  rn_sm: array[0..7] of Double = (
+    -21.02242974712385, -5.2778355372066486, 1.0000000000070894, -2.5841418677193797,
+    -1.6593264187887429, -1.291958597504499, -1.1075438471412518, -1.0223486918257203);
+  c0_sm: Double = 4.246153550603663;
+  rd_sm: array[0..7] of Double = (
+    -41.71231062445876, -8.19318858118602, -3.5633472115484848, -2.1293437187570254,
+    -1.491491016168074, -1.2138533890414456, -1.0760801136819742, -1.0134457501866234);
+  // Rational approx for 0x1.52p-1 <= |x| <= 0x1.afc1ap+1 (medium range)
+  rn_md: array[0..6] of Double = (
+    -44.80915068895768, -9.412835290371454, -3.443662014713007, -1.4777007076373339,
+    -0.6141091163391442, -0.23157674609865453, -0.048874810545154704);
+  c0_md: Double = 4.949273735344536;
+  rd_md: array[0..7] of Double = (
+    -82.27591560063709, -14.56281571764002, -5.201990312146981, -2.293271883973741,
+    -1.0742628098109357, -0.44083977020065385, -0.15523770855500355, -0.027342864372157546);
+  // Stirling series: 2-term (ax > 73.9)
+  stir2: array[0..1] of Double = (0.08333333332119137, -0.002777571142708969);
+  // Stirling series: 4-term (ax > 10.67)
+  stir4: array[0..3] of Double = (
+    0.08333333333290953, -0.0027777773522524095, 0.0007935128869641844, -0.0005771890268644819);
+  // Stirling series: 8-term (ax <= 10.67)
+  stir8: array[0..7] of Double = (
+    0.08333333333309598, -0.002777777717605562, 0.0007936447627791816, -0.0005949176485969618,
+    0.0008316045241367893, -0.0017144163881980096, 0.003738059988828462, -0.00511695529630956);
+  // Near gamma-zero expansion: around x ≈ -2.7477 (8 coefficients)
+  c_nz1: array[0..7] of Double = (
+    -1.9143501856115988, 9.57518947570967, -20.095134916873302, 62.627282710722085,
+    -194.766146075866, 646.9063894581668, -2194.0017863504936, 7596.5102418865035);
+  // Near gamma-zero expansion: around x ≈ -2.457 (7 coefficients)
+  c_nz2: array[0..6] of Double = (
+    1.5156034480216574, 4.858320951634164, 1.411291143065722, 8.721782533183026,
+    5.8004160810161975, 24.828757532203195, 23.995763760665245);
+  // Near gamma-zero expansion: around x ≈ -3.143 (7 coefficients)
+  c_nz3: array[0..6] of Double = (
+    7.781884658131351, 25.831338372388036, 112.26898629717154, 588.8907416229549,
+    3277.1937988413574, 19024.282530470795, 113553.17206745526);
+var
+  t_lg: Tb32u32;
+  rt_lg: Tb64u64;
+  ax_lg: Single;
+  fx_lg: Single;
+  z_lg, s_lg, f_lg: Double;
+  lz_lg, iz_lg, iz2_lg, iz4_lg, iz8_lg: Double;
+  p_lg, lp_lg: Double;
+  h_lg, h2_lg, h4_lg: Double;
+  r_lg: Single;
+  tl_lg: UInt64;
+  a_lg, b_lg, mi_lg: Integer;
+begin
+  ax_lg := Abs(x);
+  t_lg.f := ax_lg;
+  // Safe floorf: float32 values with |x| >= 2^23 are already exact integers
+  if ax_lg >= 8388608.0 then
+    fx_lg := x
+  else
+    fx_lg := Single(Floor(Double(x)));
+  // NaN or Inf (t_lg.u = bits of |x|)
+  if t_lg.u >= $7F800000 then begin
+    if t_lg.u = $7F800000 then begin Result := x * x; Exit; end;  // +/-Inf → +Inf
+    Result := x + x; Exit;  // NaN
+  end;
+  // Integer input
+  if fx_lg = x then begin
+    if x <= 0.0 then begin
+      pcr_feraiseexcept_divbyzero;
+      Result := Single(1.0/0.0); Exit;   // lgamma(<=0 integer) = +Inf
+    end;
+    if (x = 1.0) or (x = 2.0) then begin
+      Result := 0.0; Exit;               // lgamma(1) = lgamma(2) = 0
+    end;
+    // positive integer > 2: fall through to main computation
+  end;
+  z_lg := ax_lg;
+  s_lg := x;
+  if ax_lg < 0.66015625 then begin        // |x| < 0x1.52p-1
+    f_lg := (c0_sm * s_lg) * lgamma_as_r8(s_lg, rn_sm)
+          / lgamma_as_r8(s_lg, rd_sm) - lgamma_as_ln(z_lg);
+  end else begin
+    if ax_lg > 3.373096466064453 then begin   // ax > 0x1.afc1ap+1
+      if x >= 4.085003425410169e+36 then begin  // overflow threshold
+        Result := pcr_fmaf(x, 83.30038452148438, 1.0812689350146765e+31); Exit;
+      end;
+      lz_lg := lgamma_as_ln(z_lg);
+      f_lg := (z_lg - 0.5) * (lz_lg - 1.0) + 0.4189385332046727;
+      if ax_lg < 1048576.0 then begin     // ax < 2^20: add Stirling correction
+        iz_lg := 1.0 / z_lg; iz2_lg := iz_lg * iz_lg;
+        if ax_lg > 1198.0 then begin
+          f_lg := f_lg + iz_lg * (1.0/12.0);
+        end else if ax_lg > 73.90081787109375 then begin  // 0x1.279a7p+6
+          f_lg := f_lg + iz_lg * (stir2[0] + iz2_lg * stir2[1]);
+        end else if ax_lg > 10.666666984558105 then begin  // 0x1.555556p+3
+          iz4_lg := iz2_lg * iz2_lg;
+          f_lg := f_lg + iz_lg * ((stir4[0] + iz2_lg*stir4[1])
+                                 + iz4_lg*(stir4[2] + iz2_lg*stir4[3]));
+        end else begin
+          iz4_lg := iz2_lg * iz2_lg; iz8_lg := iz4_lg * iz4_lg;
+          p_lg := ((stir8[0] + iz2_lg*stir8[1]) + iz4_lg*(stir8[2] + iz2_lg*stir8[3]))
+                + iz8_lg*((stir8[4] + iz2_lg*stir8[5]) + iz4_lg*(stir8[6] + iz2_lg*stir8[7]));
+          f_lg := f_lg + iz_lg * p_lg;
+        end;
+      end;
+      if x < 0.0 then begin              // reflection for negative x
+        f_lg := 1.1447298858494002 - f_lg - lz_lg;
+        lp_lg := lgamma_as_ln(lgamma_as_sinpi(Double(x) - Double(fx_lg)));
+        f_lg := f_lg - lp_lg;
+      end;
+    end else begin                        // medium x: 0x1.52p-1 <= ax <= 0x1.afc1ap+1
+      f_lg := (z_lg - 1.0) * (z_lg - 2.0) * c0_md
+            * lgamma_as_r7(z_lg, rn_md) / lgamma_as_r8(z_lg, rd_md);
+      if x < 0.0 then begin
+        // Near gamma-zeros: use local Taylor expansion for accuracy
+        if (t_lg.u < $40301B93) and (t_lg.u > $402F95C2) then begin
+          // near x ≈ -2.7477
+          h_lg := (s_lg + 2.7476826467274127) - 9.055340329338315e-17;
+          h2_lg := h_lg * h_lg; h4_lg := h2_lg * h2_lg;
+          f_lg := h_lg * ((c_nz1[0] + h_lg*c_nz1[1]) + h2_lg*(c_nz1[2] + h_lg*c_nz1[3])
+            + h4_lg*((c_nz1[4] + h_lg*c_nz1[5]) + h2_lg*(c_nz1[6] + h_lg*c_nz1[7])));
+        end else if (t_lg.u > $401CECCB) and (t_lg.u < $401D95CA) then begin
+          // near x ≈ -2.457
+          h_lg := (s_lg + 2.4570247382208006) + 3.7075610815513266e-17;
+          h2_lg := h_lg * h_lg; h4_lg := h2_lg * h2_lg;
+          f_lg := h_lg * ((c_nz2[0] + h_lg*c_nz2[1]) + h2_lg*(c_nz2[2] + h_lg*c_nz2[3])
+            + h4_lg*((c_nz2[4] + h_lg*c_nz2[5]) + h2_lg*(c_nz2[6])));
+        end else if (t_lg.u > $40492009) and (t_lg.u < $404940EF) then begin
+          // near x ≈ -3.143
+          h_lg := (s_lg + 3.14358088834998) + 2.1818179852331714e-16;
+          h2_lg := h_lg * h_lg; h4_lg := h2_lg * h2_lg;
+          f_lg := h_lg * ((c_nz3[0] + h_lg*c_nz3[1]) + h2_lg*(c_nz3[2] + h_lg*c_nz3[3])
+            + h4_lg*((c_nz3[4] + h_lg*c_nz3[5]) + h2_lg*(c_nz3[6])));
+        end else begin
+          f_lg := 1.1447298858494002 - f_lg;
+          lp_lg := lgamma_as_ln(lgamma_as_sinpi(Double(x) - Double(fx_lg)) * z_lg);
+          f_lg := f_lg - lp_lg;
+        end;
+      end;
+    end;
+  end;
+  // Table lookup for exceptional cases
+  rt_lg.f := f_lg;
+  tl_lg := (rt_lg.u + 5) and $0FFFFFFF;
+  r_lg := Single(f_lg);
+  if tl_lg <= 31 then begin
+    t_lg.f := x;
+    a_lg := 0; b_lg := 27;
+    while a_lg + 1 < b_lg do begin
+      mi_lg := (a_lg + b_lg) div 2;
+      if t_lg.u < tb_lg_xu[mi_lg] then b_lg := mi_lg
+      else a_lg := mi_lg;
+    end;
+    if t_lg.u = tb_lg_xu[a_lg] then begin
+      Result := tb_lg_f[a_lg] + tb_lg_df[a_lg]; Exit;
+    end;
+  end;
+  Result := r_lg;
 end;
 
 end.
