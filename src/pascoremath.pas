@@ -5470,28 +5470,35 @@ end;
 
 // ---- rltl0: range-reduction for medium arguments (double input) -----------
 function sincos_rltl0(x: Double; q: PInteger): Double;
+const
+  C_IDH: Double = 5.092958178940651;    // 0x1.45f306dc9c883p+2
+  C_BIG: Double = 6755399441055744.0;   // 0x1.8p52
 var
   idh, id_d: Double;
   Q_r: Tb64u64;
 begin
-  idh  := 5.092958178940651 * x;   // 0x1.45f306dc9c883p+2
+  idh  := C_IDH * x;
   id_d := pcr_roundeven(idh);
-  Q_r.f := 6755399441055744.0 + id_d;  // 0x1.8p52
+  Q_r.f := C_BIG + id_d;
   q^ := Integer(LongWord(Q_r.u));
   Result := idh - id_d;
 end;
 
 // ---- rltl: range-reduction for medium arguments (float input) -------------
 function sincos_rltl(z: Single; q: PInteger): Double;
+const
+  C_IDL: Double = -3.1558305786379073e-09;  // -0x1.b1bbead603d8bp-29
+  C_IDH: Double =  5.092958182096481;        // 0x1.45f306ep+2
+  C_BIG: Double =  6755399441055744.0;       // 0x1.8p52
 var
   x, idl, idh, id_d: Double;
   Q_r: Tb64u64;
 begin
   x    := Double(z);
-  idl  := -3.1558305786379073e-09 * x;  // -0x1.b1bbead603d8bp-29
-  idh  :=  5.092958182096481 * x;        // 0x1.45f306ep+2
+  idl  := C_IDL * x;
+  idh  := C_IDH * x;
   id_d := pcr_roundeven(idh);
-  Q_r.f := 6755399441055744.0 + id_d;   // 0x1.8p52
+  Q_r.f := C_BIG + id_d;
   q^ := Integer(LongWord(Q_r.u));
   Result := (idh - id_d) + idl;
 end;
@@ -5846,15 +5853,19 @@ end;
 
 // tanf rltl: multiplies by 2/pi (different from sincos_rltl which uses 16/pi)
 function tanf_rltl(z: Single; q: PInteger): Double;
+const
+  C_IDL: Double = -3.944788223297384e-10;  // -0x1.b1bbead603d8bp-32
+  C_IDH: Double =  0.6366197727620602;      // 0x1.45f306ep-1
+  C_BIG: Double =  6755399441055744.0;      // 0x1.8p52
 var
   x, idl, idh, id_d: Double;
   Q_r: Tb64u64;
 begin
   x    := Double(z);
-  idl  := -3.944788223297384e-10 * x;   // -0x1.b1bbead603d8bp-32
-  idh  :=  0.6366197727620602 * x;       // 0x1.45f306ep-1
+  idl  := C_IDL * x;
+  idh  := C_IDH * x;
   id_d := pcr_roundeven(idh);
-  Q_r.f := 6755399441055744.0 + id_d;   // 0x1.8p52  (fast int extract)
+  Q_r.f := C_BIG + id_d;
   q^   := Integer(LongWord(Q_r.u));
   Result := (idh - id_d) + idl;
 end;
