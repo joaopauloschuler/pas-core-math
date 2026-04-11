@@ -42,6 +42,7 @@ function pcr_hypotf(x, y: Single): Single;
 function pcr_atan2f(y, x: Single): Single;
 function pcr_atan2pif(y, x: Single): Single;
 function pcr_powf(x0, y0: Single): Single;
+function pcr_compoundf(x, n: Single): Single;
 
 implementation
 
@@ -4460,5 +4461,865 @@ begin
   res_pf := Single(rr_pf.f);
   Result := res_pf;
 end;
+
+
+
+// ── compoundf: (1+x)^y correctly rounded ─────────────────────────────────────
+// Constants: renamed to avoid case-insensitive clash with helper function names
+
+const
+  CF_INVLOG2: Double = 1.4426950408889634;
+  // P1 polynomial coefficients (degree 1..7, index 0 unused)
+  CF_P1C: array[0..7] of Double = (
+    0.0,
+    1.4426950408889634,
+    -0.721347520444768,
+    0.4808983469640691,
+    -0.36067375082452474,
+    0.28853899226737745,
+    -0.24052620964966426,
+    0.2061866781489112
+  );
+  // P2 polynomial (18 entries, pairs for degrees 1-5, singles for 6-13)
+  CF_P2C: array[0..17] of Double = (
+    1.4426950408889634,     // [0] deg1 hi
+    2.0355273740931317e-17, // [1] deg1 lo
+   -0.7213475204444817,    // [2] deg2 hi
+   -1.0177636800051583e-17,// [3] deg2 lo
+    0.4808983469629878,    // [4] deg3 hi
+    2.5288808125554186e-17, // [5] deg3 lo
+   -0.36067376022224085,   // [6] deg4 hi
+   -5.096856780843964e-18, // [7] deg4 lo
+    0.28853900817779266,   // [8] deg5 hi
+    2.6289836446187457e-17, // [9] deg5 lo
+   -0.24044917348149364,   // [10] deg6
+    0.20609929155556583,   // [11] deg7
+   -0.180336880114796,     // [12] deg8
+    0.16029944899207862,   // [13] deg9
+   -0.14426947904986057,   // [14] deg10
+    0.13115406763151405,   // [15] deg11
+   -0.12030649210107214,   // [16] deg12
+    0.11105797113583867    // [17] deg13
+  );
+  // Q1 polynomial (degree 0..4)
+  CF_Q1C: array[0..4] of Double = (
+    1.0,
+    0.6931471805351095,
+    0.24022650695393627,
+    0.055504515574106836,
+    0.009618187397453178
+  );
+  // Q2 polynomial (12 entries)
+  CF_Q2C: array[0..11] of Double = (
+    1.0,                      // [0] deg0
+    0.6931471805599453,       // [1] deg1 hi
+    2.3190455425771328e-17,   // [2] deg1 lo
+    0.24022650695910072,      // [3] deg2 hi
+   -9.493917425934395e-18,    // [4] deg2 lo
+    0.05550410866482158,      // [5] deg3 hi
+   -2.4715450854778426e-18,   // [6] deg3 lo
+    0.009618129107628477,     // [7] deg4
+    0.0013333558146326069,    // [8] deg5
+    0.00015403530393530196,   // [9] deg6
+    1.5252789714172188e-05,   // [10] deg7
+    1.321548082021043e-06     // [11] deg8
+  );
+  // inv[i] approximates 1/t for the i-th interval (46 entries)
+  CF_INV: array[0..45] of Double = (
+    1.40625, 1.375, 1.34375, 1.3125, 1.296875, 1.265625, 1.25,
+    1.21875, 1.203125, 1.171875, 1.15625, 1.125, 1.109375, 1.09375,
+    1.078125, 1.0625, 1.046875, 1.03125, 1.0, 1.0, 0.9765625,
+    0.9609375, 0.9453125, 0.9375, 0.921875, 0.90625, 0.89453125,
+    0.8828125, 0.87109375, 0.859375, 0.84765625, 0.8359375, 0.828125,
+    0.81640625, 0.8046875, 0.796875, 0.78515625, 0.7734375, 0.765625,
+    0.7578125, 0.75, 0.7421875, 0.73046875, 0.72265625, 0.71484375,
+    0.70703125
+  );
+  // log2inv[i][0..1]: double-double approx of -log2(inv[i])
+  CF_LOG2INV: array[0..45, 0..1] of Double = (
+    (-0.4918530963296747,      1.0820682119194486e-17),
+    (-0.45943161863729726,     3.8053583859449705e-19),
+    (-0.42626475470209796,     1.9932012137193316e-17),
+    (-0.3923174227787603,      1.6328502208352762e-17),
+    (-0.37503943134692475,    -1.099000777384843e-17),
+    (-0.33985000288462475,     2.0897960245560436e-17),
+    (-0.32192809488736235,     3.717019964142682e-19),
+    (-0.28540221886224837,     2.726283638197372e-17),
+    (-0.2667865406949014,      1.148454798555715e-17),
+    (-0.22881869049588088,     5.967894054218645e-18),
+    (-0.20945336562894978,     1.747801539116594e-18),
+    (-0.16992500144231237,     1.0448980122780218e-17),
+    (-0.14974711950468206,    -3.3957331682262494e-18),
+    (-0.12928301694496647,     1.147571414337692e-17),
+    (-0.10852445677816905,    -5.4046572138033075e-18),
+    (-0.0874628412503394,     -6.765321226991275e-18),
+    (-0.06608919045777244,     4.130247852756734e-18),
+    (-0.044394119358453436,   -1.3338680039226223e-18),
+    (0.0, 0.0),
+    (0.0, 0.0),
+    (0.034215715337912955,     1.1151059892428047e-18),
+    (0.057485494660760125,     1.1745696149950948e-19),
+    (0.08113676272540549,      7.610716771889941e-19),
+    (0.09310940439148147,      5.596192057804377e-18),
+    (0.11735695063815874,      5.45905252946375e-18),
+    (0.14201900487242788,     -4.898294009682521e-18),
+    (0.16079621190305607,     -7.518564749957147e-18),
+    (0.1798210375848123,      -7.144809625324702e-18),
+    (0.19910010007969528,     -1.3263604826229526e-17),
+    (0.2186402864753404,       7.522378350087652e-19),
+    (0.2384487675555207,      -7.16757233710703e-18),
+    (0.25853301359885306,     -4.3007535189465375e-18),
+    (0.2720795454368008,       2.476475356878588e-17),
+    (0.29264086791911725,     -3.485682515565736e-18),
+    (0.31349947281678164,     -2.4630201066282264e-17),
+    (0.3275746580285044,       2.6214744450027748e-17),
+    (0.34894830882107136,      2.32325257219613e-17),
+    (0.37064337992039037,      1.0829515961374715e-17),
+    (0.38529015588479176,      2.2208024293925304e-17),
+    (0.4000871578128723,       2.4103897311490816e-17),
+    (0.4150374992788438,       5.224490061390109e-18),
+    (0.43014439166905216,     -3.494516357745965e-18),
+    (0.4531055401123633,       2.1370790227232135e-17),
+    (0.46861853948368787,      2.119503535530862e-18),
+    (0.4843001617159575,       1.9794762178834054e-17),
+    (0.5001541129167947,      -4.028869598543938e-17)
+  );
+  // exp2_T[i] = (i-16)/32
+  CF_EXP2T: array[0..32] of Double = (
+    -0.5, -0.46875, -0.4375, -0.40625, -0.375, -0.34375, -0.3125,
+    -0.28125, -0.25, -0.21875, -0.1875, -0.15625, -0.125, -0.09375,
+    -0.0625, -0.03125, 0.0, 0.03125, 0.0625, 0.09375, 0.125, 0.15625,
+    0.1875, 0.21875, 0.25, 0.28125, 0.3125, 0.34375, 0.375, 0.40625,
+    0.4375, 0.46875, 0.5
+  );
+  // exp2_U[i][0..1]: double-double approx of 2^exp2_T[i]
+  CF_EXP2U: array[0..32, 0..1] of Double = (
+    (0.7071067811865476,   -4.833646656726457e-17),
+    (0.7225904034885233,   -1.5118790674969937e-17),
+    (0.7384130729697497,   -1.741997278446398e-17),
+    (0.7545822137967114,   -5.082276638771475e-17),
+    (0.7711054127039704,    3.9749174048488104e-17),
+    (0.7879904225539432,   -5.068458235639152e-18),
+    (0.8052451659746271,    1.2353596284898944e-17),
+    (0.8228777390769825,   -5.062839956837386e-17),
+    (0.8408964152537145,    4.099505010290748e-17),
+    (0.859309649061239,    -9.256902091315555e-18),
+    (0.8781260801866497,    1.4800703477244367e-17),
+    (0.8973545375015536,    9.113729213956043e-18),
+    (0.9170040432046712,    1.6415536121228136e-17),
+    (0.93708381705515,     -3.061381706502071e-17),
+    (0.9576032806985737,   -5.3099730280979813e-17),
+    (0.9785720620877001,    4.480383895518334e-17),
+    (1.0, 0.0),
+    (1.0218971486541166,    5.109225028973444e-17),
+    (1.0442737824274138,    8.551889705537965e-17),
+    (1.0671404006768237,   -7.899853966841582e-17),
+    (1.0905077326652577,   -3.046782079812471e-17),
+    (1.1143867425958924,    1.0410278456845571e-16),
+    (1.1387886347566916,    8.912812676025408e-17),
+    (1.1637248587775775,    3.8292048369240935e-17),
+    (1.189207115002721,     3.982015231465646e-17),
+    (1.215247359980469,    -7.712630692681488e-17),
+    (1.241857812073484,     4.658027591836937e-17),
+    (1.2690509571917332,    2.667932131342186e-18),
+    (1.2968395546510096,    2.5382502794888315e-17),
+    (1.3252366431597413,   -2.8587312100388614e-17),
+    (1.3542555469368927,    7.70094837980299e-17),
+    (1.383909881963832,    -6.770511658794786e-17),
+    (1.4142135623730951,   -9.667293313452913e-17)
+  );
+  // scale[e+29] = 2^(-e) for e = -29..128 (158 entries)
+  CF_SCALE: array[0..157] of Double = (
+    536870912.0, 268435456.0, 134217728.0, 67108864.0, 33554432.0,
+    16777216.0, 8388608.0, 4194304.0, 2097152.0, 1048576.0, 524288.0,
+    262144.0, 131072.0, 65536.0, 32768.0, 16384.0, 8192.0, 4096.0,
+    2048.0, 1024.0, 512.0, 256.0, 128.0, 64.0, 32.0, 16.0, 8.0, 4.0,
+    2.0, 1.0, 0.5, 0.25, 0.125, 0.0625, 0.03125, 0.015625, 0.0078125,
+    0.00390625, 0.001953125, 0.0009765625, 0.00048828125, 0.000244140625,
+    0.0001220703125, 6.103515625e-05, 3.0517578125e-05, 1.52587890625e-05,
+    7.62939453125e-06, 3.814697265625e-06, 1.9073486328125e-06,
+    9.5367431640625e-07, 4.76837158203125e-07, 2.384185791015625e-07,
+    1.1920928955078125e-07, 5.960464477539063e-08, 2.9802322387695312e-08,
+    1.4901161193847656e-08, 7.450580596923828e-09, 3.725290298461914e-09,
+    1.862645149230957e-09, 9.313225746154785e-10, 4.656612873077393e-10,
+    2.3283064365386963e-10, 1.1641532182693481e-10, 5.820766091346741e-11,
+    2.9103830456733704e-11, 1.4551915228366852e-11, 7.275957614183426e-12,
+    3.637978807091713e-12, 1.8189894035458565e-12, 9.094947017729282e-13,
+    4.547473508864641e-13, 2.2737367544323206e-13, 1.1368683772161603e-13,
+    5.684341886080802e-14, 2.842170943040401e-14, 1.4210854715202004e-14,
+    7.105427357601002e-15, 3.552713678800501e-15, 1.7763568394002505e-15,
+    8.881784197001252e-16, 4.440892098500626e-16, 2.220446049250313e-16,
+    1.1102230246251565e-16, 5.551115123125783e-17, 2.7755575615628914e-17,
+    1.3877787807814457e-17, 6.938893903907228e-18, 3.469446951953614e-18,
+    1.734723475976807e-18, 8.673617379884035e-19, 4.336808689942018e-19,
+    2.168404344971009e-19, 1.0842021724855044e-19, 5.421010862427522e-20,
+    2.710505431213761e-20, 1.3552527156068805e-20, 6.776263578034403e-21,
+    3.3881317890172014e-21, 1.6940658945086007e-21, 8.470329472543003e-22,
+    4.235164736271502e-22, 2.117582368135751e-22, 1.0587911840678754e-22,
+    5.293955920339377e-23, 2.6469779601696886e-23, 1.3234889800848443e-23,
+    6.617444900424222e-24, 3.308722450212111e-24, 1.6543612251060553e-24,
+    8.271806125530277e-25, 4.1359030627651384e-25, 2.0679515313825692e-25,
+    1.0339757656912846e-25, 5.169878828456423e-26, 2.5849394142282115e-26,
+    1.2924697071141057e-26, 6.462348535570529e-27, 3.2311742677852644e-27,
+    1.6155871338926322e-27, 8.077935669463161e-28, 4.0389678347315804e-28,
+    2.0194839173657902e-28, 1.0097419586828951e-28, 5.048709793414476e-29,
+    2.524354896707238e-29, 1.262177448353619e-29, 6.310887241768095e-30,
+    3.1554436208840472e-30, 1.5777218104420236e-30, 7.888609052210118e-31,
+    3.944304526105059e-31, 1.9721522630525295e-31, 9.860761315262648e-32,
+    4.930380657631324e-32, 2.465190328815662e-32, 1.232595164407831e-32,
+    6.162975822039155e-33, 3.0814879110195774e-33, 1.5407439555097887e-33,
+    7.703719777548943e-34, 3.851859888774472e-34, 1.925929944387236e-34,
+    9.62964972193618e-35, 4.81482486096809e-35, 2.407412430484045e-35,
+    1.2037062152420224e-35, 6.018531076210112e-36, 3.009265538105056e-36,
+    1.504632769052528e-36, 7.52316384526264e-37, 3.76158192263132e-37,
+    1.88079096131566e-37, 9.4039548065783e-38, 4.70197740328915e-38,
+    2.350988701644575e-38, 1.1754943508222875e-38, 5.877471754111438e-39,
+    2.938735877055719e-39
+  );
+  // xmax[y] for 1<=y<=15: largest odd m such that m^y fits in 25 bits
+  CF_XMAX: array[0..15] of UInt64 = (
+    0, 16777215, 5791, 321, 75, 31, 17, 11, 7, 5, 5, 3, 3, 3, 3, 3
+  );
+
+// ── BSF/BSR 64-bit helpers ────────────────────────────────────────────────────
+function cf_bsf64(x: UInt64): Integer;
+{$IFDEF CPUX86_64}
+var r: QWord;
+begin
+  asm
+    bsf rax, x
+    mov r, rax
+  end;
+  Result := Integer(r);
+end;
+{$ELSE}
+var i: Integer;
+begin
+  Result := 0;
+  for i := 0 to 63 do
+    if (x and (UInt64(1) shl i)) <> 0 then begin Result := i; Exit; end;
+end;
+{$ENDIF}
+
+function cf_bsr64(x: UInt64): Integer;
+{$IFDEF CPUX86_64}
+var r: QWord;
+begin
+  asm
+    bsr rax, x
+    mov r, rax
+  end;
+  Result := Integer(r);
+end;
+{$ELSE}
+var i: Integer;
+begin
+  Result := 0;
+  for i := 63 downto 0 do
+    if (x and (UInt64(1) shl i)) <> 0 then begin Result := i; Exit; end;
+end;
+{$ENDIF}
+
+// ── MXCSR flag save/restore ───────────────────────────────────────────────────
+function cf_get_flag: DWord;
+{$IFDEF CPUX86_64}
+var r: DWord;
+begin
+  asm
+    stmxcsr r
+  end;
+  Result := r;
+end;
+{$ELSE}
+begin
+  Result := 0;
+end;
+{$ENDIF}
+
+procedure cf_set_flag(flag: DWord);
+{$IFDEF CPUX86_64}
+begin
+  asm
+    ldmxcsr flag
+  end;
+end;
+{$ELSE}
+begin
+end;
+{$ENDIF}
+
+// ── is_signalingf ─────────────────────────────────────────────────────────────
+function cf_is_signalingf(x: Single): Boolean; inline;
+var u_sig: Tb32u32;
+begin
+  u_sig.f := x;
+  u_sig.u := u_sig.u xor $00400000;
+  Result := (u_sig.u and $7FFFFFFF) > $7FC00000;
+end;
+
+// ── isint: returns non-zero if y is an integer ────────────────────────────────
+function cf_isint(y: Single): Integer; inline;
+var wy_ii: Tb32u32;
+    ey_ii, s_ii: Integer;
+begin
+  wy_ii.f := y;
+  ey_ii := Integer((wy_ii.u shr 23) and $FF) - 127;
+  s_ii := ey_ii + 9;
+  if ey_ii >= 0 then begin
+    if s_ii >= 32 then begin Result := 1; Exit; end;
+    if (wy_ii.u shl s_ii) = 0 then Result := 1 else Result := 0;
+    Exit;
+  end;
+  if (wy_ii.u shl 1) = 0 then begin Result := 1; Exit; end;
+  Result := 0;
+end;
+
+// ── fast_two_sum ──────────────────────────────────────────────────────────────
+procedure cf_fast_two_sum(var s, t: Double; a, b: Double); inline;
+var e_fts: Double;
+begin
+  s := a + b;
+  e_fts := s - a;
+  t := b - e_fts;
+end;
+
+// ── a_mul: hi+lo = a*b exactly ───────────────────────────────────────────────
+procedure cf_a_mul(var hi, lo: Double; a, b: Double); inline;
+begin
+  hi := a * b;
+  lo := pcr_fma(a, b, -hi);
+end;
+
+// ── s_mul: (hi+lo) = a*(bh+bl) ────────────────────────────────────────────────
+procedure cf_s_mul(var hi, lo: Double; a, bh, bl: Double); inline;
+begin
+  cf_a_mul(hi, lo, a, bh);
+  lo := pcr_fma(a, bl, lo);
+end;
+
+// ── d_mul: (hi+lo) = (ah+al)*(bh+bl) ─────────────────────────────────────────
+procedure cf_d_mul(var hi, lo: Double; ah, al, bh, bl: Double); inline;
+var s_dm, t_dm: Double;
+begin
+  cf_a_mul(hi, s_dm, ah, bh);
+  t_dm := pcr_fma(al, bh, s_dm);
+  lo := pcr_fma(ah, bl, t_dm);
+end;
+
+// ── p1: approximates log2(1+z) for |z|<=1/64 ─────────────────────────────────
+function cf_p1(z: Double): Double;
+var z2_p1, z4_p1, c5_p1, c3_p1, c1_p1: Double;
+begin
+  z2_p1 := z * z;
+  c5_p1 := pcr_fma(CF_P1C[6], z, CF_P1C[5]);
+  c3_p1 := pcr_fma(CF_P1C[4], z, CF_P1C[3]);
+  c1_p1 := pcr_fma(CF_P1C[2], z, CF_P1C[1]);
+  z4_p1 := z2_p1 * z2_p1;
+  c5_p1 := pcr_fma(CF_P1C[7], z2_p1, c5_p1);
+  c1_p1 := pcr_fma(c3_p1, z2_p1, c1_p1);
+  c1_p1 := pcr_fma(c5_p1, z4_p1, c1_p1);
+  Result := z * c1_p1;
+end;
+
+// ── p2: double-double approx of log2(1+zh+zl) ────────────────────────────────
+procedure cf_p2(var h, l: Double; zh, zl: Double);
+var t_p2: Double;
+begin
+  h := CF_P2C[17]; // degree 13
+  h := pcr_fma(h, zh, CF_P2C[16]);
+  h := pcr_fma(h, zh, CF_P2C[15]);
+  h := pcr_fma(h, zh, CF_P2C[14]);
+  h := pcr_fma(h, zh, CF_P2C[13]);
+  h := pcr_fma(h, zh, CF_P2C[12]);
+  h := pcr_fma(h, zh, CF_P2C[11]);
+  cf_s_mul(h, l, h, zh, zl);
+  cf_fast_two_sum(h, t_p2, CF_P2C[10], h);
+  l := l + t_p2;
+  cf_d_mul(h, l, h, l, zh, zl);
+  cf_fast_two_sum(h, t_p2, CF_P2C[8], h);
+  l := l + t_p2 + CF_P2C[9];
+  cf_d_mul(h, l, h, l, zh, zl);
+  cf_fast_two_sum(h, t_p2, CF_P2C[6], h);
+  l := l + t_p2 + CF_P2C[7];
+  cf_d_mul(h, l, h, l, zh, zl);
+  cf_fast_two_sum(h, t_p2, CF_P2C[4], h);
+  l := l + t_p2 + CF_P2C[5];
+  cf_d_mul(h, l, h, l, zh, zl);
+  cf_fast_two_sum(h, t_p2, CF_P2C[2], h);
+  l := l + t_p2 + CF_P2C[3];
+  cf_d_mul(h, l, h, l, zh, zl);
+  cf_fast_two_sum(h, t_p2, CF_P2C[0], h);
+  l := l + t_p2 + CF_P2C[1];
+  cf_d_mul(h, l, h, l, zh, zl);
+end;
+
+// ── q1: approximates 2^z for |z|<=2^-6 ──────────────────────────────────────
+function cf_q1(z: Double): Double;
+var z2_q1, c3_q1, c0_q1, c2_q1: Double;
+begin
+  z2_q1 := z * z;
+  c3_q1 := pcr_fma(CF_Q1C[4], z, CF_Q1C[3]);
+  c0_q1 := pcr_fma(CF_Q1C[1], z, CF_Q1C[0]);
+  c2_q1 := pcr_fma(c3_q1, z, CF_Q1C[2]);
+  Result := pcr_fma(c2_q1, z2_q1, c0_q1);
+end;
+
+// ── q2: double-double approx of 2^(h+l) ──────────────────────────────────────
+procedure cf_q2(var qh, ql: Double; h, l: Double);
+var h2_q2, c7_q2, c5_q2, t_q2: Double;
+begin
+  h2_q2 := h * h;
+  c7_q2 := pcr_fma(CF_Q2C[11], h, CF_Q2C[10]);
+  c5_q2 := pcr_fma(CF_Q2C[9],  h, CF_Q2C[8]);
+  c5_q2 := pcr_fma(c7_q2, h2_q2, c5_q2);
+  qh := c5_q2 * h;
+  cf_fast_two_sum(qh, ql, CF_Q2C[7], qh);
+  cf_d_mul(qh, ql, qh, ql, h, l);
+  cf_fast_two_sum(qh, t_q2, CF_Q2C[5], qh);
+  ql := ql + t_q2 + CF_Q2C[6];
+  cf_d_mul(qh, ql, qh, ql, h, l);
+  cf_fast_two_sum(qh, t_q2, CF_Q2C[3], qh);
+  ql := ql + t_q2 + CF_Q2C[4];
+  cf_d_mul(qh, ql, qh, ql, h, l);
+  cf_fast_two_sum(qh, t_q2, CF_Q2C[1], qh);
+  ql := ql + t_q2 + CF_Q2C[2];
+  cf_d_mul(qh, ql, qh, ql, h, l);
+  cf_fast_two_sum(qh, t_q2, CF_Q2C[0], qh);
+  ql := ql + t_q2;
+end;
+
+// ── _log2p1 (fast approximation of log2(1+x)) ────────────────────────────────
+function cf_log2p1_fast(x: Double): Double;
+var u_lp: Double;
+    v_lp: Tb64u64;
+    m_lp: UInt64;
+    e_lp: Int64;
+    i_lp: Integer;
+    t_lp, z_lp, p_lp: Double;
+begin
+  u_lp := 1.0 + x;
+  v_lp.f := u_lp;
+  m_lp := v_lp.u and $FFFFFFFFFFFFF;
+  e_lp := Int64(v_lp.u shr 52) - $3FF;
+  if m_lp >= $6A09E667F3BCD then Inc(e_lp);
+  v_lp.u := UInt64(Int64(v_lp.u) - e_lp * Int64($10000000000000));
+  t_lp := v_lp.f;
+  v_lp.f := v_lp.f + 2.0;
+  i_lp := Integer(v_lp.u shr 45) - $2002D;
+  z_lp := pcr_fma(CF_INV[i_lp], t_lp, -1.0);
+  p_lp := cf_p1(z_lp);
+  Result := Double(e_lp) + (CF_LOG2INV[i_lp][0] + p_lp);
+end;
+
+// ── exp2_1: fast path 2^t → Single (returns -1 if rounding test fails) ────────
+function cf_exp2_1(t: Double): Single;
+var k_e1: Double;
+    r_e1: Double;
+    v_e1, err_e1: Tb64u64;
+    i_e1: Integer;
+    lb_e1, rb_e1: Single;
+begin
+  k_e1 := pcr_roundeven(t);
+  r_e1 := t - k_e1;
+  v_e1.f := 3.015625 + r_e1;
+  i_e1 := Integer(v_e1.u shr 46) - $10010;
+  r_e1 := r_e1 - CF_EXP2T[i_e1];
+  v_e1.f := CF_EXP2U[i_e1][0] * cf_q1(r_e1);
+  err_e1.f := 5.062616992290714e-13; // 0x1.1dp-41
+  v_e1.u := UInt64(Int64(v_e1.u) + Int64(k_e1) * Int64($10000000000000));
+  if v_e1.f < 1.175494350822881e-38 then begin // 0x1.00000000008e2p-126
+    Result := -1.0;
+    Exit;
+  end;
+  err_e1.u := UInt64(Int64(err_e1.u) + Int64(k_e1) * Int64($10000000000000));
+  lb_e1 := Single(v_e1.f) - Single(err_e1.f);
+  rb_e1 := Single(v_e1.f) + Single(err_e1.f);
+  if lb_e1 <> rb_e1 then begin
+    Result := -1.0;
+    Exit;
+  end;
+  Result := lb_e1;
+end;
+
+// ── is_exact_or_midpoint ──────────────────────────────────────────────────────
+function cf_is_exact_or_midpoint(x, y: Single; var midpoint: Integer): Integer;
+var v_iem, w_iem: Tb32u32;
+    vd_iem: Tb64u64;
+    e_iem: Int32;
+    m_iem: UInt64;
+    t_iem: Integer;
+    my_iem: UInt64;
+    y_int_iem: Integer;
+    ez_iem: Int32;
+    n_iem: UInt32;
+    f_iem: Int32;
+    t2_iem: Integer;
+    n0_iem: UInt32;
+    iters_iem: Integer;
+    dm_iem: Double;
+    s_iem: Double;
+begin
+  v_iem.f := x;
+  w_iem.f := y;
+  if ((v_iem.u shl 1) <> 0) and ((w_iem.u shl (32 - 16)) <> 0) then begin
+    Result := 0; Exit;
+  end;
+  if (v_iem.u shl 1) = 0 then begin // x = 0
+    Result := 1; Exit;
+  end;
+  e_iem := Int32(Int32((v_iem.u shl 1) shr 24) - $96);
+  if (e_iem < -76) or (30 < e_iem) then begin Result := 0; Exit; end;
+  vd_iem.f := 1.0 + Double(x);
+  e_iem := Int32(Int32((vd_iem.u shl 1) shr 53) - $433);
+  if (y >= 0.0) and (cf_isint(y) <> 0) then begin
+    m_iem := vd_iem.u and $FFFFFFFFFFFFF;
+    if e_iem >= -1074 then
+      m_iem := m_iem or $10000000000000
+    else
+      Inc(e_iem);
+    t_iem := cf_bsf64(m_iem);
+    m_iem := m_iem shr t_iem;
+    Inc(e_iem, t_iem);
+    if (y = 0.0) or (y = 1.0) then begin
+      if m_iem > $1000000 then midpoint := 1;
+      Result := 1; Exit;
+    end;
+    if m_iem = 1 then begin
+      if (-149 <= Int64(Trunc(y)) * Int64(e_iem))
+      and (Int64(Trunc(y)) * Int64(e_iem) < 128) then
+        Result := 1
+      else
+        Result := 0;
+      Exit;
+    end;
+    if (y < 0.0) or (y > 15.0) then begin Result := 0; Exit; end;
+    y_int_iem := Integer(Trunc(y));
+    if m_iem > CF_XMAX[y_int_iem] then begin Result := 0; Exit; end;
+    my_iem := m_iem * m_iem;
+    t2_iem := 2;
+    while t2_iem < y_int_iem do begin
+      my_iem := my_iem * m_iem;
+      Inc(t2_iem);
+    end;
+    t_iem := 1 + cf_bsr64(my_iem);
+    ez_iem := e_iem * y_int_iem + t_iem;
+    if (ez_iem <= -149) or (128 < ez_iem) then begin Result := 0; Exit; end;
+    if my_iem > $1000000 then midpoint := 1;
+    if e_iem * y_int_iem >= -149 then Result := 1 else Result := 0;
+    Exit;
+  end;
+  // second branch: y is not a non-negative integer
+  n_iem := w_iem.u and $7FFFFF;
+  f_iem := Int32(Int32((w_iem.u shl 1) shr 24) - $96);
+  if f_iem >= -149 then
+    n_iem := n_iem or $800000
+  else
+    Inc(f_iem);
+  t_iem := pcr_bsf32(n_iem);
+  n_iem := n_iem shr t_iem;
+  Inc(f_iem, t_iem);
+  m_iem := vd_iem.u and $FFFFFFFFFFFFF;
+  if e_iem >= -1074 then
+    m_iem := m_iem or $10000000000000
+  else
+    Inc(e_iem);
+  t_iem := cf_bsf64(m_iem);
+  m_iem := m_iem shr t_iem;
+  Inc(e_iem, t_iem);
+  if y < 0.0 then begin
+    if m_iem <> 1 then begin Result := 0; Exit; end;
+    t_iem := pcr_bsf32(UInt32(e_iem));
+    if -f_iem > t_iem then begin Result := 0; Exit; end;
+    if e_iem >= 0 then begin
+      if f_iem >= 0 then
+        ez_iem := -(e_iem shl f_iem) * Int32(n_iem)
+      else
+        ez_iem := -sar_i32(e_iem, -f_iem) * Int32(n_iem);
+    end else begin
+      if f_iem >= 0 then
+        ez_iem := ((-e_iem) shl f_iem) * Int32(n_iem)
+      else
+        ez_iem := sar_i32(-e_iem, -f_iem) * Int32(n_iem);
+    end;
+    if (-149 <= ez_iem) and (ez_iem < 128) then Result := 1 else Result := 0;
+    Exit;
+  end;
+  // y > 0, non-integer: extract squares from m*2^e
+  iters_iem := -f_iem;
+  while iters_iem > 0 do begin
+    Dec(iters_iem);
+    if (e_iem and 1) <> 0 then begin Result := 0; Exit; end;
+    e_iem := e_iem div 2;
+    dm_iem := Double(m_iem);
+    s_iem := Double(Round(pcr_sqrt(dm_iem)));
+    if s_iem * s_iem <> dm_iem then begin Result := 0; Exit; end;
+    m_iem := UInt64(Trunc(s_iem));
+  end;
+  if m_iem > 1 then begin
+    if n_iem > 15 then begin Result := 0; Exit; end;
+    if m_iem > CF_XMAX[n_iem] then begin Result := 0; Exit; end;
+  end;
+  my_iem := m_iem;
+  n0_iem := n_iem;
+  while n0_iem > 1 do begin
+    my_iem := my_iem * m_iem;
+    Dec(n0_iem);
+  end;
+  t_iem := 1 + pcr_bsr32(UInt32(my_iem));
+  if (-149 <= e_iem * Int32(n_iem)) and (e_iem * Int32(n_iem) + t_iem <= 128) then
+    Result := 1
+  else
+    Result := 0;
+end;
+
+// ── exp2_2: accurate path for 2^(h+l) → Single ───────────────────────────────
+function cf_exp2_2(h, l: Double; x, y: Single; exact: Integer; flag: DWord): Single;
+const
+  CF_ERR_E22: array[0..1] of Double = (
+    8.744365362193872e-26,  // 0x1.b1p-84
+    4.861355328424485e-29   // 0x1.edp-95
+  );
+var k_e22: Double;
+    r_e22: Double;
+    v_e22, w_e22: Tb64u64;
+    i_e22: Integer;
+    qh_e22, ql_e22: Double;
+    small_e22: Boolean;
+    err_e22: Double;
+    left_e22, right_e22: Single;
+    vtz_e22, wtz_e22: Integer;
+begin
+  if y = 1.0 then begin
+    cf_set_flag(flag);
+    Result := 1.0 + x;
+    Exit;
+  end;
+  k_e22 := pcr_roundeven(h);
+  // if h+l is tiny, 2^(h+l) rounds to 1
+  if (k_e22 = 0.0) and (pcr_fabs(h) <= 4.299566335638736e-08) then begin
+    Result := Single(1.0 + h * 0.5);
+    Exit;
+  end;
+  r_e22 := h - k_e22;
+  cf_fast_two_sum(h, l, r_e22, l);
+  v_e22.f := 3.015625 + h;
+  i_e22 := Integer(v_e22.u shr 46) - $10010;
+  h := h - CF_EXP2T[i_e22];
+  cf_fast_two_sum(h, l, h, l);
+  cf_q2(qh_e22, ql_e22, h, l);
+  cf_d_mul(qh_e22, ql_e22, CF_EXP2U[i_e22][0], CF_EXP2U[i_e22][1], qh_e22, ql_e22);
+  cf_fast_two_sum(qh_e22, ql_e22, qh_e22, ql_e22);
+  // rounding test
+  w_e22.f := qh_e22;
+  if ((w_e22.u + 1) and $FFFFFFF) <= 2 then begin
+    small_e22 := (k_e22 = 0.0) and (i_e22 = 16) and (pcr_fabs(h) <= 3.814697265625e-06);
+    if small_e22 then err_e22 := CF_ERR_E22[1] else err_e22 := CF_ERR_E22[0];
+    v_e22.f := qh_e22 + (ql_e22 - err_e22);
+    v_e22.u := UInt64(Int64(v_e22.u) + Int64(k_e22) * Int64($10000000000000));
+    w_e22.f := qh_e22 + (ql_e22 + err_e22);
+    w_e22.u := UInt64(Int64(w_e22.u) + Int64(k_e22) * Int64($10000000000000));
+    if exact <> 0 then begin
+      vtz_e22 := cf_bsf64(v_e22.u);
+      wtz_e22 := cf_bsf64(w_e22.u);
+      cf_set_flag(flag);
+      if vtz_e22 >= wtz_e22 then Result := Single(v_e22.f)
+      else Result := Single(w_e22.f);
+      Exit;
+    end;
+    left_e22  := Single(v_e22.f);
+    right_e22 := Single(w_e22.f);
+    if left_e22 <> right_e22 then
+      Halt(1);
+  end;
+  // multiply qh+ql by 2^k
+  v_e22.f := qh_e22 + ql_e22;
+  w_e22.f := qh_e22;
+  if ((w_e22.u shl 36) = 0) and (v_e22.f = qh_e22) and (ql_e22 <> 0.0) then begin
+    if ql_e22 > 0.0 then Inc(v_e22.u) else Dec(v_e22.u);
+  end;
+  v_e22.u := UInt64(Int64(v_e22.u) + Int64(k_e22) * Int64($10000000000000));
+  Result := Single(v_e22.f);
+end;
+
+// ── log2p1_accurate: double-double approx of log2(1+x) ───────────────────────
+procedure cf_log2p1_accurate(var h, l: Double; x: Double);
+var v_la: Tb64u64;
+    m_la: UInt64;
+    e_la: Int64;
+    i_la: Integer;
+    r_la, zh_la, zl_la, ph_la, pl_la, t_la: Double;
+begin
+  if 1.0 >= x then begin
+    if pcr_fabs(x) >= 1.1102230246251565e-16 then // 2^-53
+      cf_fast_two_sum(h, l, 1.0, x)
+    else begin
+      h := 1.0;
+      l := x;
+    end;
+  end else
+    cf_fast_two_sum(h, l, x, 1.0);
+  v_la.f := h;
+  m_la := v_la.u and $FFFFFFFFFFFFF;
+  e_la := Int64(v_la.u shr 52) - $3FF;
+  if m_la >= $6A09E667F3BCD then Inc(e_la);
+  h := h * CF_SCALE[e_la + 29];
+  l := l * CF_SCALE[e_la + 29];
+  v_la.f := 2.0 + h;
+  i_la := Integer(v_la.u shr 45) - $2002D;
+  r_la := CF_INV[i_la];
+  zh_la := pcr_fma(r_la, h, -1.0);
+  zl_la := r_la * l;
+  cf_fast_two_sum(zh_la, zl_la, zh_la, zl_la);
+  cf_p2(ph_la, pl_la, zh_la, zl_la);
+  cf_fast_two_sum(h, l, Double(e_la), CF_LOG2INV[i_la][0]);
+  l := l + CF_LOG2INV[i_la][1];
+  cf_fast_two_sum(h, t_la, h, ph_la);
+  l := l + t_la + pl_la;
+end;
+
+// ── accurate_path ─────────────────────────────────────────────────────────────
+function cf_accurate_path(x, y: Single; exact: Integer; flag: DWord): Single;
+var h_ap, l_ap: Double;
+begin
+  cf_log2p1_accurate(h_ap, l_ap, Double(x));
+  cf_s_mul(h_ap, l_ap, Double(y), h_ap, l_ap);
+  Result := cf_exp2_2(h_ap, l_ap, x, y, exact, flag);
+end;
+
+// ── cf_special: handles special/edge cases ────────────────────────────────────
+function cf_special(x, y: Single): Single;
+var nx_sp, ny_sp: Tb32u32;
+    ax_sp, ay_sp: LongWord;
+    mone_sp: Tb32u32;
+    sy_sp: Integer;
+begin
+  nx_sp.f := x;
+  ny_sp.f := y;
+  ax_sp := nx_sp.u shl 1;
+  ay_sp := ny_sp.u shl 1;
+  mone_sp.f := -1.0;
+  if (ax_sp = 0) or (ay_sp = 0) then begin
+    if ax_sp = 0 then begin
+      if cf_is_signalingf(y) then Result := x + y
+      else Result := 1.0;
+      Exit;
+    end;
+    if ay_sp = 0 then begin
+      if cf_is_signalingf(x) then begin Result := x + y; Exit; end;
+      if x < -1.0 then Result := 0.0 / 0.0
+      else Result := 1.0;
+      Exit;
+    end;
+  end;
+  if ay_sp >= (LongWord($FF) shl 24) then begin // y = Inf/NaN
+    if ax_sp > (LongWord($FF) shl 24) then begin Result := x + y; Exit; end;
+    if ay_sp = (LongWord($FF) shl 24) then begin // y = +/-Inf
+      if nx_sp.u > mone_sp.u then begin Result := 0.0 / 0.0; Exit; end;
+      sy_sp := Integer(ny_sp.u shr 31);
+      if nx_sp.u = mone_sp.u then begin
+        if sy_sp = 0 then Result := 0.0
+        else Result := -y;
+        Exit;
+      end;
+      if x < 0.0 then begin
+        if sy_sp = 0 then Result := 0.0 else Result := -y;
+        Exit;
+      end;
+      if x > 0.0 then begin
+        if sy_sp <> 0 then Result := 0.0 else Result := y;
+        Exit;
+      end;
+      Result := 1.0;
+      Exit;
+    end;
+    Result := x + y; // y = NaN
+    Exit;
+  end;
+  if nx_sp.u >= (LongWord($FF) shl 23) then begin
+    if ax_sp = (LongWord($FF) shl 24) then begin // x = ±Inf
+      if (nx_sp.u shr 31) <> 0 then begin Result := 0.0 / 0.0; Exit; end; // -Inf
+      if (ny_sp.u shr 31) <> 0 then Result := 1.0 / x
+      else Result := x;
+      Exit;
+    end;
+    if ax_sp > (LongWord($FF) shl 24) then begin Result := x + y; Exit; end; // NaN
+    if nx_sp.u > mone_sp.u then begin
+      Result := 0.0 / 0.0; // x < -1
+      Exit;
+    end;
+    // x = -1
+    if (ny_sp.u shr 31) <> 0 then Result := 1.0 / 0.0
+    else Result := 0.0;
+    Exit;
+  end;
+  Result := 0.0;
+end;
+
+// ── pcr_compoundf: main entry point ──────────────────────────────────────────
+function pcr_compoundf(x, n: Single): Single;
+var nx_cf, ny_cf: Tb32u32;
+    mone_cf: Tb32u32;
+    ax_cf, ay_cf: LongWord;
+    xd_cf, yd_cf: Double;
+    tx_cf, ty_cf, t_cf: Tb64u64;
+    flag_cf: DWord;
+    l_cf: Double;
+    midpoint_cf, exact_cf: Integer;
+    res_cf: Single;
+begin
+  mone_cf.f := -1.0;
+  nx_cf.f := x;
+  ny_cf.f := n;
+  if nx_cf.u >= mone_cf.u then begin
+    Result := cf_special(x, n); Exit;
+  end;
+  ax_cf := nx_cf.u shl 1;
+  ay_cf := ny_cf.u shl 1;
+  if (ax_cf = 0) or (ax_cf >= (LongWord($FF) shl 24))
+  or (ay_cf = 0) or (ay_cf >= (LongWord($FF) shl 24)) then begin
+    Result := cf_special(x, n); Exit;
+  end;
+  xd_cf := Double(x);
+  yd_cf := Double(n);
+  tx_cf.f := xd_cf;
+  ty_cf.f := yd_cf;
+  flag_cf := cf_get_flag;
+  if ax_cf < $62000000 then begin // |x| < 2^-29
+    l_cf := CF_INVLOG2 * (xd_cf - (xd_cf * xd_cf) * 0.5);
+  end else begin
+    l_cf := cf_log2p1_fast(tx_cf.f);
+  end;
+  t_cf.f := l_cf * ty_cf.f;
+  // detect overflow/underflow
+  if (t_cf.u shl 1) >= $80C0000000000000 then begin
+    if t_cf.u >= UInt64($C062C00000000000) then begin // t <= -150
+      Result := Single(1.1754943508222875e-38) * Single(1.1754943508222875e-38);
+      Exit;
+    end else if (t_cf.u shr 63) = 0 then begin // t >= 128
+      Result := Single(8.507059173023462e+37) * Single(8.507059173023462e+37);
+      Exit;
+    end;
+  end;
+  // 2^t rounds to 1
+  if (t_cf.u shl 1) <= $7CCE2A8ED5E1A9B2 then begin
+    if (t_cf.u shr 63) <> 0 then
+      Result := 1.0 - 2.9802322387695312e-08
+    else
+      Result := 1.0 + 2.9802322387695312e-08;
+    Exit;
+  end;
+  midpoint_cf := 0;
+  exact_cf := cf_is_exact_or_midpoint(x, n, midpoint_cf);
+  res_cf := cf_exp2_1(t_cf.f);
+  if res_cf <> -1.0 then begin
+    if (exact_cf <> 0) and (midpoint_cf = 0) then
+      cf_set_flag(flag_cf);
+    Result := res_cf;
+    Exit;
+  end;
+  cf_set_flag(flag_cf);
+  Result := cf_accurate_path(x, n, exact_cf, flag_cf);
+end;
+
 
 end.
