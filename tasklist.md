@@ -7,9 +7,10 @@ Goal: bit-exact, correctly-rounded results matching the C reference for all 2^32
 
 ## Status summary
 
-- **All 42 functions completed and committed** (branch: `a1`, latest commit: `edbaa7a`)
-- **All phases complete** (Phase 0 through Phase 6)
-- Phases: Infrastructure · 14 simple univariate · 17 medium univariate · tgamma/lgamma · 5 bivariate/compound · sin/cos/sincos/tan · Testing infrastructure
+- **All 42 functions ported and committed** (branch: `a1`)
+- **Bug-fix round in progress** — detected with `bin/TestHarness --pct 1`
+- **10 functions fixed** (8 bugs + sinf/cosf/sincosf/tanf x87 precision fix), committed in two commits (`25d897a`, `24acd3c`)
+- **2 functions still failing** at `--pct 1`: `powf` (458 657 mismatches) and `compoundf` (1 903 717 mismatches) — see "Open bugs" section below
 - Benchmark sample: `acosf  C=322.6 Mops/s  Pascal=222.2 Mops/s`
 
 ---
@@ -396,3 +397,92 @@ Apply this checklist to every function before marking it done:
 10. **Benchmark every function.** After each function passes exhaustive testing, run
     `Benchmark.pas` and record the Mops/s ratio (Pascal vs C). A large gap is a signal
     to investigate missed inlining or suboptimal code generation.
+
+---
+
+## Open bugs (detected 2026-04-11, `--pct 1` sampling)
+
+### Bug A — `pcr_compoundf`: returns +Inf for tiny subnormal x with large y
+
+**Symptom:** Large error — C returns `0x3F800000` (1.0), Pascal returns `0x7F800000` (+Inf).
+1 903 717 mismatches out of 10 M sampled pairs.
+
+**Example inputs:**
+```
+x=$000001AD (~6.0e-43, tiny subnormal)   y=$55555703 (~1.47e13, large positive)
+x=$0000035A                               y=$555558B1
+```
+
+**Expected result:** `compound(x, y) = (1+x)^y ≈ 1.0`
+because `x*y ≈ 6e-43 * 1.47e13 ≈ 8.8e-30`, so `exp(y * log(1+x)) ≈ exp(8.8e-30) ≈ 1.0`.
+
+**Root cause (suspected):** The Pascal `pcr_compoundf` implementation takes a wrong code path
+for very small subnormal `x` values. Instead of recognising that `(1+x)^y ≈ 1`, it overflows
+somewhere in the intermediate computation and returns +Inf.
+The C source (`core-math/src/binary32/compound/compoundf.c`, ~1110 lines) has a dedicated
+subnormal handling path (search for `// subnormal numbers`); it is likely that the Pascal port
+is missing a guard or has an incorrect comparison for this range.
+
+**How to debug:**
+- Add `--diag 10` to the TestHarness bivariate output (already supported as of commit `25d897a`)
+  and focus on tiny subnormal x (bits 0x0000_0001 to roughly 0x007F_FFFF) with large positive y.
+- Compare `pcr_compoundf` step-by-step with C for input `x=$000001AD, y=$55555703`.
+- Grep for `subnormal` in `compoundf.c` and verify the corresponding Pascal guard conditions.
+
+---
+
+### Bug B — `pcr_powf`: 1-ULP rounding error for large x, tiny negative y
+
+**Symptom:** Small error — C returns `0x3F7FFFFF` (1.0 − 1 ULP), Pascal returns `0x3F800000` (1.0).
+458 657 mismatches out of 10 M sampled pairs.
+
+**Example inputs:**
+```
+x=$5ACCA329 (~2.88e16, large positive)   y=$B058276B (~−7.86e-10, tiny negative)
+x=$5ACCA4D6                              y=$B0582919
+(pattern: x large ~2.88e16, y small negative ~−7.86e-10, with slow drift)
+```
+
+**Expected result:** `x^y = exp(y * log(x)) ≈ 1 − 2.98e-8`, which is just below the
+float32 midpoint between `0x3F7FFFFF` and `0x3F800000`, so the correct rounding is `0x3F7FFFFF`.
+
+**Investigation so far:**
+- All lookup tables (`ix_pf`, `lix_pf`, `c_pf`, `ce_pf`, `tb_pf`) were verified bit-exact
+  against the C source.
+- The fast path (no `accurate2` call) is taken for these inputs — the borderline check
+  `((rr.u + 468) & 0xFFFFFFF) <= 936` is False (check value ≈ 268 M >> 936).
+- Python simulation of the full fast path (with both true IEEE FMA and 80-bit-extended
+  approximation) produces `0x3F7FFFFF` (= correct C answer) for the example input.
+- Therefore the Pascal computation must diverge from the simulation somewhere during
+  actual FPC code generation — likely due to x87 excess precision in an intermediate
+  variable that is nominally `Double` but kept in an 80-bit x87 register.
+
+**Root cause (suspected):** `pcr_fma` is a double-rounding approximation
+(`Double(Extended(x)*Extended(y)+Extended(z))`), not a true IEEE FMA. When FPC inlines it,
+the `Double(...)` cast may not force a spill to memory, leaving intermediate values at
+80-bit extended precision. This excess precision in `z_pf` (the reduced argument) or `h_pf`
+propagates through the exponential polynomial and shifts `rr_pf` to the wrong side of the
+float32 midpoint.
+
+**How to fix:**
+- Option 1 (preferred): Replace `pcr_fma` with a true hardware FMA using FPC inline assembly:
+  ```pascal
+  function pcr_fma(x, y, z: Double): Double; inline;
+  begin
+    asm
+      vmovsd xmm0, x
+      vfmadd213sd xmm0, y, z   // xmm0 = x*y + z
+      vmovsd Result, xmm0
+    end;
+  end;
+  ```
+  Requires AVX/FMA3 (available on all modern x86_64). Add a `{$IFDEF CPUX86_64}` guard
+  with the 80-bit fallback for other architectures.
+- Option 2: Force intermediate variables to be stored to memory (defeating x87 register
+  caching) by adding `volatile`-style stores — but FPC has no standard mechanism for this.
+- Option 3: Compile with `-CfAVX2` or `-CfSSE4` to enable FMA instructions globally (risky
+  for portability, and currently `{$FPUTYPE SSE64}` already fails to prevent x87 usage for
+  untyped literals).
+
+**Note:** The same `pcr_fma` issue may affect `pcr_compoundf` and potentially other functions
+in edge cases not caught at 1% sampling. Fix `pcr_fma` first, then re-run `--pct 1` to check.
