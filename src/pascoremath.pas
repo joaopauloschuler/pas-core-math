@@ -38,6 +38,9 @@ function pcr_asinhf(x: Single): Single;
 function pcr_acoshf(x: Single): Single;
 function pcr_tgammaf(x: Single): Single;
 function pcr_lgammaf(x: Single): Single;
+function pcr_hypotf(x, y: Single): Single;
+function pcr_atan2f(y, x: Single): Single;
+function pcr_atan2pif(y, x: Single): Single;
 
 implementation
 
@@ -3418,6 +3421,464 @@ begin
     end;
   end;
   Result := r_lg;
+end;
+
+{ ── muldd / polydd: double-double helpers shared by pcr_atan2f and pcr_atan2pif ── }
+
+function muldd(xh, xl, ch, cl: Double; out l: Double): Double;
+var
+  ahlh, alhh, ahhh, ahhl: Double;
+begin
+  ahlh := ch * xl;
+  alhh := cl * xh;
+  ahhh := ch * xh;
+  ahhl := pcr_fma(ch, xh, -ahhh);
+  ahhl := ahhl + alhh + ahlh;
+  ch := ahhh + ahhl;
+  l := (ahhh - ch) + ahhl;
+  Result := ch;
+end;
+
+{ c is flat: c[k*2]=c[k][0], c[k*2+1]=c[k][1] }
+function polydd(xh, xl: Double; n: Integer; const c: array of Double; out l: Double): Double;
+var
+  i: Integer;
+  ch, cl, th, tl: Double;
+begin
+  i := n - 1;
+  ch := c[i*2];
+  cl := c[i*2+1];
+  Dec(i);
+  while i >= 0 do begin
+    ch := muldd(xh, xl, ch, cl, cl);
+    th := ch + c[i*2];
+    tl := (c[i*2] - th) + ch;
+    ch := th;
+    cl := cl + tl + c[i*2+1];
+    Dec(i);
+  end;
+  l := cl;
+  Result := ch;
+end;
+
+{ ── pcr_hypotf ────────────────────────────────────────────────────────────── }
+
+function pcr_hypotf(x, y: Single): Single;
+var
+  ax, ay, at_h, c_h: Single;
+  tx_h, ty_h: Tb32u32;
+  snan_x, snan_y: Integer;
+  xd, yd, x2, y2, r2, r_h, cd_h, ir2, dr2, rs, dz_h, dr_h, rh, rl: Double;
+  t_h: Tb64u64;
+begin
+  ax := pcr_fabsf(x);
+  ay := pcr_fabsf(y);
+  tx_h.f := ax; ty_h.f := ay;
+  if (tx_h.u >= $7F800000) or (ty_h.u >= $7F800000) then begin
+    snan_x := 0;
+    if (tx_h.u > $7F800000) and ((tx_h.u shr 22) and 1 = 0) then snan_x := 1;
+    snan_y := 0;
+    if (ty_h.u > $7F800000) and ((ty_h.u shr 22) and 1 = 0) then snan_y := 1;
+    if (snan_x <> 0) or (snan_y <> 0) then begin Result := x + y; Exit; end;
+    if tx_h.u = $7F800000 then begin Result := ax; Exit; end;
+    if ty_h.u = $7F800000 then begin Result := ay; Exit; end;
+    Result := ax + ay; Exit;
+  end;
+  at_h := pcr_fmaxf(ax, ay);
+  ay   := pcr_fminf(ax, ay);
+  xd := at_h; yd := ay;
+  x2 := xd * xd; y2 := yd * yd; r2 := x2 + y2;
+  if yd < xd * 0.00024414061044808477 then begin  { 0x1.fffffep-13 }
+    c_h := pcr_fmaf(Single(0.0001220703125), ay, at_h);  { fmaf(0x1p-13f, ay, at) }
+    Result := c_h; Exit;
+  end;
+  r_h := pcr_sqrt(r2);
+  t_h.f := r_h;
+  c_h := Single(r_h);
+  if t_h.u > UInt64($47EFFFFFE0000000) then begin Result := c_h; Exit; end;
+  if ((t_h.u + 1) and $0FFFFFFF) > 2 then begin Result := c_h; Exit; end;
+  cd_h := c_h;
+  if (cd_h*cd_h - x2) - y2 = 0.0 then begin Result := c_h; Exit; end;
+  ir2 := 0.5 / r2;
+  dr2 := (x2 - r2) + y2;
+  rs := r_h * ir2;
+  dz_h := dr2 - pcr_fma(r_h, r_h, -r2);
+  dr_h := rs * dz_h;
+  rh := r_h + dr_h;
+  rl := dr_h + (r_h - rh);
+  t_h.f := rh;
+  if (t_h.u and $0FFFFFFF) = 0 then begin
+    if rl > 0.0 then t_h.u := t_h.u + 1;
+    if rl < 0.0 then t_h.u := t_h.u - 1;
+  end;
+  Result := t_h.f;
+end;
+
+{ ── pcr_atan2f_tiny: Taylor approx for tiny y/x ───────────────────────────── }
+
+function pcr_atan2f_tiny(y, x: Single): Single;
+const
+  c_third = -0.3333333333333333;  { -0x1.5555555555555p-2 }
+var
+  dy, dx, z_t, e_t, zz_t, cz_t: Double;
+  t_t: Tb64u64;
+begin
+  dy := y; dx := x;
+  z_t := dy / dx;
+  e_t := pcr_fma(-z_t, dx, dy);
+  zz_t := z_t * z_t;
+  cz_t := c_third * z_t;
+  e_t := e_t / dx + cz_t * zz_t;
+  t_t.f := z_t;
+  if (t_t.u and $000000000FFFFFFF) = 0 then begin
+    if z_t * e_t > 0.0 then t_t.u := t_t.u + 1
+    else                     t_t.u := t_t.u - 1;
+  end;
+  Result := t_t.f;
+end;
+
+{ ── pcr_atan2f ────────────────────────────────────────────────────────────── }
+
+function pcr_atan2f(y, x: Single): Single;
+const
+  { numerator poly coeffs }
+  cn_a2: array[0..6] of Double = (
+    1.0, 2.506848521335565, 2.2855336234350774, 0.9227540611112051,
+    0.15965700667756133, 0.0093982071883745, 8.116266383809054e-05);
+  { denominator poly coeffs }
+  cd_a2: array[0..6] of Double = (
+    1.0, 2.840181854668896, 3.03226090832491, 1.5083284691366383,
+    0.35061013533424623, 0.03311601651598859, 0.0008307046818566012);
+  m_a2: array[0..1] of Double = (0.0, 1.0);
+  { pi=0x1.921fb54442d18p+1, pi2=0x1.921fb54442d18p+0, pi2l=0x1.1a62633145c07p-54 }
+  off_a2: array[0..7] of Double = (
+    0.0, 1.5707963267948966, 3.141592653589793, 1.5707963267948966,
+    0.0, -1.5707963267948966, -3.141592653589793, -1.5707963267948966);
+  offl_a2: array[0..7] of Double = (
+    0.0, 6.123233995736766e-17, 1.2246467991473532e-16, 6.123233995736766e-17,
+    0.0, -6.123233995736766e-17, -1.2246467991473532e-16, -6.123233995736766e-17);
+  sgn_a2: array[0..1] of Double = (1.0, -1.0);
+  { c[32][2] high-precision Taylor table, stored flat: c[k][0]=c_a2[k*2], c[k][1]=c_a2[k*2+1] }
+  c_a2: array[0..63] of Double = (
+    1.0, -9.999371390980276e-27,
+    -0.3333333333333333, -1.8503696081891694e-17,
+    0.2, -1.1109570448589454e-17,
+    -0.14285714285714285, -6.906377603268134e-18,
+    0.11111111111111104, -6.04986207547041e-19,
+    -0.0909090909090874, -4.813186107306423e-18,
+    0.07692307692296789, 6.0635784048294865e-18,
+    -0.06666666666423005, 5.357368392422845e-19,
+    0.05882352937094788, -3.0234229312063074e-18,
+    -0.052631578418319884, 7.121906314230013e-19,
+    0.047619042181978474, 3.2606056478649954e-18,
+    -0.04347821570541953, 2.1474249882470664e-18,
+    0.039999692056834395, -1.4496021955960109e-18,
+    -0.037035291887394496, 8.394614713005368e-19,
+    0.03447445331733282, 3.57321674047701e-19,
+    -0.03222458593057924, -6.05919930630252e-19,
+    0.030187892413408284, 8.550359777848272e-19,
+    -0.028231467664296316, 8.645756239029875e-19,
+    0.026160406443643782, -1.1013132206776929e-18,
+    -0.02372363694711401, 5.82053126354201e-19,
+    0.0206884675894418, 8.78953163493978e-19,
+    -0.016981732349686016, 9.51948710384928e-19,
+    0.012817485672589527, -7.742239346647683e-19,
+    -0.008687313963361743, -5.63071564570556e-19,
+    0.005163618439611815, 3.2806307955849715e-19,
+    -0.00262691892479603, -1.373777510443008e-19,
+    0.0011135875725313154, -6.618746076431752e-20,
+    -0.0003808088264492978, 1.5620808802045265e-20,
+    0.00010056717515235685, -5.194627331100907e-21,
+    -1.919552508092125e-05, 8.202890655529531e-22,
+    2.35167210652331e-06, -1.3883775330103416e-22,
+    -1.3863591848022874e-07, -1.0947593470915086e-23);
+var
+  tx_a2, ty_a2: Tb32u32;
+  ux, uy, ax_a2, ay_a2: UInt32;
+  yinf_a2, xinf_a2, gt_a2: UInt32;
+  i_a2: UInt32;
+  zx_a2, zy_a2, z_a2, r_a2: Double;
+  d_a2: Integer;
+  z2_a2, z4_a2, z8_a2: Double;
+  cn0_a2, cn2_a2, cn4_a2, cn6_a2: Double;
+  cd0_a2, cd2_a2, cd4_a2, cd6_a2: Double;
+  res_a2: Tb64u64;
+  zh_a2, zl_a2, z2l_a2, z2h_a2: Double;
+  pl_a2, ph_a2, sh_a2, sl_a2: Double;
+  rf_a2: Single;
+  th_a2, dh_a2, tm_a2: Double;
+  tth_a2: Tb64u64;
+begin
+  tx_a2.f := x; ty_a2.f := y;
+  ux := tx_a2.u; uy := ty_a2.u;
+  ax_a2 := ux and $7FFFFFFF; ay_a2 := uy and $7FFFFFFF;
+  if (ay_a2 >= $7F800000) or (ax_a2 >= $7F800000) then begin
+    if ay_a2 > $7F800000 then begin Result := x + y; Exit; end;  { y nan }
+    if ax_a2 > $7F800000 then begin Result := x + y; Exit; end;  { x nan }
+    if ay_a2 = $7F800000 then yinf_a2 := 1 else yinf_a2 := 0;
+    if ax_a2 = $7F800000 then xinf_a2 := 1 else xinf_a2 := 0;
+    if (yinf_a2 and xinf_a2) <> 0 then begin
+      if (ux shr 31) <> 0 then
+        Result := Single(2.356194490192345 * sgn_a2[uy shr 31])   { +/-3pi/4 }
+      else
+        Result := Single(0.7853981633974483 * sgn_a2[uy shr 31]); { +/-pi/4 }
+      Exit;
+    end;
+    if xinf_a2 <> 0 then begin
+      if (ux shr 31) <> 0 then Result := Single(3.141592653589793 * sgn_a2[uy shr 31])
+      else                      Result := Single(0.0 * sgn_a2[uy shr 31]);
+      Exit;
+    end;
+    if yinf_a2 <> 0 then begin
+      Result := Single(1.5707963267948966 * sgn_a2[uy shr 31]); Exit;
+    end;
+  end;
+  if ay_a2 = 0 then begin
+    if ax_a2 = 0 then begin
+      i_a2 := (uy shr 31)*4 + (ux shr 31)*2;
+      if (ux shr 31) <> 0 then Result := Single(off_a2[i_a2] + offl_a2[i_a2])
+      else                      Result := Single(off_a2[i_a2]);
+      Exit;
+    end;
+    if (ux shr 31) = 0 then begin
+      Result := Single(0.0 * sgn_a2[uy shr 31]); Exit;
+    end;
+  end;
+  if ay_a2 > ax_a2 then gt_a2 := 1 else gt_a2 := 0;
+  i_a2 := (uy shr 31)*4 + (ux shr 31)*2 + gt_a2;
+  zx_a2 := x; zy_a2 := y;
+  { z = x/y if |y|>|x|, z = y/x otherwise }
+  z_a2 := (m_a2[gt_a2]*zx_a2 + m_a2[1-gt_a2]*zy_a2) /
+          (m_a2[gt_a2]*zy_a2 + m_a2[1-gt_a2]*zx_a2);
+  d_a2 := Integer(ax_a2) - Integer(ay_a2);
+  if (d_a2 < 226492416) and (d_a2 > -226492416) then begin  { 27<<23 }
+    z2_a2 := z_a2 * z_a2;
+    z4_a2 := z2_a2 * z2_a2;
+    z8_a2 := z4_a2 * z4_a2;
+    cn0_a2 := cn_a2[0] + z2_a2*cn_a2[1];
+    cn2_a2 := cn_a2[2] + z2_a2*cn_a2[3];
+    cn4_a2 := cn_a2[4] + z2_a2*cn_a2[5];
+    cn6_a2 := cn_a2[6];
+    cn0_a2 := cn0_a2 + z4_a2*cn2_a2;
+    cn4_a2 := cn4_a2 + z4_a2*cn6_a2;
+    cn0_a2 := cn0_a2 + z8_a2*cn4_a2;
+    cd0_a2 := cd_a2[0] + z2_a2*cd_a2[1];
+    cd2_a2 := cd_a2[2] + z2_a2*cd_a2[3];
+    cd4_a2 := cd_a2[4] + z2_a2*cd_a2[5];
+    cd6_a2 := cd_a2[6];
+    cd0_a2 := cd0_a2 + z4_a2*cd2_a2;
+    cd4_a2 := cd4_a2 + z4_a2*cd6_a2;
+    cd0_a2 := cd0_a2 + z8_a2*cd4_a2;
+    r_a2 := cn0_a2 / cd0_a2;
+  end else
+    r_a2 := 1.0;
+  z_a2 := z_a2 * sgn_a2[gt_a2];
+  r_a2 := z_a2 * r_a2 + off_a2[i_a2];
+  res_a2.f := r_a2;
+  if ((res_a2.u + 8) and $0FFFFFFF) <= 16 then begin
+    { check tiny y/x }
+    if (ay_a2 < ax_a2) and ((ax_a2 - ay_a2) shr 23 >= 25) then begin
+      Result := pcr_atan2f_tiny(y, x); Exit;
+    end;
+    if gt_a2 = 0 then begin
+      zh_a2 := zy_a2 / zx_a2;
+      zl_a2 := pcr_fma(zh_a2, -zx_a2, zy_a2) / zx_a2;
+    end else begin
+      zh_a2 := zx_a2 / zy_a2;
+      zl_a2 := pcr_fma(zh_a2, -zy_a2, zx_a2) / zy_a2;
+    end;
+    z2h_a2 := muldd(zh_a2, zl_a2, zh_a2, zl_a2, z2l_a2);
+    ph_a2 := polydd(z2h_a2, z2l_a2, 32, c_a2, pl_a2);
+    zh_a2 := zh_a2 * sgn_a2[gt_a2];
+    zl_a2 := zl_a2 * sgn_a2[gt_a2];
+    ph_a2 := muldd(zh_a2, zl_a2, ph_a2, pl_a2, pl_a2);
+    sh_a2 := ph_a2 + off_a2[i_a2];
+    sl_a2 := ((off_a2[i_a2] - sh_a2) + ph_a2) + pl_a2 + offl_a2[i_a2];
+    rf_a2 := Single(sh_a2);
+    th_a2 := rf_a2;
+    dh_a2 := sh_a2 - th_a2;
+    tm_a2 := dh_a2 + sl_a2;
+    tth_a2.f := th_a2;
+    if th_a2 + th_a2*8.673617379884035e-19 = th_a2 - th_a2*8.673617379884035e-19 then begin
+      { 0x1p-60 = 8.673617379884035e-19 }
+      tth_a2.u := tth_a2.u and $7FF0000000000000;
+      tth_a2.u := tth_a2.u - $0180000000000000;  { subtract 24<<52 }
+      if pcr_fabs(tm_a2) > tth_a2.f then
+        tm_a2 := tm_a2 * 1.25
+      else
+        tm_a2 := tm_a2 * 0.75;
+    end;
+    r_a2 := th_a2 + tm_a2;
+  end;
+  Result := Single(r_a2);
+end;
+
+{ ── pcr_atan2pif ──────────────────────────────────────────────────────────── }
+
+function pcr_atan2pif(y, x: Single): Single;
+const
+  cn_a2p: array[0..6] of Double = (
+    0.3183098861837907, 0.7979546675063276, 0.7275079475448462,
+    0.29372174016793834, 0.05082040362397926, 0.0029915422604631704,
+    2.583487828867586e-05);
+  cd_a2p: array[0..6] of Double = (
+    1.0, 2.840181854668896, 3.03226090832491, 1.5083284691366383,
+    0.35061013533424623, 0.03311601651598859, 0.0008307046818566012);
+  m_a2p: array[0..1] of Double = (0.0, 1.0);
+  off_a2p: array[0..7] of Double = (
+    0.0, 0.5, 1.0, 0.5, 0.0, -0.5, -1.0, -0.5);
+  sgnf_a2p: array[0..1] of Single = (1.0, -1.0);
+  sgn_a2p: array[0..1] of Double = (1.0, -1.0);
+  s_a2p: array[0..3] of Single = (0.25, 0.75, -0.25, -0.75);
+  off2_a2p: array[0..3] of Double = (0.25, 0.75, -0.25, -0.75);
+  { c[32][2] flat: c_a2p[k*2]=c[k][0], c_a2p[k*2+1]=c[k][1] }
+  c_a2p: array[0..63] of Double = (
+    0.3183098861837907, -1.9678676678365386e-17,
+    -0.1061032953945969, 6.559565574705387e-18,
+    0.06366197723675814, -1.1625142324443452e-18,
+    -0.04547284088339867, 1.6330933027767818e-19,
+    0.035367765131532274, -9.869723873189076e-19,
+    -0.02893726238034349, -9.662744851500827e-20,
+    0.024485375860256887, -1.149537084009613e-18,
+    -0.02122065907814378, 1.7059737274086658e-18,
+    0.018724110938995286, 8.81510938898954e-19,
+    -0.016753151736008654, -1.3202448604516062e-18,
+    0.015157611897126696, 6.75954372683546e-19,
+    -0.01383954589266639, 8.078526646412535e-19,
+    0.012732297425997631, 1.7919213416430043e-19,
+    -0.011788699545460008, 6.66037210651152e-19,
+    0.010973559311688615, 4.52760332181136e-19,
+    -0.01025740427988246, 5.715852605373118e-19,
+    0.00960910459824051, -3.6666946471079842e-19,
+    -0.008986355259023526, -3.20433976550847e-19,
+    0.008327115997597955, 8.618694896373386e-19,
+    -0.007551468176501432, -8.492307901900414e-20,
+    0.006585343763712261, 2.224514552737167e-19,
+    -0.005405453291432151, -3.141319316546961e-19,
+    0.00407993240560434, 1.6362318030205914e-19,
+    -0.0027652579189205322, 1.658177124739989e-19,
+    0.0016436307978093597, -5.343077563297589e-21,
+    -0.0008361742639658701, -1.949710672957039e-20,
+    0.00035446593346812673, -5.638324403413975e-21,
+    -0.00012121521420485887, 5.168177557928168e-21,
+    3.201152607657205e-05, -1.1919997370531597e-21,
+    -6.110125403746142e-06, 1.333824885359168e-22,
+    7.485604805690301e-07, -9.591512195984102e-24,
+    -4.4129183432426896e-08, 1.786021469414917e-24);
+var
+  tx_a2p, ty_a2p: Tb32u32;
+  ux_p, uy_p, ax_a2p, ay_a2p: UInt32;
+  yinf_a2p, xinf_a2p, gt_a2p: UInt32;
+  i_a2p: UInt32;
+  zx_a2p, zy_a2p, z_a2p, r_a2p, z2_a2p: Double;
+  z4_a2p, z8_a2p: Double;
+  cn0_p, cn2_p, cn4_p, cn6_p: Double;
+  cd0_p, cd2_p, cd4_p, cd6_p: Double;
+  res_a2p: Tb64u64;
+  zh_a2p, zl_a2p, z2l_a2p, z2h_a2p: Double;
+  pl_a2p, ph_a2p, sh_a2p, sl_a2p: Double;
+  rf_a2p: Single;
+  th_a2p, dh_a2p, tm_a2p: Double;
+  d_a2p: Tb64u64;
+begin
+  tx_a2p.f := x; ty_a2p.f := y;
+  ux_p := tx_a2p.u; uy_p := ty_a2p.u;
+  ax_a2p := ux_p and $7FFFFFFF; ay_a2p := uy_p and $7FFFFFFF;
+  if (ay_a2p >= $7F800000) or (ax_a2p >= $7F800000) then begin
+    if ay_a2p > $7F800000 then begin Result := x + y; Exit; end;
+    if ax_a2p > $7F800000 then begin Result := x + y; Exit; end;
+    if ay_a2p = $7F800000 then yinf_a2p := 1 else yinf_a2p := 0;
+    if ax_a2p = $7F800000 then xinf_a2p := 1 else xinf_a2p := 0;
+    if (yinf_a2p and xinf_a2p) <> 0 then begin
+      if (ux_p shr 31) <> 0 then Result := 0.75 * sgnf_a2p[uy_p shr 31]
+      else                        Result := 0.25 * sgnf_a2p[uy_p shr 31];
+      Exit;
+    end;
+    if xinf_a2p <> 0 then begin
+      if (ux_p shr 31) <> 0 then Result := sgnf_a2p[uy_p shr 31]
+      else                        Result := 0.0 * sgnf_a2p[uy_p shr 31];
+      Exit;
+    end;
+    if yinf_a2p <> 0 then begin
+      Result := 0.5 * sgnf_a2p[uy_p shr 31]; Exit;
+    end;
+  end;
+  if ay_a2p = 0 then begin
+    if (ay_a2p or ax_a2p) = 0 then begin
+      i_a2p := (uy_p shr 31)*4 + (ux_p shr 31)*2;
+      Result := Single(off_a2p[i_a2p]); Exit;
+    end;
+    if (ux_p shr 31) = 0 then begin
+      Result := 0.0 * sgnf_a2p[uy_p shr 31]; Exit;
+    end;
+  end;
+  if ax_a2p = ay_a2p then begin
+    i_a2p := (uy_p shr 31)*2 + (ux_p shr 31);
+    Result := s_a2p[i_a2p]; Exit;
+  end;
+  if ay_a2p > ax_a2p then gt_a2p := 1 else gt_a2p := 0;
+  i_a2p := (uy_p shr 31)*4 + (ux_p shr 31)*2 + gt_a2p;
+  zx_a2p := x; zy_a2p := y;
+  z_a2p := (m_a2p[gt_a2p]*zx_a2p + m_a2p[1-gt_a2p]*zy_a2p) /
+           (m_a2p[gt_a2p]*zy_a2p + m_a2p[1-gt_a2p]*zx_a2p);
+  r_a2p := cn_a2p[0];
+  z2_a2p := z_a2p * z_a2p;
+  z_a2p := z_a2p * sgn_a2p[gt_a2p];
+  if z2_a2p > 5.551115123125783e-17 then begin  { 0x1p-54 }
+    z4_a2p := z2_a2p * z2_a2p;
+    z8_a2p := z4_a2p * z4_a2p;
+    cn0_p := r_a2p    + z2_a2p*cn_a2p[1];
+    cn2_p := cn_a2p[2] + z2_a2p*cn_a2p[3];
+    cn4_p := cn_a2p[4] + z2_a2p*cn_a2p[5];
+    cn6_p := cn_a2p[6];
+    cn0_p := cn0_p + z4_a2p*cn2_p;
+    cn4_p := cn4_p + z4_a2p*cn6_p;
+    cn0_p := cn0_p + z8_a2p*cn4_p;
+    cd0_p := cd_a2p[0] + z2_a2p*cd_a2p[1];
+    cd2_p := cd_a2p[2] + z2_a2p*cd_a2p[3];
+    cd4_p := cd_a2p[4] + z2_a2p*cd_a2p[5];
+    cd6_p := cd_a2p[6];
+    cd0_p := cd0_p + z4_a2p*cd2_p;
+    cd4_p := cd4_p + z4_a2p*cd6_p;
+    cd0_p := cd0_p + z8_a2p*cd4_p;
+    r_a2p := cn0_p / cd0_p;
+  end;
+  r_a2p := z_a2p * r_a2p + off_a2p[i_a2p];
+  res_a2p.f := r_a2p;
+  if ((res_a2p.u shl 1) > UInt64($6D40000000000000)) and
+     (((res_a2p.u + 8) and $0FFFFFFF) <= 16) then begin
+    if ax_a2p = ay_a2p then begin
+      r_a2p := off2_a2p[(uy_p shr 31)*2 + (ux_p shr 31)];
+    end else begin
+      if gt_a2p = 0 then begin
+        zh_a2p := zy_a2p / zx_a2p;
+        zl_a2p := pcr_fma(zh_a2p, -zx_a2p, zy_a2p) / zx_a2p;
+      end else begin
+        zh_a2p := zx_a2p / zy_a2p;
+        zl_a2p := pcr_fma(zh_a2p, -zy_a2p, zx_a2p) / zy_a2p;
+      end;
+      z2h_a2p := muldd(zh_a2p, zl_a2p, zh_a2p, zl_a2p, z2l_a2p);
+      ph_a2p := polydd(z2h_a2p, z2l_a2p, 32, c_a2p, pl_a2p);
+      zh_a2p := zh_a2p * sgn_a2p[gt_a2p];
+      zl_a2p := zl_a2p * sgn_a2p[gt_a2p];
+      ph_a2p := muldd(zh_a2p, zl_a2p, ph_a2p, pl_a2p, pl_a2p);
+      sh_a2p := ph_a2p + off_a2p[i_a2p];
+      sl_a2p := ((off_a2p[i_a2p] - sh_a2p) + ph_a2p) + pl_a2p;
+      rf_a2p := Single(sh_a2p);
+      th_a2p := rf_a2p;
+      dh_a2p := sh_a2p - th_a2p;
+      tm_a2p := dh_a2p + sl_a2p;
+      r_a2p := th_a2p + tm_a2p;
+      d_a2p.f := r_a2p - th_a2p;
+      if (d_a2p.u shl 12) = 0 then begin
+        if pcr_fabs(d_a2p.f) > pcr_fabs(tm_a2p) then
+          r_a2p := r_a2p - d_a2p.f * 9.765625e-04  { 0x1p-10 }
+        else if pcr_fabs(d_a2p.f) < pcr_fabs(tm_a2p) then
+          r_a2p := r_a2p + d_a2p.f * 9.765625e-04;
+      end;
+    end;
+  end;
+  Result := Single(r_a2p);
 end;
 
 end.
