@@ -45,6 +45,8 @@ function pcr_powf(x0, y0: Single): Single;
 function pcr_compoundf(x, n: Single): Single;
 function pcr_sinf(x: Single): Single;
 function pcr_cosf(x: Single): Single;
+procedure pcr_sincosf(x: Single; out s, c: Single);
+function pcr_tanf(x: Single): Single;
 
 implementation
 
@@ -5776,6 +5778,358 @@ begin
   s0   := cosf_tb[(ia + 8) and 31];   // = -sin(ia*pi/16)
   r_val := c0 + aa * (z_d * s0) - bb * (z2 * c0);
   Result := Single(r_val);
+end;
+
+// ============================================================
+//  pcr_sincosf  — port of sincosf.c (cr_sincosf)
+//  pcr_tanf     — port of tanf.c    (cr_tanf)
+// ============================================================
+
+// ---- tanf helpers (rbig uses k=e-127, different from sincos_rbig) ----------
+
+const
+  tanf_cn: array[0..3] of Double = (
+    1.5707963267948966,      // 0x1.921fb54442d18p+0
+   -0.49720165641032027,     // -0x1.fd226e573289fp-2
+    0.02683402276915988,     // 0x1.b7a60c8dac9f6p-6
+   -0.00017660096093977045   // -0x1.725beb40f33e5p-13
+  );
+  tanf_cd: array[0..3] of Double = (
+    1.0,                     // 0x1p+0
+   -1.1389954387488281,      // -0x1.2395347fb829dp+0
+    0.1421268437745497,      // 0x1.2313660f29c36p-3
+   -0.0031314039049681057    // -0x1.9a707ab98d1c1p-9
+  );
+
+function tanf_rbig(u: LongWord; q: PInteger): Double;
+var
+  e_exp, k, s_shift, i_val, sgn: Integer;
+  m_val, p3h, p3l, p2l, p1l: UInt64;
+  p0, p1, p2, p3: TUInt128;
+  a_val: Int64;
+  sm: Int64;
+begin
+  e_exp := Integer((u shr 23) and $FF);
+  m_val := UInt64((u and $007FFFFF) or $800000);
+  p0 := MulWide(m_val, sincos_ipi[0]);
+  p1 := MulWide(m_val, sincos_ipi[1]); p1 := p1 + p0.hi;
+  p2 := MulWide(m_val, sincos_ipi[2]); p2 := p2 + p1.hi;
+  p3 := MulWide(m_val, sincos_ipi[3]); p3 := p3 + p2.hi;
+  p3h := p3.hi;
+  p3l := p3.lo;
+  p2l := p2.lo;
+  p1l := p1.lo;
+  k       := e_exp - 127;   // tanf uses e-127; sincos_rbig uses e-124
+  s_shift := k - 23;
+  if s_shift < 64 then begin
+    i_val := Integer((p3h shl s_shift) or (p3l shr (64 - s_shift)));
+    a_val := Int64((p3l shl s_shift) or (p2l shr (64 - s_shift)));
+  end else if s_shift = 64 then begin
+    i_val := Integer(p3l);
+    a_val := Int64(p2l);
+  end else begin  // s_shift > 64
+    i_val := Integer((p3l shl (s_shift - 64)) or (p2l shr (128 - s_shift)));
+    a_val := Int64((p2l shl (s_shift - 64)) or (p1l shr (128 - s_shift)));
+  end;
+  sgn   := sar_i32(Integer(u), 31);
+  sm    := sar_i64(a_val, 63);
+  i_val := i_val - Integer(sm);
+  Result := Double(a_val xor Int64(sgn)) * 5.421010862427522e-20;  // *2^-64
+  i_val := (i_val xor sgn) - sgn;
+  q^ := i_val;
+end;
+
+// tanf rltl: multiplies by 2/pi (different from sincos_rltl which uses 16/pi)
+function tanf_rltl(z: Single; q: PInteger): Double;
+var
+  x, idl, idh, id_d: Double;
+  Q_r: Tb64u64;
+begin
+  x    := Double(z);
+  idl  := -3.944788223297384e-10 * x;   // -0x1.b1bbead603d8bp-32
+  idh  :=  0.6366197727620602 * x;       // 0x1.45f306ep-1
+  id_d := pcr_roundeven(idh);
+  Q_r.f := 6755399441055744.0 + id_d;   // 0x1.8p52  (fast int extract)
+  q^   := Integer(LongWord(Q_r.u));
+  Result := (idh - id_d) + idl;
+end;
+
+// ---- sincosf helpers -------------------------------------------------------
+
+// Database of 9 hard cases for sincosf
+procedure sincosf_database(x: Single; var sout, cout: Single);
+const
+  sc_db_uarg: array[0..8] of LongWord = (
+    $46199998,   // 0x1.33333p+13
+    $3F3ADC51,   // 0x1.75b8a2p-1
+    $3FA7832A,   // 0x1.4f0654p+0
+    $4116CBE4,   // 0x1.2d97c8p+3
+    $4096CBE4,   // 0x1.2d97c8p+2
+    $5922AA80,   // 0x1.4555p+51
+    $5AA4542C,   // 0x1.48a858p+54
+    $5F18B878,   // 0x1.3170fp+63
+    $6115CB11    // 0x1.2b9622p+67
+  );
+  sc_db_sh: array[0..8] of Double = (
+    -0.34761324524879456,      // -0x1.63f4bap-2
+     0.6668131947517395,       //  0x1.55688ap-1
+     0.9658464193344116,       //  0x1.ee836cp-1
+    -2.384975950064927e-08,    // -0x1.99bc5ap-26
+    -1.0,                      // -0x1p+0
+    -0.8455373048782349,       // -0x1.b0ea44p-1
+     0.8724101781845093,       //  0x1.beac8cp-1
+     0.08465760201215744,      //  0x1.5ac1eep-4
+    -0.24683333933353424       // -0x1.f983c2p-3
+  );
+  sc_db_sl: array[0..8] of Double = (
+    -7.450580596923828e-09,    // -0x1p-27
+    -1.4901161193847656e-08,   // -0x1p-26
+    -1.4901161193847656e-08,   // -0x1p-26
+    -4.440892098500626e-16,    // -0x1p-51
+     2.9802322387695312e-08,   //  0x1p-25
+     1.4901161193847656e-08,   //  0x1p-26
+     1.4901161193847656e-08,   //  0x1p-26
+    -9.313225746154785e-10,    // -0x1p-30
+     3.725290298461914e-09     //  0x1p-28
+  );
+  sc_db_ch: array[0..8] of Double = (
+    -0.937637984752655,        // -0x1.e01216p-1
+     0.7452248930931091,       //  0x1.7d8e1ep-1
+     0.25911521911621094,      //  0x1.09558p-2
+    -1.0,                      // -0x1p+0
+     1.1924880638503055e-08,   //  0x1.99bc5cp-27
+     0.5339164137840271,       //  0x1.115d7ep-1
+     0.4887744188308716,       //  0x1.f48148p-2
+     0.996410071849823,        //  0x1.fe2976p-1
+     0.9690579771995544        //  0x1.f0285ep-1
+  );
+  sc_db_cl: array[0..8] of Double = (
+    -1.4901161193847656e-08,   // -0x1p-26
+     1.4901161193847656e-08,   //  0x1p-26
+    -7.450580596923828e-09,    // -0x1p-27
+     2.9802322387695312e-08,   //  0x1p-25
+    -2.220446049250313e-16,    // -0x1p-52
+    -1.4901161193847656e-08,   // -0x1p-26
+     7.450580596923828e-09,    //  0x1p-27
+     1.4901161193847656e-08,   //  0x1p-26
+    -1.4901161193847656e-08    // -0x1p-26
+  );
+var
+  t32: Tb32u32;
+  ax: LongWord;
+  ii: Integer;
+begin
+  t32.f := x;
+  ax := t32.u and $7FFFFFFF;
+  for ii := 0 to 8 do begin
+    if sc_db_uarg[ii] = ax then begin
+      sout := sinf_add_sign(x, Single(sc_db_sh[ii]), Single(sc_db_sl[ii]));
+      cout := Single(sc_db_ch[ii] + sc_db_cl[ii]);
+      Exit;
+    end;
+  end;
+end;
+
+// Large-argument case for sincosf (|x| >= threshold)
+// Uses sincos_rbig (k=e-124 — correct for sincosf)
+procedure sincosf_big(x: Single; var sout, cout: Single);
+var
+  t32: Tb32u32;
+  ax: LongWord;
+  ia: Integer;
+  z_r, z2, z4, aa, bb, s0, c0, s_d, c_d: Double;
+  tr: Tb64u64;
+  tail: UInt64;
+begin
+  t32.f := x;
+  ax := t32.u shl 1;
+  if ax >= $FF000000 then begin
+    if (ax shl 8) <> 0 then begin
+      sout := x + x;   // NaN: propagate
+      cout := x + x;
+      Exit;
+    end;
+    pcr_feraiseexcept_invalid;
+    sout := pcr_nanf(nil);
+    cout := pcr_nanf(nil);
+    Exit;
+  end;
+  z_r := sincos_rbig(t32.u, @ia);
+  z2  := z_r * z_r;
+  z4  := z2 * z2;
+  aa  := (sincos_a[0] + z2 * sincos_a[1]) + z4 * (sincos_a[2] + z2 * sincos_a[3]);
+  bb  := (sincos_b[0] + z2 * sincos_b[1]) + z4 * (sincos_b[2] + z2 * sincos_b[3]);
+  bb  := bb * z_r;
+  s0  := sinf_tb[ia and 31];
+  c0  := sinf_tb[(ia + 8) and 31];
+  s_d := s0 + z_r * (aa * c0 - bb * s0);
+  c_d := c0 - z_r * (aa * s0 + bb * c0);
+  sout := Single(s_d);
+  cout := Single(c_d);
+  tr.f := c_d;
+  tail := (tr.u + 6) and UInt64($0FFFFFFF);   // ~0ull>>36
+  if tail <= 12 then
+    sincosf_database(x, sout, cout);
+end;
+
+// ============================================================
+//  pcr_sincosf  — main function
+// ============================================================
+procedure pcr_sincosf(x: Single; out s, c: Single);
+var
+  t32: Tb32u32;
+  ax: LongWord;
+  ia: Integer;
+  z0_d, z_d, z2, z4, aa, bb, s0, c0: Double;
+begin
+  t32.f := x;
+  ax := t32.u shl 1;
+  z0_d := Double(x);
+  if ax < $822D97C8 then begin   // |x| < 0x1.2d97c8p+3
+    if ax < $73000000 then begin  // |x| < 0x1p-12
+      if ax < $66000000 then begin  // |x| < 0x1p-25
+        if ax = 0 then begin
+          s := x;
+          c := 1.0;
+        end else begin
+          s := pcr_fmaf(-x, pcr_fabsf(x), x);
+          c := 1.0 - 2.9802322387695312e-08;  // 1 - 0x1p-25f
+        end;
+        Exit;
+      end;
+      // 2^-25 <= |x| < 2^-12
+      s := Single((-0.1666666716337204 * Double(x)) * Double(x * x) + Double(x));
+      c := Single((-0.5 * Double(x)) * Double(x) + 1.0);
+      Exit;
+    end;
+    if ax = $812D97C8 then begin
+      sincosf_database(x, s, c);
+      Exit;
+    end;
+    z_d := sincos_rltl0(z0_d, @ia);
+  end else begin
+    if ax > $99000000 then begin
+      sincosf_big(x, s, c);
+      Exit;
+    end;
+    if ax = $8C333330 then begin
+      sincosf_database(x, s, c);
+      Exit;
+    end;
+    z_d := sincos_rltl(x, @ia);
+  end;
+  z2 := z_d * z_d;
+  z4 := z2 * z2;
+  aa := (sincos_a[0] + z2 * sincos_a[1]) + z4 * (sincos_a[2] + z2 * sincos_a[3]);
+  bb := (sincos_b[0] + z2 * sincos_b[1]) + z4 * (sincos_b[2] + z2 * sincos_b[3]);
+  aa := aa * z_d;
+  bb := bb * z2;
+  s0 := sinf_tb[ia and 31];
+  c0 := sinf_tb[(ia + 8) and 31];
+  s  := Single(s0 + (aa * c0 - bb * s0));
+  c  := Single(c0 - (aa * s0 + bb * c0));
+end;
+
+// ============================================================
+//  pcr_tanf  — port of tanf.c (cr_tanf)
+// ============================================================
+function pcr_tanf(x: Single): Single;
+const
+  tanf_db_uarg: array[0..7] of LongWord = (
+    $3F8A1F62,   // 0x1.143ec4p+0
+    $4D56D355,   // 0x1.ada6aap+27
+    $57D7B0ED,   // 0x1.af61dap+48
+    $5980445E,   // 0x1.0088bcp+52
+    $63FC86FE,   // 0x1.f90dfcp+72
+    $6A662711,   // 0x1.cc4e22p+85
+    $6AD36709,   // 0x1.a6ce12p+86
+    $72B505BB    // 0x1.6a0b76p+102
+  );
+  tanf_db_rh: array[0..7] of Double = (
+     1.8670953512191772,      //  0x1.ddf9f6p+0
+     0.23828700184822083,     //  0x1.e80304p-3
+     0.3445502519607544,      //  0x1.60d1c8p-2
+     1.7895326614379883,      //  0x1.ca1edp+0
+     0.6748017072677612,      //  0x1.597f9cp-1
+    -3.9000706672668457,      // -0x1.f33584p+1
+    -0.8855070471763611,      // -0x1.c5612ep-1
+    -1.8912676572799683       // -0x1.e42a1ep+0
+  );
+  tanf_db_rl: array[0..7] of Double = (
+    -3.409718953073569e-16,   // -0x1.891d24p-52
+     4.358793082672146e-18,   //  0x1.419f46p-58
+    -3.268032112391647e-17,   // -0x1.2d6c3ap-55
+     2.1771658420191705e-16,  //  0x1.f6053p-53
+     1.7449127529366843e-16,  //  0x1.925978p-53
+     8.173074377011539e-16,   //  0x1.d7254ap-51
+    -1.2783292861530832e-16,  // -0x1.26c33ep-53
+    -2.4787918922562627e-16   // -0x1.1dc906p-52
+  );
+var
+  t32: Tb32u32;
+  e_exp, i_q, jj: Integer;
+  z, z2, z4, n_v, n2, d_v, d2, s0, s1, r1: Double;
+  tr: Tb64u64;
+  tail: UInt64;
+  ax, sgn: LongWord;
+  x2: Single;
+begin
+  t32.f := x;
+  e_exp := Integer((t32.u shr 23) and $FF);
+  if e_exp < 127 + 28 then begin   // |x| < 2^28
+    if e_exp < 115 then begin       // |x| < 2^-13 (exponent < 127-12 = 115)
+      if e_exp < 102 then begin     // |x| < 2^-26 (exponent < 127-25 = 102)
+        Result := pcr_fmaf(x, pcr_fabsf(x), x);
+        Exit;
+      end;
+      x2 := x * x;
+      Result := pcr_fmaf(x, 0.3333333432674408 * x2, x);  // 0x1.555556p-2f
+      Exit;
+    end;
+    z := tanf_rltl(x, @i_q);
+  end else if e_exp < $FF then begin
+    z := tanf_rbig(t32.u, @i_q);
+  end else begin
+    if (t32.u shl 9) <> 0 then begin
+      Result := x + x;   // NaN
+      Exit;
+    end;
+    pcr_feraiseexcept_invalid;
+    Result := pcr_nanf(nil);
+    Exit;
+  end;
+  z2  := z * z;
+  z4  := z2 * z2;
+  n_v := tanf_cn[0] + z2 * tanf_cn[1];
+  n2  := tanf_cn[2] + z2 * tanf_cn[3];
+  n_v := n_v + z4 * n2;
+  d_v := tanf_cd[0] + z2 * tanf_cd[1];
+  d2  := tanf_cd[2] + z2 * tanf_cd[3];
+  d_v := d_v + z4 * d2;
+  n_v := n_v * z;
+  // s[] = {0,1}: s0 = i_q&1, s1 = 1-(i_q&1)
+  if (i_q and 1) = 0 then begin
+    s0 := 0.0;  s1 := 1.0;
+  end else begin
+    s0 := 1.0;  s1 := 0.0;
+  end;
+  r1 := (n_v * s1 - d_v * s0) / (n_v * s0 + d_v * s1);
+  tr.f := r1;
+  tail := (tr.u + 7) and UInt64($1FFFFFFF);   // ~0ull>>35
+  if tail <= 14 then begin
+    ax  := t32.u and $7FFFFFFF;
+    sgn := t32.u shr 31;
+    for jj := 0 to 7 do begin
+      if tanf_db_uarg[jj] = ax then begin
+        if sgn <> 0 then
+          Result := Single(-tanf_db_rh[jj] - tanf_db_rl[jj])
+        else
+          Result := Single( tanf_db_rh[jj] + tanf_db_rl[jj]);
+        Exit;
+      end;
+    end;
+  end;
+  Result := Single(r1);
 end;
 
 end.
