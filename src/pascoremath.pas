@@ -43,6 +43,8 @@ function pcr_atan2f(y, x: Single): Single;
 function pcr_atan2pif(y, x: Single): Single;
 function pcr_powf(x0, y0: Single): Single;
 function pcr_compoundf(x, n: Single): Single;
+function pcr_sinf(x: Single): Single;
+function pcr_cosf(x: Single): Single;
 
 implementation
 
@@ -5321,5 +5323,459 @@ begin
   Result := cf_accurate_path(x, n, exact_cf, flag_cf);
 end;
 
+
+// ---------------------------------------------------------------------------
+// pcr_sinf / pcr_cosf  (ported from CORE-MATH sinf.c / cosf.c)
+// ---------------------------------------------------------------------------
+
+// ---- shared polynomial coefficients (same in sinf.c and cosf.c) -----------
+const
+  sincos_a: array[0..3] of Double = (
+     0.19634954084936204,     // 0x1.921fb54442d17p-3
+    -0.0012616486279372187,   // -0x1.4abbce6256a39p-10
+     2.432025854080733e-06,   // 0x1.466bc5a518c16p-19
+    -2.2318367225754577e-09   // -0x1.32bdc61074ff6p-29
+  );
+  sincos_b: array[0..3] of Double = (
+     0.019276571095877645,    // 0x1.3bd3cc9be45dcp-6
+    -6.193103220211784e-05,   // -0x1.03c1f081b0833p-14
+     7.958785981094399e-08,   // 0x1.55d3c6fc9ac1fp-24
+    -5.4777514393633976e-11   // -0x1.e1d3ff281b40dp-35
+  );
+  // sinf tb[] = sin(i*pi/16), i=0..31  (one full period)
+  sinf_tb: array[0..31] of Double = (
+     0.0,                     // sin(0)
+     0.19509032201612828,     // sin(pi/16)
+     0.3826834323650898,
+     0.5555702330196022,
+     0.7071067811865476,
+     0.8314696123025452,
+     0.9238795325112867,
+     0.9807852804032304,
+     1.0,
+     0.9807852804032304,
+     0.9238795325112867,
+     0.8314696123025452,
+     0.7071067811865476,
+     0.5555702330196022,
+     0.3826834323650898,
+     0.19509032201612828,
+     0.0,
+    -0.19509032201612828,
+    -0.3826834323650898,
+    -0.5555702330196022,
+    -0.7071067811865476,
+    -0.8314696123025452,
+    -0.9238795325112867,
+    -0.9807852804032304,
+    -1.0,
+    -0.9807852804032304,
+    -0.9238795325112867,
+    -0.8314696123025452,
+    -0.7071067811865476,
+    -0.5555702330196022,
+    -0.3826834323650898,
+    -0.19509032201612828
+  );
+  // cosf tb[] = cos(i*pi/16), i=0..31
+  cosf_tb: array[0..31] of Double = (
+     1.0,                     // cos(0)
+     0.9807852804032304,      // cos(pi/16)
+     0.9238795325112867,
+     0.8314696123025452,
+     0.7071067811865476,
+     0.5555702330196022,
+     0.3826834323650898,
+     0.19509032201612828,
+     0.0,
+    -0.19509032201612828,
+    -0.3826834323650898,
+    -0.5555702330196022,
+    -0.7071067811865476,
+    -0.8314696123025452,
+    -0.9238795325112867,
+    -0.9807852804032304,
+    -1.0,
+    -0.9807852804032304,
+    -0.9238795325112867,
+    -0.8314696123025452,
+    -0.7071067811865476,
+    -0.5555702330196022,
+    -0.3826834323650898,
+    -0.19509032201612828,
+     0.0,
+     0.19509032201612828,
+     0.3826834323650898,
+     0.5555702330196022,
+     0.7071067811865476,
+     0.8314696123025452,
+     0.9238795325112867,
+     0.9807852804032304
+  );
+  // 2/pi in fixed-point, little-endian 64-bit limbs
+  sincos_ipi: array[0..3] of UInt64 = (
+    UInt64($FE5163ABDEBBC562),
+    UInt64($DB6295993C439041),
+    UInt64($FC2757D1F534DDC0),
+    UInt64($A2F9836E4E441529)
+  );
+
+// ---- rbig: range-reduction for large arguments (shared sinf/cosf) ---------
+// Maps x = 2^(e-127) * m  into  result in [-0.5, 0.5] scaled by pi/2,
+// and sets *q to the octant index.
+function sincos_rbig(u: LongWord; q: PInteger): Double;
+var
+  e_exp, k, s, i_val, sgn: Integer;
+  m, p3h, p3l, p2l, p1l: UInt64;
+  p0, p1, p2, p3: TUInt128;
+  a_val: Int64;
+  sm: Int64;
+begin
+  e_exp := Integer((u shr 23) and $FF);
+  m := UInt64((u and $007FFFFF) or $800000);  // ~0u>>9 = $007FFFFF, 1<<23 = $800000
+  p0 := MulWide(m, sincos_ipi[0]);
+  p1 := MulWide(m, sincos_ipi[1]); p1 := p1 + p0.hi;
+  p2 := MulWide(m, sincos_ipi[2]); p2 := p2 + p1.hi;
+  p3 := MulWide(m, sincos_ipi[3]); p3 := p3 + p2.hi;
+  p3h := p3.hi;
+  p3l := p3.lo;
+  p2l := p2.lo;
+  p1l := p1.lo;
+  k := e_exp - 124;
+  s := k - 23;
+  if s < 64 then begin
+    i_val := Integer((p3h shl s) or (p3l shr (64 - s)));
+    a_val := Int64((p3l shl s) or (p2l shr (64 - s)));
+  end else if s = 64 then begin
+    i_val := Integer(p3l);
+    a_val := Int64(p2l);
+  end else begin  // s > 64
+    i_val := Integer((p3l shl (s - 64)) or (p2l shr (128 - s)));
+    a_val := Int64((p2l shl (s - 64)) or (p1l shr (128 - s)));
+  end;
+  sgn := sar_i32(Integer(u), 31);   // 0 if positive, -1 if negative
+  sm  := sar_i64(a_val, 63);        // sign extension of a
+  i_val := i_val - Integer(sm);
+  Result := Double(a_val xor Int64(sgn)) * 5.421010862427522e-20;  // *2^-64
+  i_val := (i_val xor sgn) - sgn;
+  q^ := i_val;
+end;
+
+// ---- rltl0: range-reduction for medium arguments (double input) -----------
+function sincos_rltl0(x: Double; q: PInteger): Double;
+var
+  idh, id_d: Double;
+  Q_r: Tb64u64;
+begin
+  idh  := 5.092958178940651 * x;   // 0x1.45f306dc9c883p+2
+  id_d := pcr_roundeven(idh);
+  Q_r.f := 6755399441055744.0 + id_d;  // 0x1.8p52
+  q^ := Integer(LongWord(Q_r.u));
+  Result := idh - id_d;
+end;
+
+// ---- rltl: range-reduction for medium arguments (float input) -------------
+function sincos_rltl(z: Single; q: PInteger): Double;
+var
+  x, idl, idh, id_d: Double;
+  Q_r: Tb64u64;
+begin
+  x    := Double(z);
+  idl  := -3.1558305786379073e-09 * x;  // -0x1.b1bbead603d8bp-29
+  idh  :=  5.092958182096481 * x;        // 0x1.45f306ep+2
+  id_d := pcr_roundeven(idh);
+  Q_r.f := 6755399441055744.0 + id_d;   // 0x1.8p52
+  q^ := Integer(LongWord(Q_r.u));
+  Result := (idh - id_d) + idl;
+end;
+
+// ---- sinf helpers ----------------------------------------------------------
+
+// copysign(1.0f, x) * rh + copysign(1.0f, x) * rl
+function sinf_add_sign(x, rh, rl: Single): Single; inline;
+var
+  t32: Tb32u32;
+  sgn: Single;
+begin
+  t32.f := x;
+  if (t32.u shr 31) = 0 then sgn := 1.0 else sgn := -1.0;
+  Result := sgn * rh + sgn * rl;
+end;
+
+// sinf database lookup for hard cases
+function sinf_db(x: Single; r: Double): Single;
+const
+  n = 4;
+  // absolute-value bit patterns of the argument
+  db_uarg: array[0..n-1] of LongWord = (
+    $46199998,  // |0x1.33333p+13|
+    $3F3ADC51,  // |0x1.75b8a2p-1|
+    $3FA7832A,  // |0x1.4f0654p+0|
+    $4116CBE4   // |0x1.2d97c8p+3|
+  );
+  // rh bit patterns
+  db_urh: array[0..n-1] of LongWord = (
+    $BEB1FA5D,  // -0x1.63f4bap-2
+    $3F2AB445,  // 0x1.55688ap-1
+    $3F7741B6,  // 0x1.ee836cp-1
+    $B2CCDE2D   // -0x1.99bc5ap-26
+  );
+  // rl bit patterns
+  db_url: array[0..n-1] of LongWord = (
+    $B2000000,  // -0x1p-27
+    $B2800000,  // -0x1p-26
+    $B2800000,  // -0x1p-26
+    $A6000000   // -0x1p-51
+  );
+var
+  t32, trh, trl: Tb32u32;
+  ax: LongWord;
+  i: Integer;
+begin
+  t32.f := x;
+  ax := t32.u and $7FFFFFFF;
+  for i := 0 to n - 1 do begin
+    if db_uarg[i] = ax then begin
+      trh.u := db_urh[i];
+      trl.u := db_url[i];
+      Result := sinf_add_sign(x, trh.f, trl.f);
+      Exit;
+    end;
+  end;
+  Result := Single(r);
+end;
+
+// as_sinf_big: handles |x| > 2^26
+function sinf_big(x: Single): Single;
+var
+  t32: Tb32u32;
+  ax: LongWord;
+  ia: Integer;
+  z_r, z2, z4, aa, bb, s0, c0, r_val: Double;
+  t_nan: Tb32u32;
+begin
+  t32.f := x;
+  ax := t32.u shl 1;
+  if ax >= $FF000000 then begin    // nan or +-inf
+    if (ax shl 8) <> 0 then begin  // nan: propagate
+      Result := x + x;
+      Exit;
+    end;
+    // infinity: return NaN
+    t_nan.u := $7FC00000;
+    Result := t_nan.f;
+    Exit;
+  end;
+  z_r := sincos_rbig(t32.u, @ia);
+  z2  := z_r * z_r;
+  z4  := z2 * z2;
+  aa  := (sincos_a[0] + z2 * sincos_a[1]) + z4 * (sincos_a[2] + z2 * sincos_a[3]);
+  bb  := (sincos_b[0] + z2 * sincos_b[1]) + z4 * (sincos_b[2] + z2 * sincos_b[3]);
+  s0  := sinf_tb[ia and 31];
+  c0  := sinf_tb[(ia + 8) and 31];
+  r_val := s0 + z_r * (aa * c0 - bb * (z_r * s0));
+  Result := Single(r_val);
+end;
+
+// ---- cosf helpers ----------------------------------------------------------
+
+// cosf database lookup for hard cases
+function cosf_db(x: Single; r: Double): Single;
+const
+  n = 5;
+  db_uarg: array[0..n-1] of LongWord = (
+    $4096CBE4,  // |0x1.2d97c8p+2|
+    $5922AA80,  // |0x1.4555p+51|
+    $5AA4542C,  // |0x1.48a858p+54|
+    $5F18B878,  // |0x1.3170fp+63|
+    $6115CB11   // |0x1.2b9622p+67|
+  );
+  db_urh: array[0..n-1] of LongWord = (
+    $324CDE2E,  // 0x1.99bc5cp-27
+    $3F08AEBF,  // 0x1.115d7ep-1
+    $3EFA40A4,  // 0x1.f48148p-2
+    $3F7F14BB,  // 0x1.fe2976p-1
+    $3F78142F   // 0x1.f0285ep-1
+  );
+  db_url: array[0..n-1] of LongWord = (
+    $A5800000,  // -0x1p-52
+    $B2800000,  // -0x1p-26
+    $32000000,  //  0x1p-27
+    $32800000,  //  0x1p-26
+    $B2800000   // -0x1p-26
+  );
+var
+  t32, trh, trl: Tb32u32;
+  ax: LongWord;
+  i: Integer;
+begin
+  t32.f := x;
+  ax := t32.u and $7FFFFFFF;
+  for i := 0 to n - 1 do begin
+    if db_uarg[i] = ax then begin
+      trh.u := db_urh[i];
+      trl.u := db_url[i];
+      Result := trh.f + trl.f;
+      Exit;
+    end;
+  end;
+  Result := Single(r);
+end;
+
+// as_cosf_big: handles |x| > 2^26
+function cosf_big(x: Single): Single;
+var
+  t32: Tb32u32;
+  t64: Tb64u64;
+  ax: LongWord;
+  ia: Integer;
+  z_r, z2, z4, aa, bb, s0, c0, r_val: Double;
+  tail: UInt64;
+  t_nan: Tb32u32;
+begin
+  t32.f := x;
+  ax := t32.u shl 1;
+  if ax >= $FF000000 then begin    // nan or +-inf
+    if (ax shl 8) <> 0 then begin  // nan: propagate
+      Result := x + x;
+      Exit;
+    end;
+    // infinity: return NaN
+    t_nan.u := $7FC00000;
+    Result := t_nan.f;
+    Exit;
+  end;
+  z_r := sincos_rbig(t32.u, @ia);
+  z2  := z_r * z_r;
+  z4  := z2 * z2;
+  aa  := (sincos_a[0] + z2 * sincos_a[1]) + z4 * (sincos_a[2] + z2 * sincos_a[3]);
+  bb  := (sincos_b[0] + z2 * sincos_b[1]) + z4 * (sincos_b[2] + z2 * sincos_b[3]);
+  s0  := cosf_tb[(ia + 8) and 31];   // = -sin(ia*pi/16)
+  c0  := cosf_tb[ia and 31];          // = cos(ia*pi/16)
+  r_val := c0 + z_r * (aa * s0 - bb * (z_r * c0));
+  // tail check for hard cases
+  t64.f := r_val;
+  tail := (t64.u + UInt64(6)) and ((not UInt64(0)) shr 36);  // 28-bit mask
+  if tail <= 12 then begin
+    Result := cosf_db(x, r_val);
+    Exit;
+  end;
+  Result := Single(r_val);
+end;
+
+// ---- main functions --------------------------------------------------------
+
+function pcr_sinf(x: Single): Single;
+var
+  t32: Tb32u32;
+  ax: LongWord;
+  ia: Integer;
+  z0_d, z_d: Double;
+  z2, z4, aa, bb, s0, c0: Double;
+  r_val: Double;
+begin
+  t32.f := x;
+  ax := t32.u shl 1;
+  z0_d := Double(x);
+  if (ax > $99000000) or (ax < $73000000) then begin
+    // |x| > 2^26 or |x| < 2^-12
+    if ax < $73000000 then begin
+      // |x| < 2^-12
+      if ax < $66000000 then begin
+        // |x| < 2^-25
+        if ax = 0 then begin
+          Result := x;
+          Exit;
+        end;
+        // fmaf(-x, |x|, x) via double: for tiny x, sin(x) rounds to x
+        Result := Single(Double(-x) * Abs(Double(x)) + Double(x));
+        Exit;
+      end;
+      // 2^-25 <= |x| < 2^-12: use cubic approximation
+      // -0x1.555556p-3f = -0.1666666716337204 (f32: $BE2AAAAB)
+      Result := (-0.1666666716337204 * x) * (x * x) + x;
+      Exit;
+    end;
+    Result := sinf_big(x);
+    Exit;
+  end;
+  if ax < $822D97C8 then begin
+    // medium range: use rltl0 (double-precision reduction)
+    if (ax = $7E75B8A2) or (ax = $7F4F0654) then begin
+      Result := sinf_db(x, 0.0);
+      Exit;
+    end;
+    z_d := sincos_rltl0(z0_d, @ia);
+  end else begin
+    // larger medium range: use rltl (float-based reduction)
+    if ax = $8C333330 then begin
+      Result := sinf_db(x, 0.0);
+      Exit;
+    end;
+    z_d := sincos_rltl(x, @ia);
+  end;
+  z2   := z_d * z_d;
+  z4   := z2 * z2;
+  aa   := (sincos_a[0] + z2 * sincos_a[1]) + z4 * (sincos_a[2] + z2 * sincos_a[3]);
+  bb   := (sincos_b[0] + z2 * sincos_b[1]) + z4 * (sincos_b[2] + z2 * sincos_b[3]);
+  s0   := sinf_tb[ia and 31];
+  c0   := sinf_tb[(ia + 8) and 31];
+  r_val := s0 + aa * (z_d * c0) - bb * (z2 * s0);
+  Result := Single(r_val);
+end;
+
+function pcr_cosf(x: Single): Single;
+var
+  t32: Tb32u32;
+  ax: LongWord;
+  ia: Integer;
+  z0_d, z_d: Double;
+  z2, z4, aa, bb, c0, s0: Double;
+  r_val: Double;
+begin
+  t32.f := x;
+  ax := t32.u shl 1;
+  z0_d := Double(x);
+  if (ax > $99000000) or (ax < $73000000) then begin
+    // |x| > 2^26 or |x| < 2^-12
+    if ax < $73000000 then begin
+      // |x| < 2^-12
+      if ax < $66000000 then begin
+        // |x| < 2^-25
+        if ax = 0 then begin
+          Result := 1.0;
+          Exit;
+        end;
+        // cos(x) = 1 - 2^-25 for tiny nonzero x (correctly rounded)
+        Result := 1.0 - 2.9802322387695312e-08;   // 1 - 0x1p-25f
+        Exit;
+      end;
+      // 2^-25 <= |x| < 2^-12: use quadratic approximation
+      Result := -0.5 * x * x + 1.0;
+      Exit;
+    end;
+    Result := cosf_big(x);
+    Exit;
+  end;
+  if ax < $82A41896 then begin
+    // medium range: use rltl0
+    if ax = $812D97C8 then begin
+      Result := cosf_db(x, 0.0);
+      Exit;
+    end;
+    z_d := sincos_rltl0(z0_d, @ia);
+  end else begin
+    // larger medium range: use rltl
+    z_d := sincos_rltl(x, @ia);
+  end;
+  z2   := z_d * z_d;
+  z4   := z2 * z2;
+  aa   := (sincos_a[0] + z2 * sincos_a[1]) + z4 * (sincos_a[2] + z2 * sincos_a[3]);
+  bb   := (sincos_b[0] + z2 * sincos_b[1]) + z4 * (sincos_b[2] + z2 * sincos_b[3]);
+  c0   := cosf_tb[ia and 31];
+  s0   := cosf_tb[(ia + 8) and 31];   // = -sin(ia*pi/16)
+  r_val := c0 + aa * (z_d * s0) - bb * (z2 * c0);
+  Result := Single(r_val);
+end;
 
 end.
