@@ -485,8 +485,6 @@ begin
     nz := 24 - Integer(pcr_bsr32(au));  // = clz(au) - 7
     au := au shl nz;
     if nz > 1 then e := e - LongWord(nz - 1) else e := e;
-    // recompute e from au after shift (au is now a 25-bit value for subnormals)
-    e := au shr 24;
   end;
   mant := au and $FFFFFF;
   cvt1.u := (UInt64(mant) shl 28) or (UInt64($3FF) shl 52);
@@ -1176,7 +1174,7 @@ const
     0.551724137738347, 0.5470085479319096, 0.5423728805035353, 0.5378151256591082,
     0.533333333209157, 0.5289256200194359, 0.5245901644229889, 0.5203252024948597,
     0.5161290317773819, 0.5120000001043081, 0.5079365074634552, 0.5039370078593493,
-    0.3125
+    0.5
   );
   tl: array[0..64] of Double = (
     -3.5e-14, 0.01550418560460768, 0.030771659598041262, 0.04580953591484388,
@@ -1328,23 +1326,28 @@ begin
   if (ux >= $86000000) or (ux < $65000000) then
   begin
     if ux < $65000000 then begin Result := 1.0 + x; Exit; end; // |x| < 0x1p-26
-    // as_special
-    if ux >= $FF000000 then // inf or nan
+    // x in [-128, -149) falls through to main computation (produces subnormal result)
+    if not ((t.u >= $C3000000) and (t.u < $C3150000)) then
     begin
-      if ux > $FF000000 then begin Result := x + x; Exit; end; // nan
-      if t.u shr 31 <> 0 then begin Result := 0.0; Exit; end; // -inf -> 0
-      Result := x; Exit; // +inf
+      // as_special
+      if ux >= $FF000000 then // inf or nan
+      begin
+        if ux > $FF000000 then begin Result := x + x; Exit; end; // nan
+        if t.u shr 31 <> 0 then begin Result := 0.0; Exit; end; // -inf -> 0
+        Result := x; Exit; // +inf
+      end;
+      if t.u >= $C3150000 then // x <= -149
+      begin
+        // underflow path
+        xd := x;
+        h := 1.401298464324817e-45 + (xd + 149.0) * 7.006492321624085e-46; // 0x1p-149 + (z+149)*0x1p-150
+        h := pcr_fmax(h, 3.503246160812043e-46); // 0x1p-151
+        Result := Single(h); Exit;
+      end;
+      // x >= 128 -> overflow
+      Result := 1.7014118346046923e+38 * 1.7014118346046923e+38; Exit; // 0x1p127 * 0x1p127 = overflow
     end;
-    if t.u >= $C3150000 then // x < -149
-    begin
-      // underflow path
-      xd := x;
-      h := 1.401298464324817e-45 + (xd + 149.0) * 7.006492321624085e-46; // 0x1p-149 + (z+149)*0x1p-150
-      h := pcr_fmax(h, 3.503246160812043e-46); // 0x1p-151
-      Result := Single(h); Exit;
-    end;
-    // x >= 128 -> overflow
-    Result := 1.7014118346046923e+38 * 1.7014118346046923e+38; Exit; // 0x1p127 * 0x1p127 = overflow
+    // x in [-128, -149): fall through to main computation
   end;
   offd := 105553116266496.0; // 0x1.8p46
   xd := x;
@@ -1844,7 +1847,7 @@ const
     0.551724137738347, 0.5470085479319096, 0.5423728805035353, 0.5378151256591082,
     0.533333333209157, 0.5289256200194359, 0.5245901644229889, 0.5203252024948597,
     0.5161290317773819, 0.5120000001043081, 0.5079365074634552, 0.5039370078593493,
-    0.3125
+    0.5
   );
   tl10: array[0..64] of Double = (
     -1.5987211554602254e-14, 0.006733382254484161, 0.01336396196243377, 0.019894828666364744,
@@ -2076,7 +2079,7 @@ begin
   axd := ax_f;
   x2 := axd * axd;
   jt.f := x2 * iln2_e - 1024.00390625; // 0x1.00004p+10
-  j_idx := (Int64(Int64(jt.u shl 12) shr 48)); // sign-extend 16-bit field
+  j_idx := sar_i64(Int64(jt.u shl 12), 48); // sign-extend 16-bit field
   S.u := UInt64(sar_i64(j_idx, 7) + (Int64($3FF) or Int64(sgn shl 11))) shl 52;
   d := (x2 + ln2h_e * j_idx) + ln2l_e * j_idx;
   d2 := d * d;
@@ -2578,7 +2581,7 @@ begin
   e_a := ax_a shr 24;
   md_a := ((ux_a shl 8) or ($80000000)) shr (126 - e_a);
   mn_a := UInt32(-Int32(md_a));
-  nz_a := 32 - (31 - pcr_bsr32(mn_a));  // = clz(mn)+1
+  nz_a := 32 - pcr_bsr32(mn_a);  // = clz(mn)+1
   mn_a := mn_a shl nz_a;
   jn_a := Integer(mn_a shr 26);
   jd_a := Integer(md_a shr 26);
@@ -2795,7 +2798,7 @@ begin
     pcr_feraiseexcept_invalid;
     tl.u := $FFC00000; Result := tl.f; Exit;
   end;
-  if ux_l >= $7F800000 then begin
+  if Int32(ux_l) >= Int32($7F800000) then begin  // +inf or +nan (signed compare, excludes negatives)
     if ux_l > $7F800000 then begin Result := x + x; Exit; end;
     Result := x; Exit;
   end;
@@ -3058,9 +3061,11 @@ begin
     Exit;
   end
   else begin
-    // as_special: +inf → +inf, nan → propagate
-    if ux_ac = $7F800000 then begin Result := x; Exit; end;
-    Result := x + x; // nan
+    // as_special: +inf → +inf, nan → propagate, negative finite → FE_INVALID
+    if ux_ac = $7F800000 then begin Result := x; Exit; end;  // +inf
+    if (ux_ac shl 1) > $FF000000 then begin Result := x + x; Exit; end;  // nan
+    pcr_feraiseexcept_invalid;
+    Result := pcr_nanf(nil);
   end;
 end;
 

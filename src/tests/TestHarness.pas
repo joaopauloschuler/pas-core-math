@@ -13,6 +13,7 @@ type
 var
   TotalPass, TotalFail: Integer;
   Stride: Cardinal;
+  DiagMax: Integer;  // max mismatches to print (0 = none)
 
 procedure ReportResult(const FuncName: string; Tested, Mismatches: Int64);
 begin
@@ -49,19 +50,29 @@ end;
 procedure TestUni(const name: string; pfC: TUniFuncC; pfP: TUniFuncP);
 var
   u: Cardinal;
-  v: Tb32u32;
+  v, rc, rp: Tb32u32;
   cr, pr: Single;
   mismatches, tested: Int64;
+  diagShown: Integer;
 begin
   mismatches := 0;
   tested := 0;
+  diagShown := 0;
   u := 0;
   repeat
     v.u := u;
     cr := pfC(v.f);
     pr := pfP(v.f);
     if not BitsMatch(cr, pr) then
+    begin
       Inc(mismatches);
+      if diagShown < DiagMax then
+      begin
+        rc.f := cr; rp.f := pr;
+        WriteLn(Format('  [%s] input=$%8.8x  C=$%8.8x  P=$%8.8x', [name, u, rc.u, rp.u]));
+        Inc(diagShown);
+      end;
+    end;
     Inc(tested);
     if u > High(Cardinal) - Stride then Break;
     Inc(u, Stride);
@@ -146,6 +157,7 @@ var
   pct: Integer;
 begin
   Result := 1; // default: 100% => stride 1
+  DiagMax := 0;
   i := 1;
   while i <= ParamCount do
   begin
@@ -158,8 +170,9 @@ begin
         Halt(1);
       end;
       Result := 100 div pct;
-      Exit;
-    end;
+    end
+    else if (ParamStr(i) = '--diag') and (i < ParamCount) then
+      DiagMax := StrToIntDef(ParamStr(i + 1), 3);
     Inc(i);
   end;
 end;
