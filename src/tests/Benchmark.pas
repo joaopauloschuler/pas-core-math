@@ -1,3 +1,9 @@
+// pas-core-math - Pascal port of CORE-MATH
+// https://github.com/joaopauloschuler/pas-core-math
+//                                                                                                                                                                                                      
+// Copyright (c) 2024-2026 Joao Paulo Schwarz Schuler and contributors.
+// Refer to the git commit history for individual authorship.
+// SPDX-License-Identifier: MIT
 {$I ../pascoremath.inc}
 program Benchmark;
 
@@ -11,11 +17,13 @@ type
   TBivarFuncP = function(x, y: Single): Single;
 
 const
-  BENCH_N = 10000000;
-  STRIDE  = High(Cardinal) div BENCH_N;
+  BENCH_N        = 50000000;
+  STRIDE         = High(Cardinal) div BENCH_N;
+  TIE_THRESHOLD  = 0.05;
 
 var
   GlobalSink: LongWord = 0;
+  PWins, CWins, PTies: Integer;
 
 procedure BenchUni(const name: string; pfC: TUniFuncC; pfP: TUniFuncP);
 var
@@ -63,9 +71,14 @@ begin
 
   GlobalSink := GlobalSink xor cSink xor pSink;
 
-  WriteLn(Format('%-16s  C: %6.1f Mops/s  Pascal: %6.1f Mops/s  sink=%s',
+  if mopsP > mopsC * (1.0 + TIE_THRESHOLD) then Inc(PWins)
+  else if mopsC > mopsP * (1.0 + TIE_THRESHOLD) then Inc(CWins)
+  else Inc(PTies);
+  WriteLn(Format('%-16s  C: %6.1f Mops/s  Pascal: %6.1f Mops/s  sink=%s%s',
     [name, mopsC, mopsP,
-     IfThen(cSink = pSink, 'MATCH', 'MISMATCH')]));
+     IfThen(cSink = pSink, 'MATCH', 'MISMATCH'),
+     IfThen(mopsP > mopsC * (1.0 + TIE_THRESHOLD), '  FASTER! YAY!',
+       IfThen(mopsC <= mopsP * (1.0 + TIE_THRESHOLD), '  TIE', ''))]));
 end;
 
 procedure BenchBivar(const name: string; pfC: TBivarFuncC; pfP: TBivarFuncP);
@@ -120,9 +133,14 @@ begin
 
   GlobalSink := GlobalSink xor cSink xor pSink;
 
-  WriteLn(Format('%-16s  C: %6.1f Mops/s  Pascal: %6.1f Mops/s  sink=%s',
+  if mopsP > mopsC * (1.0 + TIE_THRESHOLD) then Inc(PWins)
+  else if mopsC > mopsP * (1.0 + TIE_THRESHOLD) then Inc(CWins)
+  else Inc(PTies);
+  WriteLn(Format('%-16s  C: %6.1f Mops/s  Pascal: %6.1f Mops/s  sink=%s%s',
     [name, mopsC, mopsP,
-     IfThen(cSink = pSink, 'MATCH', 'MISMATCH')]));
+     IfThen(cSink = pSink, 'MATCH', 'MISMATCH'),
+     IfThen(mopsP > mopsC * (1.0 + TIE_THRESHOLD), '  FASTER! YAY!',
+       IfThen(mopsC <= mopsP * (1.0 + TIE_THRESHOLD), '  TIE', ''))]));
 end;
 
 procedure BenchSinCos;
@@ -174,9 +192,14 @@ begin
 
   GlobalSink := GlobalSink xor cSink xor pSink;
 
-  WriteLn(Format('%-16s  C: %6.1f Mops/s  Pascal: %6.1f Mops/s  sink=%s',
+  if mopsP > mopsC * (1.0 + TIE_THRESHOLD) then Inc(PWins)
+  else if mopsC > mopsP * (1.0 + TIE_THRESHOLD) then Inc(CWins)
+  else Inc(PTies);
+  WriteLn(Format('%-16s  C: %6.1f Mops/s  Pascal: %6.1f Mops/s  sink=%s%s',
     ['sincosf', mopsC, mopsP,
-     IfThen(cSink = pSink, 'MATCH', 'MISMATCH')]));
+     IfThen(cSink = pSink, 'MATCH', 'MISMATCH'),
+     IfThen(mopsP > mopsC * (1.0 + TIE_THRESHOLD), '  FASTER! YAY!',
+       IfThen(mopsC <= mopsP * (1.0 + TIE_THRESHOLD), '  TIE', ''))]));
 end;
 
 // cdecl wrappers for bivariate C functions
@@ -247,5 +270,6 @@ begin
   BenchSinCos;
 
   WriteLn;
+  WriteLn(Format('Pascal won: %d  |  C won: %d  |  Ties (<%d%%): %d', [PWins, CWins, Round(TIE_THRESHOLD * 100), PTies]));
   WriteLn(Format('GlobalSink = %u (prevents dead-code elimination)', [GlobalSink]));
 end.

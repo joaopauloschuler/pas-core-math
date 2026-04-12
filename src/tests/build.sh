@@ -54,7 +54,10 @@ else
   echo "libcoremath.so already present, skipping C build."
 fi
 
-FPC_FLAGS="-O2 -Fi.. -Fu.. -FE$BIN_DIR -Fl$SRC_DIR"
+# ---- Clean compiled Pascal artifacts ----
+find "$SRC_DIR" -maxdepth 1 \( -name '*.ppu' -o -name '*.o' \) -delete
+
+FPC_FLAGS="-O3 -Fi.. -Fu.. -FE$BIN_DIR -Fl$SRC_DIR"
 
 # ---- Step 2: Compile TestHarness ----
 echo
@@ -68,9 +71,16 @@ echo "Compiling Benchmark.pas ..."
 fpc $FPC_FLAGS "$SCRIPT_DIR/Benchmark.pas"
 echo "Benchmark compiled -> $BIN_DIR/Benchmark"
 
+# ---- Step 4: Compile BenchmarkFPC ----
+echo
+echo "Compiling BenchmarkFPC.pas ..."
+fpc $FPC_FLAGS "$SCRIPT_DIR/BenchmarkFPC.pas"
+echo "BenchmarkFPC compiled -> $BIN_DIR/BenchmarkFPC"
+
 echo
 echo "Build complete."
 echo
 echo "Run tests with:"
 echo "  LD_LIBRARY_PATH=$SRC_DIR $BIN_DIR/TestHarness"
 echo "  LD_LIBRARY_PATH=$SRC_DIR $BIN_DIR/Benchmark"
+echo "  LD_LIBRARY_PATH=$SRC_DIR $BIN_DIR/BenchmarkFPC"

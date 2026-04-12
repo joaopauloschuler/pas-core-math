@@ -1,3 +1,9 @@
+// pas-core-math - Pascal port of CORE-MATH
+// https://github.com/joaopauloschuler/pas-core-math
+//                                                                                                                                                                                                      
+// Copyright (c) 2024-2026 Joao Paulo Schwarz Schuler and contributors.
+// Refer to the git commit history for individual authorship.
+// SPDX-License-Identifier: MIT
 {$I pascoremath.inc}
 unit pascoremath;
 
@@ -5,48 +11,48 @@ interface
 
 uses Math, pascoremathtypes, pascoremathhelperfuncs;
 
-function pcr_rsqrtf(x: Single): Single;
-function pcr_tanhf(x: Single): Single;
-function pcr_atanpif(x: Single): Single;
-function pcr_cospif(x: Single): Single;
-function pcr_acosf(x: Single): Single;
-function pcr_cbrtf(x: Single): Single;
-function pcr_sinpif(x: Single): Single;
-function pcr_atanf(x: Single): Single;
-function pcr_asinf(x: Single): Single;
-function pcr_acospif(x: Single): Single;
-function pcr_log2f(x: Single): Single;
-function pcr_asinpif(x: Single): Single;
-function pcr_tanpif(x: Single): Single;
-function pcr_coshf(x: Single): Single;
-function pcr_logf(x: Single): Single;
-function pcr_exp2f(x: Single): Single;
-function pcr_log1pf(x: Single): Single;
-function pcr_exp2m1f(x: Single): Single;
-function pcr_expm1f(x: Single): Single;
-function pcr_exp10f(x: Single): Single;
-function pcr_log10f(x: Single): Single;
-function pcr_erfcf(x: Single): Single;
-function pcr_log2p1f(x: Single): Single;
-function pcr_erff(x: Single): Single;
-function pcr_sinhf(x: Single): Single;
-function pcr_expf(x: Single): Single;
-function pcr_atanhf(x: Single): Single;
-function pcr_exp10m1f(x: Single): Single;
-function pcr_log10p1f(x: Single): Single;
-function pcr_asinhf(x: Single): Single;
-function pcr_acoshf(x: Single): Single;
-function pcr_tgammaf(x: Single): Single;
-function pcr_lgammaf(x: Single): Single;
-function pcr_hypotf(x, y: Single): Single;
-function pcr_atan2f(y, x: Single): Single;
-function pcr_atan2pif(y, x: Single): Single;
-function pcr_powf(x0, y0: Single): Single;
-function pcr_compoundf(x, n: Single): Single;
-function pcr_sinf(x: Single): Single;
-function pcr_cosf(x: Single): Single;
-procedure pcr_sincosf(x: Single; out s, c: Single);
-function pcr_tanf(x: Single): Single;
+function pcr_rsqrtf(x: Single): Single; inline;
+function pcr_tanhf(x: Single): Single; inline;
+function pcr_atanpif(x: Single): Single; inline;
+function pcr_cospif(x: Single): Single; inline;
+function pcr_acosf(x: Single): Single; inline;
+function pcr_cbrtf(x: Single): Single; inline;
+function pcr_sinpif(x: Single): Single; inline;
+function pcr_atanf(x: Single): Single; inline;
+function pcr_asinf(x: Single): Single; inline;
+function pcr_acospif(x: Single): Single; inline;
+function pcr_log2f(x: Single): Single; inline;
+function pcr_asinpif(x: Single): Single; inline;
+function pcr_tanpif(x: Single): Single; inline;
+function pcr_coshf(x: Single): Single; inline;
+function pcr_logf(x: Single): Single; inline;
+function pcr_exp2f(x: Single): Single; inline;
+function pcr_log1pf(x: Single): Single; inline;
+function pcr_exp2m1f(x: Single): Single; inline;
+function pcr_expm1f(x: Single): Single; inline;
+function pcr_exp10f(x: Single): Single; inline;
+function pcr_log10f(x: Single): Single; inline;
+function pcr_erfcf(x: Single): Single; inline;
+function pcr_log2p1f(x: Single): Single; inline;
+function pcr_erff(x: Single): Single; inline;
+function pcr_sinhf(x: Single): Single; inline;
+function pcr_expf(x: Single): Single; inline;
+function pcr_atanhf(x: Single): Single; inline;
+function pcr_exp10m1f(x: Single): Single; inline;
+function pcr_log10p1f(x: Single): Single; inline;
+function pcr_asinhf(x: Single): Single; inline;
+function pcr_acoshf(x: Single): Single; inline;
+function pcr_tgammaf(x: Single): Single; inline;
+function pcr_lgammaf(x: Single): Single; inline;
+function pcr_hypotf(x, y: Single): Single; inline;
+function pcr_atan2f(y, x: Single): Single; inline;
+function pcr_atan2pif(y, x: Single): Single; inline;
+function pcr_powf(x0, y0: Single): Single; inline;
+function pcr_compoundf(x, n: Single): Single; inline;
+function pcr_sinf(x: Single): Single; inline;
+function pcr_cosf(x: Single): Single; inline;
+procedure pcr_sincosf(x: Single; out s, c: Single); inline;
+function pcr_tanf(x: Single): Single; inline;
 
 implementation
 
@@ -1025,9 +1031,25 @@ begin
     Exit;
   end;
   x4 := 4.0 * x;
+  {$IFDEF CPUX86_64}
+  asm
+    movss xmm0, x4
+    roundss xmm0, xmm0, 12
+    movss nx4, xmm0
+  end;
+  {$ELSE}
   nx4 := pcr_roundevenf(x4);
+  {$ENDIF}
   dx4 := x4 - nx4;
+  {$IFDEF CPUX86_64}
+  asm
+    movss xmm0, x
+    roundss xmm0, xmm0, 12
+    movss ni, xmm0
+  end;
+  {$ELSE}
   ni := pcr_roundevenf(x);
+  {$ENDIF}
   zf := x - ni;
   if dx4 = 0.0 then  // 4*x is integer
   begin
@@ -1121,7 +1143,15 @@ begin
     Exit;
   end;
   a_d := iln2 * z;
+  {$IFDEF CPUX86_64}
+  asm
+    movsd xmm0, a_d
+    roundsd xmm0, xmm0, 12
+    movsd ia, xmm0
+  end;
+  {$ELSE}
   ia := pcr_roundeven(a_d);
+  {$ENDIF}
   h := a_d - ia;
   h2 := h * h;
   ja.f := ia + 6755399441055744.0;  // ia + 0x1.8p52
@@ -1704,7 +1734,15 @@ begin
     Result := t.f * Single(zd); Exit;
   end;
   a := iln2 * zd;
+  {$IFDEF CPUX86_64}
+  asm
+    movsd xmm0, a
+    roundsd xmm0, xmm0, 12
+    movsd ia, xmm0
+  end;
+  {$ELSE}
   ia := pcr_roundeven(a);
+  {$ENDIF}
   h := a - ia;
   h2 := h * h;
   u.f := ia + big;
@@ -1809,7 +1847,15 @@ begin
     end;
   end;
   a := iln102 * zd;
+  {$IFDEF CPUX86_64}
+  asm
+    movsd xmm0, a
+    roundsd xmm0, xmm0, 12
+    movsd ia, xmm0
+  end;
+  {$ELSE}
   ia := pcr_roundeven(a);
+  {$ENDIF}
   h := a - ia;
   ja := Int64(Trunc(ia));
   sv.u := tb_e10[ja and $1F] + (UInt64(ja shr 5) shl 52);
@@ -2391,7 +2437,15 @@ begin
     Result := Single(zs + (z2_s*zs)*((cp_sinh[0] + z2_s*cp_sinh[1]) + z4_s*(cp_sinh[2] + z2_s*cp_sinh[3]))); Exit;
   end;
   a_s := 46.166241308446828 * zs;
+  {$IFDEF CPUX86_64}
+  asm
+    movsd xmm0, a_s
+    roundsd xmm0, xmm0, 12
+    movsd ia_s, xmm0
+  end;
+  {$ELSE}
   ia_s := pcr_roundeven(a_s);
+  {$ENDIF}
   h_s := a_s - ia_s;
   h2_s := h_s * h_s;
   ja_s.f := ia_s + 6755399441055744;
@@ -3071,16 +3125,6 @@ end;
 
 
 // ── lgammaf helpers ───────────────────────────────────────────────────────────
-function lgamma_as_r7(x: Double; const c: array of Double): Double;
-begin
-  Result := (((x-c[0])*(x-c[1]))*((x-c[2])*(x-c[3])))*(((x-c[4])*(x-c[5]))*((x-c[6])));
-end;
-
-function lgamma_as_r8(x: Double; const c: array of Double): Double;
-begin
-  Result := (((x-c[0])*(x-c[1]))*((x-c[2])*(x-c[3])))*(((x-c[4])*(x-c[5]))*((x-c[6])*(x-c[7])));
-end;
-
 function lgamma_as_sinpi(x0: Double): Double;
 const
   c_sp: array[0..7] of Double = (
@@ -3231,10 +3275,16 @@ begin
     z_tg := z_tg - 0.5 - step_tg * 0.5;
     w_tg := z_tg;
     j_tg := jm_tg - 1;
-    while j_tg > 0 do begin
+    // Pairwise: compute z1*z2 independently of w chain, halving sequential depth.
+    while j_tg >= 2 do begin
+      z_tg := z_tg - step_tg;
+      w_tg := w_tg * (z_tg * (z_tg - step_tg));  // z*next independent of prev w
+      z_tg := z_tg - step_tg;
+      Dec(j_tg, 2);
+    end;
+    if j_tg > 0 then begin
       z_tg := z_tg - step_tg;
       w_tg := w_tg * z_tg;
-      Dec(j_tg);
     end;
   end;
   if ii_tg <= -0.5 then w_tg := 1.0 / w_tg;
@@ -3353,8 +3403,12 @@ begin
   z_lg := ax_lg;
   s_lg := x;
   if ax_lg < 0.66015625 then begin        // |x| < 0x1.52p-1
-    f_lg := (c0_sm * s_lg) * lgamma_as_r8(s_lg, rn_sm)
-          / lgamma_as_r8(s_lg, rd_sm) - lgamma_as_ln(z_lg);
+    f_lg := (c0_sm * s_lg)
+          * (((s_lg-rn_sm[0])*(s_lg-rn_sm[1]))*((s_lg-rn_sm[2])*(s_lg-rn_sm[3])))
+          * (((s_lg-rn_sm[4])*(s_lg-rn_sm[5]))*((s_lg-rn_sm[6])*(s_lg-rn_sm[7])))
+          / ((((s_lg-rd_sm[0])*(s_lg-rd_sm[1]))*((s_lg-rd_sm[2])*(s_lg-rd_sm[3])))
+          *  (((s_lg-rd_sm[4])*(s_lg-rd_sm[5]))*((s_lg-rd_sm[6])*(s_lg-rd_sm[7]))))
+          - lgamma_as_ln(z_lg);
   end else begin
     if ax_lg > 3.373096466064453 then begin   // ax > 0x1.afc1ap+1
       if x >= 4.085003425410169e+36 then begin  // overflow threshold
@@ -3386,7 +3440,10 @@ begin
       end;
     end else begin                        // medium x: 0x1.52p-1 <= ax <= 0x1.afc1ap+1
       f_lg := (z_lg - 1.0) * (z_lg - 2.0) * c0_md
-            * lgamma_as_r7(z_lg, rn_md) / lgamma_as_r8(z_lg, rd_md);
+            * (((z_lg-rn_md[0])*(z_lg-rn_md[1]))*((z_lg-rn_md[2])*(z_lg-rn_md[3])))
+            * (((z_lg-rn_md[4])*(z_lg-rn_md[5]))*((z_lg-rn_md[6])))
+            / ((((z_lg-rd_md[0])*(z_lg-rd_md[1]))*((z_lg-rd_md[2])*(z_lg-rd_md[3])))
+            *  (((z_lg-rd_md[4])*(z_lg-rd_md[5]))*((z_lg-rd_md[6])*(z_lg-rd_md[7]))));
       if x < 0.0 then begin
         // Near gamma-zeros: use local Taylor expansion for accuracy
         if (t_lg.u < $40301B93) and (t_lg.u > $402F95C2) then begin
@@ -4119,7 +4176,15 @@ begin
   ey_a2 := Double(e_a2) * y_a2;
   eh_a2 := ey_a2 + zh_a2;
   el_a2 := ((ey_a2 - eh_a2) + zh_a2) + zl_a2;
+  {$IFDEF CPUX86_64}
+  asm
+    movsd xmm0, eh_a2
+    roundsd xmm0, xmm0, 12
+    movsd ee_a2, xmm0
+  end;
+  {$ELSE}
   ee_a2 := pcr_roundeven(eh_a2);
+  {$ENDIF}
   eh_a2 := eh_a2 - ee_a2;
   eh_a2 := polydd(eh_a2, el_a2, 18, ce_a2, el_a2);
   r_a2.u := UInt64(Int64($3FF) + Int64(Trunc(ee_a2))) shl 52;
@@ -4928,7 +4993,15 @@ var k_e1: Double;
     i_e1: Integer;
     lb_e1, rb_e1: Single;
 begin
+  {$IFDEF CPUX86_64}
+  asm
+    movsd xmm0, t
+    roundsd xmm0, xmm0, 12
+    movsd k_e1, xmm0
+  end;
+  {$ELSE}
   k_e1 := pcr_roundeven(t);
+  {$ENDIF}
   r_e1 := t - k_e1;
   v_e1.f := 3.015625 + r_e1;
   i_e1 := Integer(v_e1.u shr 46) - $10010;
@@ -5103,7 +5176,15 @@ begin
     Result := 1.0 + x;
     Exit;
   end;
+  {$IFDEF CPUX86_64}
+  asm
+    movsd xmm0, h
+    roundsd xmm0, xmm0, 12
+    movsd k_e22, xmm0
+  end;
+  {$ELSE}
   k_e22 := pcr_roundeven(h);
+  {$ENDIF}
   // if h+l is tiny, 2^(h+l) rounds to 1
   if (k_e22 = 0.0) and (pcr_fabs(h) <= 4.299566335638736e-08) then begin
     Result := Single(1.0 + h * 0.5);
@@ -5469,7 +5550,7 @@ begin
 end;
 
 // ---- rltl0: range-reduction for medium arguments (double input) -----------
-function sincos_rltl0(x: Double; q: PInteger): Double;
+function sincos_rltl0(x: Double; q: PInteger): Double; inline;
 const
   C_IDH: Double = 5.092958178940651;    // 0x1.45f306dc9c883p+2
   C_BIG: Double = 6755399441055744.0;   // 0x1.8p52
@@ -5485,7 +5566,7 @@ begin
 end;
 
 // ---- rltl: range-reduction for medium arguments (float input) -------------
-function sincos_rltl(z: Single; q: PInteger): Double;
+function sincos_rltl(z: Single; q: PInteger): Double; inline;
 const
   C_IDL: Double = -3.1558305786379073e-09;  // -0x1.b1bbead603d8bp-29
   C_IDH: Double =  5.092958182096481;        // 0x1.45f306ep+2
@@ -5852,7 +5933,7 @@ begin
 end;
 
 // tanf rltl: multiplies by 2/pi (different from sincos_rltl which uses 16/pi)
-function tanf_rltl(z: Single; q: PInteger): Double;
+function tanf_rltl(z: Single; q: PInteger): Double; inline;
 const
   C_IDL: Double = -3.944788223297384e-10;  // -0x1.b1bbead603d8bp-32
   C_IDH: Double =  0.6366197727620602;      // 0x1.45f306ep-1

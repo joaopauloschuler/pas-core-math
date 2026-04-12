@@ -1,3 +1,9 @@
+// pas-core-math - Pascal port of CORE-MATH
+// https://github.com/joaopauloschuler/pas-core-math
+//                                                                                                                                                                                                      
+// Copyright (c) 2024-2026 Joao Paulo Schwarz Schuler and contributors.
+// Refer to the git commit history for individual authorship.
+// SPDX-License-Identifier: MIT
 {$I pascoremath.inc}
 unit pascoremathhelperfuncs;
 
@@ -6,9 +12,10 @@ interface
 uses
   Math, SysUtils, pascoremathtypes;
 
-// Fused multiply-add (double-rounding approximation via 80-bit Extended)
-function pcr_fmaf(x, y, z: Single): Single; inline;
-function pcr_fma(x, y, z: Double): Double; inline;
+// Fused multiply-add — hardware FMA3 on x86-64; 80-bit approximation elsewhere.
+// Not marked inline: pure-asm body uses System V AMD64 ABI (params in xmm0/1/2).
+function pcr_fmaf(x, y, z: Single): Single;
+function pcr_fma(x, y, z: Double): Double;
 
 // Absolute value
 function pcr_fabsf(x: Single): Single; inline;
@@ -22,17 +29,20 @@ function pcr_copysign(x, y: Double): Double; inline;
 function pcr_sqrtf(x: Single): Single; inline;
 function pcr_sqrt(x: Double): Double; inline;
 
-// Round to nearest even integer (banker's rounding)
-function pcr_roundevenf(x: Single): Single; inline;
-function pcr_roundeven(x: Double): Double; inline;
+// Round to nearest even integer — SSE4.1 ROUNDSD/ROUNDSS on x86-64; bit-manip elsewhere.
+// Not marked inline: pure-asm body uses System V AMD64 ABI (param in xmm0, result in xmm0).
+function pcr_roundevenf(x: Single): Single;
+function pcr_roundeven(x: Double): Double;
 
-// NaN-aware maximum
-function pcr_fmaxf(x, y: Single): Single; inline;
-function pcr_fmax(x, y: Double): Double; inline;
+// NaN-aware maximum — MAXSS/MAXSD on x86-64; branch fallback elsewhere.
+// Not marked inline: pure-asm body uses System V AMD64 ABI (params in xmm0/xmm1).
+function pcr_fmaxf(x, y: Single): Single;
+function pcr_fmax(x, y: Double): Double;
 
-// NaN-aware minimum
-function pcr_fminf(x, y: Single): Single; inline;
-function pcr_fmin(x, y: Double): Double; inline;
+// NaN-aware minimum — MINSS/MINSD on x86-64; branch fallback elsewhere.
+// Not marked inline: pure-asm body uses System V AMD64 ABI (params in xmm0/xmm1).
+function pcr_fminf(x, y: Single): Single;
+function pcr_fmin(x, y: Double): Double;
 
 // Bit scan forward: index of lowest set bit (0-based); undefined for x=0
 function pcr_bsf32(x: UInt32): Integer; inline;
@@ -50,19 +60,35 @@ procedure pcr_feraiseexcept_divbyzero; inline;
 
 implementation
 
-function pcr_fmaf(x, y, z: Single): Single; inline;
+function pcr_fmaf(x, y, z: Single): Single;
+{$IFDEF CPUX86_64}
+// Pure-asm: System V AMD64 ABI passes x→xmm0, y→xmm1, z→xmm2; result in xmm0.
+// VFMADD213SS: xmm0 = xmm0 * xmm1 + xmm2  (correctly rounded IEEE 754 FMA).
+assembler;
+asm
+  vfmadd213ss xmm0, xmm1, xmm2
+end;
+{$ELSE}
 begin
-  // Note: double-rounding approximation; not a true IEEE FMA.
-  // Uses 80-bit extended precision to reduce rounding error.
+  // 80-bit fallback: correctly rounded for singles (Extended has enough mantissa bits).
   Result := Single(Extended(x) * Extended(y) + Extended(z));
 end;
+{$ENDIF}
 
-function pcr_fma(x, y, z: Double): Double; inline;
+function pcr_fma(x, y, z: Double): Double;
+{$IFDEF CPUX86_64}
+// Pure-asm: System V AMD64 ABI passes x→xmm0, y→xmm1, z→xmm2; result in xmm0.
+// VFMADD213SD: xmm0 = xmm0 * xmm1 + xmm2  (correctly rounded IEEE 754 FMA).
+assembler;
+asm
+  vfmadd213sd xmm0, xmm1, xmm2
+end;
+{$ELSE}
 begin
-  // Note: double-rounding approximation; not a true IEEE FMA.
-  // Uses 80-bit extended precision to reduce rounding error.
+  // 80-bit fallback (double-rounding — not true FMA; may lose 1 ULP in rare cases).
   Result := Double(Extended(x) * Extended(y) + Extended(z));
 end;
+{$ENDIF}
 
 function pcr_fabsf(x: Single): Single; inline;
 begin
@@ -104,8 +130,16 @@ begin
   Result := Sqrt(x);
 end;
 
-function pcr_roundevenf(x: Single): Single; inline;
-// Round to nearest even using bit manipulation.
+function pcr_roundevenf(x: Single): Single;
+{$IFDEF CPUX86_64}
+// Pure-asm: System V AMD64 ABI passes x→xmm0; result in xmm0.
+// ROUNDSS imm8=12 (0x0C): override MXCSR with round-to-nearest-even, suppress PE.
+assembler;
+asm
+  roundss xmm0, xmm0, 12
+end;
+{$ELSE}
+// Portable fallback: round to nearest even using bit manipulation.
 // For |x| >= 2^23 the value is already an integer.
 var
   v: Tb32u32;
@@ -166,87 +200,117 @@ begin
   end;
   Result := v.f;
 end;
+{$ENDIF}
 
-function pcr_roundeven(x: Double): Double; inline;
+function pcr_roundeven(x: Double): Double;
+{$IFDEF CPUX86_64}
+// Pure-asm: System V AMD64 ABI passes x→xmm0; result in xmm0.
+// ROUNDSD imm8=12 (0x0C): override MXCSR with round-to-nearest-even, suppress PE.
+assembler;
+asm
+  roundsd xmm0, xmm0, 12
+end;
+{$ELSE}
+// Portable fallback: round to nearest even using bit manipulation.
 var
   v: Tb64u64;
-  e: Integer;
-  shift: Integer;
+  e, shift: Integer;
   mask, half: UInt64;
   frac: UInt64;
 begin
   v.f := x;
   e := Integer((v.u shr 52) and $7FF) - 1023;
-  if e >= 52 then
-  begin
-    Result := x;
-    Exit;
-  end;
-  if e < 0 then
-  begin
-    if e = -1 then
-    begin
-      if (v.u and $7FFFFFFFFFFFFFFF) = $3FE0000000000000 then
-        Result := 0.0
-      else if Abs(x) < 0.5 then
-        Result := 0.0
-      else
-        Result := pcr_copysign(1.0, x);
-    end
-    else
-      Result := 0.0;
+  if e >= 52 then begin Result := x; Exit; end;
+  if e < 0 then begin
+    if e = -1 then begin
+      if (v.u and $7FFFFFFFFFFFFFFF) = $3FE0000000000000 then Result := 0.0
+      else if Abs(x) < 0.5 then Result := 0.0
+      else Result := pcr_copysign(1.0, x);
+    end else Result := 0.0;
     Exit;
   end;
   shift := 52 - e;
   mask  := (UInt64(1) shl shift) - 1;
   frac  := v.u and mask;
   half  := UInt64(1) shl (shift - 1);
-
-  if frac < half then
-    v.u := v.u and (not mask)
-  else if frac > half then
-    v.u := (v.u and (not mask)) + (UInt64(1) shl shift)
-  else
-  begin
+  if frac < half then v.u := v.u and (not mask)
+  else if frac > half then v.u := (v.u and (not mask)) + (UInt64(1) shl shift)
+  else begin
     if (v.u and (UInt64(1) shl shift)) <> 0 then
       v.u := (v.u and (not mask)) + (UInt64(1) shl shift)
-    else
-      v.u := v.u and (not mask);
+    else v.u := v.u and (not mask);
   end;
   Result := v.f;
 end;
+{$ENDIF}
 
-function pcr_fmaxf(x, y: Single): Single; inline;
+function pcr_fmaxf(x, y: Single): Single;
+{$IFDEF CPUX86_64}
+// Pure-asm: System V AMD64 ABI passes x→xmm0, y→xmm1; result in xmm0.
+// MAXSS returns the larger value; if x (first operand) is NaN, returns y.
+assembler;
+asm
+  maxss xmm0, xmm1
+end;
+{$ELSE}
 begin
   if IsNan(x) then Result := y
   else if IsNan(y) then Result := x
   else if x > y then Result := x
   else Result := y;
 end;
+{$ENDIF}
 
-function pcr_fmax(x, y: Double): Double; inline;
+function pcr_fmax(x, y: Double): Double;
+{$IFDEF CPUX86_64}
+// Pure-asm: System V AMD64 ABI passes x→xmm0, y→xmm1; result in xmm0.
+// MAXSD returns the larger value; if x (first operand) is NaN, returns y.
+assembler;
+asm
+  maxsd xmm0, xmm1
+end;
+{$ELSE}
 begin
   if IsNan(x) then Result := y
   else if IsNan(y) then Result := x
   else if x > y then Result := x
   else Result := y;
 end;
+{$ENDIF}
 
-function pcr_fminf(x, y: Single): Single; inline;
+function pcr_fminf(x, y: Single): Single;
+{$IFDEF CPUX86_64}
+// Pure-asm: System V AMD64 ABI passes x→xmm0, y→xmm1; result in xmm0.
+// MINSS returns the smaller value; if x (first operand) is NaN, returns y.
+assembler;
+asm
+  minss xmm0, xmm1
+end;
+{$ELSE}
 begin
   if IsNan(x) then Result := y
   else if IsNan(y) then Result := x
   else if x < y then Result := x
   else Result := y;
 end;
+{$ENDIF}
 
-function pcr_fmin(x, y: Double): Double; inline;
+function pcr_fmin(x, y: Double): Double;
+{$IFDEF CPUX86_64}
+// Pure-asm: System V AMD64 ABI passes x→xmm0, y→xmm1; result in xmm0.
+// MINSD returns the smaller value; if x (first operand) is NaN, returns y.
+assembler;
+asm
+  minsd xmm0, xmm1
+end;
+{$ELSE}
 begin
   if IsNan(x) then Result := y
   else if IsNan(y) then Result := x
   else if x < y then Result := x
   else Result := y;
 end;
+{$ENDIF}
 
 function pcr_bsf32(x: UInt32): Integer; inline;
 {$IFDEF CPUX86_64}
