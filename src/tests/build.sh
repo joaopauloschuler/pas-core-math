@@ -59,28 +59,28 @@ find "$SRC_DIR" -maxdepth 1 \( -name '*.ppu' -o -name '*.o' \) -delete
 
 FPC_FLAGS="-O3 -Fi.. -Fu.. -FE$BIN_DIR -Fl$SRC_DIR"
 
-# ---- Step 2: Compile TestHarness ----
+# ---- Step 2: Compile TestHarness32 ----
 echo
-echo "Compiling TestHarness.pas ..."
-fpc $FPC_FLAGS "$SCRIPT_DIR/TestHarness.pas"
-echo "TestHarness compiled -> $BIN_DIR/TestHarness"
+echo "Compiling TestHarness32.pas ..."
+fpc $FPC_FLAGS "$SCRIPT_DIR/TestHarness32.pas"
+echo "TestHarness32 compiled -> $BIN_DIR/TestHarness32"
 
-# ---- Step 3: Compile Benchmark ----
+# ---- Step 3: Compile Benchmark32 ----
 echo
-echo "Compiling Benchmark.pas ..."
-fpc $FPC_FLAGS "$SCRIPT_DIR/Benchmark.pas"
-echo "Benchmark compiled -> $BIN_DIR/Benchmark"
+echo "Compiling Benchmark32.pas ..."
+fpc $FPC_FLAGS "$SCRIPT_DIR/Benchmark32.pas"
+echo "Benchmark32 compiled -> $BIN_DIR/Benchmark32"
 
-# ---- Step 4: Compile BenchmarkFPC ----
+# ---- Step 4: Compile BenchmarkFPC32 ----
 echo
-echo "Compiling BenchmarkFPC.pas ..."
-fpc $FPC_FLAGS "$SCRIPT_DIR/BenchmarkFPC.pas"
-echo "BenchmarkFPC compiled -> $BIN_DIR/BenchmarkFPC"
+echo "Compiling BenchmarkFPC32.pas ..."
+fpc $FPC_FLAGS "$SCRIPT_DIR/BenchmarkFPC32.pas"
+echo "BenchmarkFPC32 compiled -> $BIN_DIR/BenchmarkFPC32"
 
 echo
 echo "Build complete."
 echo
 echo "Run tests with:"
-echo "  LD_LIBRARY_PATH=$SRC_DIR $BIN_DIR/TestHarness"
-echo "  LD_LIBRARY_PATH=$SRC_DIR $BIN_DIR/Benchmark"
-echo "  LD_LIBRARY_PATH=$SRC_DIR $BIN_DIR/BenchmarkFPC"
+echo "  LD_LIBRARY_PATH=$SRC_DIR $BIN_DIR/TestHarness32"
+echo "  LD_LIBRARY_PATH=$SRC_DIR $BIN_DIR/Benchmark32"
+echo "  LD_LIBRARY_PATH=$SRC_DIR $BIN_DIR/BenchmarkFPC32"

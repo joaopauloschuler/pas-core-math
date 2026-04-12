@@ -9,5 +9,4 @@ src/test_*
 # Output programs
 *.out
 # Compiled binaries
-bin/TestHarness
-bin/Benchmark
+bin/*

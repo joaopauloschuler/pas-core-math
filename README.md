@@ -31,16 +31,16 @@ All functions use the `pcr_` prefix (Pascal Correctly Rounded). The C reference 
 <pre>
 /
 ├── <a href="src/">src/</a>
-│   ├── <a href="src/pascoremath.pas">pascoremath.pas</a>            # Main library — 42 pcr_* functions
+│   ├── <a href="src/pascoremath32.pas">pascoremath32.pas</a>          # Main library — 42 pcr_* functions (binary32)
 │   ├── <a href="src/pascoremathtypes.pas">pascoremathtypes.pas</a>       # Shared types, bit-cast helpers, MulWide (x86_64 ASM)
 │   ├── <a href="src/pascoremathhelperfuncs.pas">pascoremathhelperfuncs.pas</a> # Primitives: fmaf, fabsf, sqrtf, etc.
 │   ├── <a href="src/hexfloat.pas">hexfloat.pas</a>               # Utility to parse C99 hex float literals
-│   ├── <a href="src/ccoremath.pas">ccoremath.pas</a>              # External declarations for C reference (cr_* functions)
+│   ├── <a href="src/ccoremath32.pas">ccoremath32.pas</a>            # External declarations for C reference (cr_* functions, binary32)
 │   ├── <a href="src/pascoremath.inc">pascoremath.inc</a>            # Shared FPC compiler directives
 │   └── <a href="src/tests/">tests/</a>
-│       ├── <a href="src/tests/TestHarness.pas">TestHarness.pas</a>        # Exhaustive 2³² correctness tester
-│       ├── <a href="src/tests/Benchmark.pas">Benchmark.pas</a>          # Throughput benchmark (C CORE-MATH vs pas-core-math)
-│       ├── <a href="src/tests/BenchmarkFPC.pas">BenchmarkFPC.pas</a>       # Throughput benchmark (FPC builtins vs pas-core-math)
+│       ├── <a href="src/tests/TestHarness32.pas">TestHarness32.pas</a>      # Exhaustive 2³² correctness tester
+│       ├── <a href="src/tests/Benchmark32.pas">Benchmark32.pas</a>        # Throughput benchmark (C CORE-MATH vs pas-core-math)
+│       ├── <a href="src/tests/BenchmarkFPC32.pas">BenchmarkFPC32.pas</a>     # Throughput benchmark (FPC builtins vs pas-core-math)
 │       └── <a href="src/tests/build.sh">build.sh</a>               # Build script
 ├── <a href="install_dependencies.sh">install_dependencies.sh</a>        # Install FPC, GCC, and other dependencies
 ├── <a href="LICENSE">LICENSE</a>
@@ -69,7 +69,7 @@ This compiles both the Pascal library and the C reference library, then links th
 Measures throughput (Mops/s) for each function, comparing the C reference and pas-core-math implementations:
 
 ```bash
-LD_LIBRARY_PATH=src/ bin/Benchmark
+LD_LIBRARY_PATH=src/ bin/Benchmark32
 ```
 
 ### Benchmark (pas-core-math vs FPC builtins)
@@ -77,7 +77,7 @@ LD_LIBRARY_PATH=src/ bin/Benchmark
 Compares pas-core-math against Free Pascal's built-in math functions (no C dependency required):
 
 ```bash
-bin/BenchmarkFPC
+bin/BenchmarkFPC32
 ```
 
 ### Exhaustive Correctness Test
@@ -85,7 +85,7 @@ bin/BenchmarkFPC
 Tests every possible 32-bit float input against the C reference. This is a full 2³² = 4,294,967,296 input sweep and takes several hours to complete:
 
 ```bash
-LD_LIBRARY_PATH=src/ bin/TestHarness
+LD_LIBRARY_PATH=src/ bin/TestHarness32
 ```
 
 Any mismatch is reported as a failure with the input value and both outputs.
