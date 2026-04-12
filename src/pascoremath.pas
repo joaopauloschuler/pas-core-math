@@ -3125,16 +3125,6 @@ end;
 
 
 // ── lgammaf helpers ───────────────────────────────────────────────────────────
-function lgamma_as_r7(x: Double; const c: array of Double): Double;
-begin
-  Result := (((x-c[0])*(x-c[1]))*((x-c[2])*(x-c[3])))*(((x-c[4])*(x-c[5]))*((x-c[6])));
-end;
-
-function lgamma_as_r8(x: Double; const c: array of Double): Double;
-begin
-  Result := (((x-c[0])*(x-c[1]))*((x-c[2])*(x-c[3])))*(((x-c[4])*(x-c[5]))*((x-c[6])*(x-c[7])));
-end;
-
 function lgamma_as_sinpi(x0: Double): Double;
 const
   c_sp: array[0..7] of Double = (
@@ -3285,10 +3275,16 @@ begin
     z_tg := z_tg - 0.5 - step_tg * 0.5;
     w_tg := z_tg;
     j_tg := jm_tg - 1;
-    while j_tg > 0 do begin
+    // Pairwise: compute z1*z2 independently of w chain, halving sequential depth.
+    while j_tg >= 2 do begin
+      z_tg := z_tg - step_tg;
+      w_tg := w_tg * (z_tg * (z_tg - step_tg));  // z*next independent of prev w
+      z_tg := z_tg - step_tg;
+      Dec(j_tg, 2);
+    end;
+    if j_tg > 0 then begin
       z_tg := z_tg - step_tg;
       w_tg := w_tg * z_tg;
-      Dec(j_tg);
     end;
   end;
   if ii_tg <= -0.5 then w_tg := 1.0 / w_tg;
@@ -3407,8 +3403,12 @@ begin
   z_lg := ax_lg;
   s_lg := x;
   if ax_lg < 0.66015625 then begin        // |x| < 0x1.52p-1
-    f_lg := (c0_sm * s_lg) * lgamma_as_r8(s_lg, rn_sm)
-          / lgamma_as_r8(s_lg, rd_sm) - lgamma_as_ln(z_lg);
+    f_lg := (c0_sm * s_lg)
+          * (((s_lg-rn_sm[0])*(s_lg-rn_sm[1]))*((s_lg-rn_sm[2])*(s_lg-rn_sm[3])))
+          * (((s_lg-rn_sm[4])*(s_lg-rn_sm[5]))*((s_lg-rn_sm[6])*(s_lg-rn_sm[7])))
+          / ((((s_lg-rd_sm[0])*(s_lg-rd_sm[1]))*((s_lg-rd_sm[2])*(s_lg-rd_sm[3])))
+          *  (((s_lg-rd_sm[4])*(s_lg-rd_sm[5]))*((s_lg-rd_sm[6])*(s_lg-rd_sm[7]))))
+          - lgamma_as_ln(z_lg);
   end else begin
     if ax_lg > 3.373096466064453 then begin   // ax > 0x1.afc1ap+1
       if x >= 4.085003425410169e+36 then begin  // overflow threshold
@@ -3440,7 +3440,10 @@ begin
       end;
     end else begin                        // medium x: 0x1.52p-1 <= ax <= 0x1.afc1ap+1
       f_lg := (z_lg - 1.0) * (z_lg - 2.0) * c0_md
-            * lgamma_as_r7(z_lg, rn_md) / lgamma_as_r8(z_lg, rd_md);
+            * (((z_lg-rn_md[0])*(z_lg-rn_md[1]))*((z_lg-rn_md[2])*(z_lg-rn_md[3])))
+            * (((z_lg-rn_md[4])*(z_lg-rn_md[5]))*((z_lg-rn_md[6])))
+            / ((((z_lg-rd_md[0])*(z_lg-rd_md[1]))*((z_lg-rd_md[2])*(z_lg-rd_md[3])))
+            *  (((z_lg-rd_md[4])*(z_lg-rd_md[5]))*((z_lg-rd_md[6])*(z_lg-rd_md[7]))));
       if x < 0.0 then begin
         // Near gamma-zeros: use local Taylor expansion for accuracy
         if (t_lg.u < $40301B93) and (t_lg.u > $402F95C2) then begin

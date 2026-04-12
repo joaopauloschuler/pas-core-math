@@ -431,25 +431,25 @@ Benchmark baseline (2026-04-11, FPC 3.2.2 -O2, x86_64 Linux):
   - `VFMADD213SD xmm0, xmm1, xmm2`: xmm0 = xmm0×xmm1 + xmm2
   - **Primary fix for atan2f / powf gap; also expected to fix Bug B (pcr_powf rounding error)**
 
-- [ ] **6.3** Inline `lgamma_as_r7` / `lgamma_as_r8` into `pcr_lgammaf`
+- [x] **6.3** Inline `lgamma_as_r7` / `lgamma_as_r8` into `pcr_lgammaf`
   - These helpers use `const c: array of Double` (open array) which FPC cannot inline
   - The caller passes compile-time constant arrays (`rn_sm`, `rd_sm`, `rn_md`, `rd_md`) that become
     constant loads when inlined — open arrays force pointer indirection instead
   - Replace by inlining the 7- and 8-term product expressions directly at each call site in `lgammaf`
   - **Primary fix for lgammaf 4.3× gap**
 
-- [ ] **6.4** Upgrade FPC build flag from `-O2` to `-O3` in `build.sh`
+- [x] **6.4** Upgrade FPC build flag from `-O2` to `-O3` in `build.sh`
   - GCC `-O2` is far more aggressive than FPC `-O2`; FPC `-O3` closes some of the gap
   - Also consider adding `-CpCOREI` or `-CpCOREI7` for CPU-specific scheduling
   - Small across-the-board gain (~5–10%), no correctness risk
 
-- [ ] **6.5** Replace `pcr_fmax` / `pcr_fmin` with `MAXSD` / `MINSD` (or branchless bit-ops)
+- [x] **6.5** Replace `pcr_fmax` / `pcr_fmin` with `MAXSD` / `MINSD` (or branchless bit-ops)
   - Current implementation branches through `IsNan()` on every call
   - C `fmax`/`fmin` compile to a single `MAXSD`/`MINSD` instruction
   - Note: `MAXSD` propagates the *second* operand on NaN input — verify call sites tolerate this
     before switching; use branchless bit-op fallback where NaN semantics must be exact
 
-- [ ] **6.6** Reduce `tgammaf` reduction loop overhead
+- [x] **6.6** Reduce `tgammaf` reduction loop overhead
   - For non-integer negative x, `tgammaf` uses `while j_tg > 0 do w_tg *= z_tg` — up to ~44 iterations
   - Uniformly distributed benchmark inputs frequently hit this path
   - Consider precomputed product table or logarithm-based reduction for large |ii|

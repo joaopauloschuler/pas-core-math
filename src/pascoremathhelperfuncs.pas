@@ -34,13 +34,15 @@ function pcr_sqrt(x: Double): Double; inline;
 function pcr_roundevenf(x: Single): Single;
 function pcr_roundeven(x: Double): Double;
 
-// NaN-aware maximum
-function pcr_fmaxf(x, y: Single): Single; inline;
-function pcr_fmax(x, y: Double): Double; inline;
+// NaN-aware maximum — MAXSS/MAXSD on x86-64; branch fallback elsewhere.
+// Not marked inline: pure-asm body uses System V AMD64 ABI (params in xmm0/xmm1).
+function pcr_fmaxf(x, y: Single): Single;
+function pcr_fmax(x, y: Double): Double;
 
-// NaN-aware minimum
-function pcr_fminf(x, y: Single): Single; inline;
-function pcr_fmin(x, y: Double): Double; inline;
+// NaN-aware minimum — MINSS/MINSD on x86-64; branch fallback elsewhere.
+// Not marked inline: pure-asm body uses System V AMD64 ABI (params in xmm0/xmm1).
+function pcr_fminf(x, y: Single): Single;
+function pcr_fmin(x, y: Double): Double;
 
 // Bit scan forward: index of lowest set bit (0-based); undefined for x=0
 function pcr_bsf32(x: UInt32): Integer; inline;
@@ -242,37 +244,73 @@ begin
 end;
 {$ENDIF}
 
-function pcr_fmaxf(x, y: Single): Single; inline;
+function pcr_fmaxf(x, y: Single): Single;
+{$IFDEF CPUX86_64}
+// Pure-asm: System V AMD64 ABI passes x→xmm0, y→xmm1; result in xmm0.
+// MAXSS returns the larger value; if x (first operand) is NaN, returns y.
+assembler;
+asm
+  maxss xmm0, xmm1
+end;
+{$ELSE}
 begin
   if IsNan(x) then Result := y
   else if IsNan(y) then Result := x
   else if x > y then Result := x
   else Result := y;
 end;
+{$ENDIF}
 
-function pcr_fmax(x, y: Double): Double; inline;
+function pcr_fmax(x, y: Double): Double;
+{$IFDEF CPUX86_64}
+// Pure-asm: System V AMD64 ABI passes x→xmm0, y→xmm1; result in xmm0.
+// MAXSD returns the larger value; if x (first operand) is NaN, returns y.
+assembler;
+asm
+  maxsd xmm0, xmm1
+end;
+{$ELSE}
 begin
   if IsNan(x) then Result := y
   else if IsNan(y) then Result := x
   else if x > y then Result := x
   else Result := y;
 end;
+{$ENDIF}
 
-function pcr_fminf(x, y: Single): Single; inline;
+function pcr_fminf(x, y: Single): Single;
+{$IFDEF CPUX86_64}
+// Pure-asm: System V AMD64 ABI passes x→xmm0, y→xmm1; result in xmm0.
+// MINSS returns the smaller value; if x (first operand) is NaN, returns y.
+assembler;
+asm
+  minss xmm0, xmm1
+end;
+{$ELSE}
 begin
   if IsNan(x) then Result := y
   else if IsNan(y) then Result := x
   else if x < y then Result := x
   else Result := y;
 end;
+{$ENDIF}
 
-function pcr_fmin(x, y: Double): Double; inline;
+function pcr_fmin(x, y: Double): Double;
+{$IFDEF CPUX86_64}
+// Pure-asm: System V AMD64 ABI passes x→xmm0, y→xmm1; result in xmm0.
+// MINSD returns the smaller value; if x (first operand) is NaN, returns y.
+assembler;
+asm
+  minsd xmm0, xmm1
+end;
+{$ELSE}
 begin
   if IsNan(x) then Result := y
   else if IsNan(y) then Result := x
   else if x < y then Result := x
   else Result := y;
 end;
+{$ENDIF}
 
 function pcr_bsf32(x: UInt32): Integer; inline;
 {$IFDEF CPUX86_64}
