@@ -54,7 +54,10 @@ else
   echo "libcoremath.so already present, skipping C build."
 fi
 
-FPC_FLAGS="-O2 -Fi.. -Fu.. -FE$BIN_DIR -Fl$SRC_DIR"
+# ---- Clean compiled Pascal artifacts ----
+find "$SRC_DIR" -maxdepth 1 \( -name '*.ppu' -o -name '*.o' \) -delete
+
+FPC_FLAGS="-O3 -Fi.. -Fu.. -FE$BIN_DIR -Fl$SRC_DIR"
 
 # ---- Step 2: Compile TestHarness ----
 echo
