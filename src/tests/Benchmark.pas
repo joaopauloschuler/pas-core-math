@@ -22,6 +22,7 @@ const
 
 var
   GlobalSink: LongWord = 0;
+  PWins, CWins: Integer;
 
 procedure BenchUni(const name: string; pfC: TUniFuncC; pfP: TUniFuncP);
 var
@@ -69,6 +70,7 @@ begin
 
   GlobalSink := GlobalSink xor cSink xor pSink;
 
+  if mopsP > mopsC then Inc(PWins) else Inc(CWins);
   WriteLn(Format('%-16s  C: %6.1f Mops/s  Pascal: %6.1f Mops/s  sink=%s%s',
     [name, mopsC, mopsP,
      IfThen(cSink = pSink, 'MATCH', 'MISMATCH'),
@@ -127,6 +129,7 @@ begin
 
   GlobalSink := GlobalSink xor cSink xor pSink;
 
+  if mopsP > mopsC then Inc(PWins) else Inc(CWins);
   WriteLn(Format('%-16s  C: %6.1f Mops/s  Pascal: %6.1f Mops/s  sink=%s%s',
     [name, mopsC, mopsP,
      IfThen(cSink = pSink, 'MATCH', 'MISMATCH'),
@@ -256,5 +259,6 @@ begin
   BenchSinCos;
 
   WriteLn;
+  WriteLn(Format('Pascal won: %d  |  C won: %d', [PWins, CWins]));
   WriteLn(Format('GlobalSink = %u (prevents dead-code elimination)', [GlobalSink]));
 end.
