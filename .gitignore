@@ -10,3 +10,6 @@ src/test_*
 *.out
 # Compiled binaries
 bin/*
+backup
+*.lps
+*.compiled
