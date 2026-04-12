@@ -94,7 +94,7 @@ Any mismatch is reported as a failure with the input value and both outputs.
 
 ### PCM vs FPC builtins (50 million calls per function, x86_64 Linux)
 
-FPC's built-in math functions operate on `Double` internally even for `Single` inputs. PCM targets `Single` precision throughout, which is why it is substantially faster:
+FPC's built-in math functions operate on `Double` internally even for `Single` inputs. PCM targets `Single` precision throughout, which, in part, explains why it is substantially faster:
 
 | Function   | FPC (Mops/s) | PCM (Mops/s) | Speedup |
 |------------|-------------|--------------|---------|
