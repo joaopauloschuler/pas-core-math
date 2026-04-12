@@ -71,9 +71,16 @@ echo "Compiling Benchmark.pas ..."
 fpc $FPC_FLAGS "$SCRIPT_DIR/Benchmark.pas"
 echo "Benchmark compiled -> $BIN_DIR/Benchmark"
 
+# ---- Step 4: Compile BenchmarkFPC ----
+echo
+echo "Compiling BenchmarkFPC.pas ..."
+fpc $FPC_FLAGS "$SCRIPT_DIR/BenchmarkFPC.pas"
+echo "BenchmarkFPC compiled -> $BIN_DIR/BenchmarkFPC"
+
 echo
 echo "Build complete."
 echo
 echo "Run tests with:"
 echo "  LD_LIBRARY_PATH=$SRC_DIR $BIN_DIR/TestHarness"
 echo "  LD_LIBRARY_PATH=$SRC_DIR $BIN_DIR/Benchmark"
+echo "  LD_LIBRARY_PATH=$SRC_DIR $BIN_DIR/BenchmarkFPC"
