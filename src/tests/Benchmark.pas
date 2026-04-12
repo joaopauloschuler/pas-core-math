@@ -17,7 +17,7 @@ type
   TBivarFuncP = function(x, y: Single): Single;
 
 const
-  BENCH_N = 10000000;
+  BENCH_N = 50000000;
   STRIDE  = High(Cardinal) div BENCH_N;
 
 var
@@ -69,9 +69,10 @@ begin
 
   GlobalSink := GlobalSink xor cSink xor pSink;
 
-  WriteLn(Format('%-16s  C: %6.1f Mops/s  Pascal: %6.1f Mops/s  sink=%s',
+  WriteLn(Format('%-16s  C: %6.1f Mops/s  Pascal: %6.1f Mops/s  sink=%s%s',
     [name, mopsC, mopsP,
-     IfThen(cSink = pSink, 'MATCH', 'MISMATCH')]));
+     IfThen(cSink = pSink, 'MATCH', 'MISMATCH'),
+     IfThen(mopsP > mopsC, '  FASTER! YAY!', '')]));
 end;
 
 procedure BenchBivar(const name: string; pfC: TBivarFuncC; pfP: TBivarFuncP);
@@ -126,9 +127,10 @@ begin
 
   GlobalSink := GlobalSink xor cSink xor pSink;
 
-  WriteLn(Format('%-16s  C: %6.1f Mops/s  Pascal: %6.1f Mops/s  sink=%s',
+  WriteLn(Format('%-16s  C: %6.1f Mops/s  Pascal: %6.1f Mops/s  sink=%s%s',
     [name, mopsC, mopsP,
-     IfThen(cSink = pSink, 'MATCH', 'MISMATCH')]));
+     IfThen(cSink = pSink, 'MATCH', 'MISMATCH'),
+     IfThen(mopsP > mopsC, '  FASTER! YAY!', '')]));
 end;
 
 procedure BenchSinCos;
@@ -180,9 +182,10 @@ begin
 
   GlobalSink := GlobalSink xor cSink xor pSink;
 
-  WriteLn(Format('%-16s  C: %6.1f Mops/s  Pascal: %6.1f Mops/s  sink=%s',
+  WriteLn(Format('%-16s  C: %6.1f Mops/s  Pascal: %6.1f Mops/s  sink=%s%s',
     ['sincosf', mopsC, mopsP,
-     IfThen(cSink = pSink, 'MATCH', 'MISMATCH')]));
+     IfThen(cSink = pSink, 'MATCH', 'MISMATCH'),
+     IfThen(mopsP > mopsC, '  FASTER! YAY!', '')]));
 end;
 
 // cdecl wrappers for bivariate C functions
