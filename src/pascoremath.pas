@@ -1031,9 +1031,25 @@ begin
     Exit;
   end;
   x4 := 4.0 * x;
+  {$IFDEF CPUX86_64}
+  asm
+    movss xmm0, x4
+    roundss xmm0, xmm0, 12
+    movss nx4, xmm0
+  end;
+  {$ELSE}
   nx4 := pcr_roundevenf(x4);
+  {$ENDIF}
   dx4 := x4 - nx4;
+  {$IFDEF CPUX86_64}
+  asm
+    movss xmm0, x
+    roundss xmm0, xmm0, 12
+    movss ni, xmm0
+  end;
+  {$ELSE}
   ni := pcr_roundevenf(x);
+  {$ENDIF}
   zf := x - ni;
   if dx4 = 0.0 then  // 4*x is integer
   begin
@@ -1127,7 +1143,15 @@ begin
     Exit;
   end;
   a_d := iln2 * z;
+  {$IFDEF CPUX86_64}
+  asm
+    movsd xmm0, a_d
+    roundsd xmm0, xmm0, 12
+    movsd ia, xmm0
+  end;
+  {$ELSE}
   ia := pcr_roundeven(a_d);
+  {$ENDIF}
   h := a_d - ia;
   h2 := h * h;
   ja.f := ia + 6755399441055744.0;  // ia + 0x1.8p52
@@ -1710,7 +1734,15 @@ begin
     Result := t.f * Single(zd); Exit;
   end;
   a := iln2 * zd;
+  {$IFDEF CPUX86_64}
+  asm
+    movsd xmm0, a
+    roundsd xmm0, xmm0, 12
+    movsd ia, xmm0
+  end;
+  {$ELSE}
   ia := pcr_roundeven(a);
+  {$ENDIF}
   h := a - ia;
   h2 := h * h;
   u.f := ia + big;
@@ -1815,7 +1847,15 @@ begin
     end;
   end;
   a := iln102 * zd;
+  {$IFDEF CPUX86_64}
+  asm
+    movsd xmm0, a
+    roundsd xmm0, xmm0, 12
+    movsd ia, xmm0
+  end;
+  {$ELSE}
   ia := pcr_roundeven(a);
+  {$ENDIF}
   h := a - ia;
   ja := Int64(Trunc(ia));
   sv.u := tb_e10[ja and $1F] + (UInt64(ja shr 5) shl 52);
@@ -2397,7 +2437,15 @@ begin
     Result := Single(zs + (z2_s*zs)*((cp_sinh[0] + z2_s*cp_sinh[1]) + z4_s*(cp_sinh[2] + z2_s*cp_sinh[3]))); Exit;
   end;
   a_s := 46.166241308446828 * zs;
+  {$IFDEF CPUX86_64}
+  asm
+    movsd xmm0, a_s
+    roundsd xmm0, xmm0, 12
+    movsd ia_s, xmm0
+  end;
+  {$ELSE}
   ia_s := pcr_roundeven(a_s);
+  {$ENDIF}
   h_s := a_s - ia_s;
   h2_s := h_s * h_s;
   ja_s.f := ia_s + 6755399441055744;
@@ -4125,7 +4173,15 @@ begin
   ey_a2 := Double(e_a2) * y_a2;
   eh_a2 := ey_a2 + zh_a2;
   el_a2 := ((ey_a2 - eh_a2) + zh_a2) + zl_a2;
+  {$IFDEF CPUX86_64}
+  asm
+    movsd xmm0, eh_a2
+    roundsd xmm0, xmm0, 12
+    movsd ee_a2, xmm0
+  end;
+  {$ELSE}
   ee_a2 := pcr_roundeven(eh_a2);
+  {$ENDIF}
   eh_a2 := eh_a2 - ee_a2;
   eh_a2 := polydd(eh_a2, el_a2, 18, ce_a2, el_a2);
   r_a2.u := UInt64(Int64($3FF) + Int64(Trunc(ee_a2))) shl 52;
@@ -4934,7 +4990,15 @@ var k_e1: Double;
     i_e1: Integer;
     lb_e1, rb_e1: Single;
 begin
+  {$IFDEF CPUX86_64}
+  asm
+    movsd xmm0, t
+    roundsd xmm0, xmm0, 12
+    movsd k_e1, xmm0
+  end;
+  {$ELSE}
   k_e1 := pcr_roundeven(t);
+  {$ENDIF}
   r_e1 := t - k_e1;
   v_e1.f := 3.015625 + r_e1;
   i_e1 := Integer(v_e1.u shr 46) - $10010;
@@ -5109,7 +5173,15 @@ begin
     Result := 1.0 + x;
     Exit;
   end;
+  {$IFDEF CPUX86_64}
+  asm
+    movsd xmm0, h
+    roundsd xmm0, xmm0, 12
+    movsd k_e22, xmm0
+  end;
+  {$ELSE}
   k_e22 := pcr_roundeven(h);
+  {$ENDIF}
   // if h+l is tiny, 2^(h+l) rounds to 1
   if (k_e22 = 0.0) and (pcr_fabs(h) <= 4.299566335638736e-08) then begin
     Result := Single(1.0 + h * 0.5);
