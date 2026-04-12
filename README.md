@@ -28,21 +28,23 @@ All functions use the `pcr_` prefix (Pascal Correctly Rounded). The C reference 
 
 ## Repository Layout
 
-```
-pas-core-math/
-├── src/
-│   ├── pascoremath.pas             # Main library — 42 pcr_* functions (~6135 lines)
-│   ├── pascoremathtypes.pas        # Shared types, bit-cast helpers, MulWide (x86_64 ASM)
-│   ├── pascoremathhelperfuncs.pas  # Primitives: fmaf, fabsf, sqrtf, etc.
-│   ├── ccoremath.pas               # External declarations for C reference (cr_* functions)
-│   └── tests/
-│       ├── TestHarness.pas         # Exhaustive 2³² correctness tester
-│       ├── Benchmark.pas           # 10M-call throughput benchmark (C vs Pascal)
-│       └── build.sh                # Build script
-└── bin/
-    ├── TestHarness                 # Compiled test binary
-    └── Benchmark                   # Compiled benchmark binary
-```
+<pre>
+/
+├── <a href="src/">src/</a>
+│   ├── <a href="src/pascoremath.pas">pascoremath.pas</a>            # Main library — 42 pcr_* functions
+│   ├── <a href="src/pascoremathtypes.pas">pascoremathtypes.pas</a>       # Shared types, bit-cast helpers, MulWide (x86_64 ASM)
+│   ├── <a href="src/pascoremathhelperfuncs.pas">pascoremathhelperfuncs.pas</a> # Primitives: fmaf, fabsf, sqrtf, etc.
+│   ├── <a href="src/hexfloat.pas">hexfloat.pas</a>               # Utility to parse C99 hex float literals
+│   ├── <a href="src/ccoremath.pas">ccoremath.pas</a>              # External declarations for C reference (cr_* functions)
+│   ├── <a href="src/pascoremath.inc">pascoremath.inc</a>            # Shared FPC compiler directives
+│   └── <a href="src/tests/">tests/</a>
+│       ├── <a href="src/tests/TestHarness.pas">TestHarness.pas</a>        # Exhaustive 2³² correctness tester
+│       ├── <a href="src/tests/Benchmark.pas">Benchmark.pas</a>          # Throughput benchmark (C vs Pascal)
+│       └── <a href="src/tests/build.sh">build.sh</a>               # Build script
+├── <a href="install_dependencies.sh">install_dependencies.sh</a>        # Install FPC, GCC, and other dependencies
+├── <a href="LICENSE">LICENSE</a>
+└── <a href="README.md">README.md</a>
+</pre>
 
 ## Requirements
 
