@@ -5475,7 +5475,7 @@ begin
 end;
 
 // ---- rltl0: range-reduction for medium arguments (double input) -----------
-function sincos_rltl0(x: Double; q: PInteger): Double;
+function sincos_rltl0(x: Double; q: PInteger): Double; inline;
 const
   C_IDH: Double = 5.092958178940651;    // 0x1.45f306dc9c883p+2
   C_BIG: Double = 6755399441055744.0;   // 0x1.8p52
@@ -5491,7 +5491,7 @@ begin
 end;
 
 // ---- rltl: range-reduction for medium arguments (float input) -------------
-function sincos_rltl(z: Single; q: PInteger): Double;
+function sincos_rltl(z: Single; q: PInteger): Double; inline;
 const
   C_IDL: Double = -3.1558305786379073e-09;  // -0x1.b1bbead603d8bp-29
   C_IDH: Double =  5.092958182096481;        // 0x1.45f306ep+2
@@ -5858,7 +5858,7 @@ begin
 end;
 
 // tanf rltl: multiplies by 2/pi (different from sincos_rltl which uses 16/pi)
-function tanf_rltl(z: Single; q: PInteger): Double;
+function tanf_rltl(z: Single; q: PInteger): Double; inline;
 const
   C_IDL: Double = -3.944788223297384e-10;  // -0x1.b1bbead603d8bp-32
   C_IDH: Double =  0.6366197727620602;      // 0x1.45f306ep-1
