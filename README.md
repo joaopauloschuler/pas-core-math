@@ -39,8 +39,8 @@ All functions use the `pcr_` prefix (Pascal Correctly Rounded). The C reference 
 │   ├── <a href="src/pascoremath.inc">pascoremath.inc</a>            # Shared FPC compiler directives
 │   └── <a href="src/tests/">tests/</a>
 │       ├── <a href="src/tests/TestHarness.pas">TestHarness.pas</a>        # Exhaustive 2³² correctness tester
-│       ├── <a href="src/tests/Benchmark.pas">Benchmark.pas</a>          # Throughput benchmark (C CORE-MATH vs PCM)
-│       ├── <a href="src/tests/BenchmarkFPC.pas">BenchmarkFPC.pas</a>       # Throughput benchmark (FPC builtins vs PCM)
+│       ├── <a href="src/tests/Benchmark.pas">Benchmark.pas</a>          # Throughput benchmark (C CORE-MATH vs pas-core-math)
+│       ├── <a href="src/tests/BenchmarkFPC.pas">BenchmarkFPC.pas</a>       # Throughput benchmark (FPC builtins vs pas-core-math)
 │       └── <a href="src/tests/build.sh">build.sh</a>               # Build script
 ├── <a href="install_dependencies.sh">install_dependencies.sh</a>        # Install FPC, GCC, and other dependencies
 ├── <a href="LICENSE">LICENSE</a>
@@ -64,17 +64,17 @@ This compiles both the Pascal library and the C reference library, then links th
 
 ## Running
 
-### Benchmark (PCM vs C CORE-MATH)
+### Benchmark (pas-core-math vs C CORE-MATH)
 
-Measures throughput (Mops/s) for each function, comparing the C reference and PCM implementations:
+Measures throughput (Mops/s) for each function, comparing the C reference and pas-core-math implementations:
 
 ```bash
 LD_LIBRARY_PATH=src/ bin/Benchmark
 ```
 
-### Benchmark (PCM vs FPC builtins)
+### Benchmark (pas-core-math vs FPC builtins)
 
-Compares PCM against Free Pascal's built-in math functions (no C dependency required):
+Compares pas-core-math against Free Pascal's built-in math functions (no C dependency required):
 
 ```bash
 bin/BenchmarkFPC
@@ -92,34 +92,11 @@ Any mismatch is reported as a failure with the input value and both outputs.
 
 ## Benchmark Results
 
-### PCM vs FPC builtins (50 million calls per function, x86_64 Linux)
+### pas-core-math vs FPC builtins (50 million calls per function, x86_64 Linux)
 
-FPC's built-in math functions operate on `Double` internally even for `Single` inputs. PCM targets `Single` precision throughout, which is why it is substantially faster:
+FPC's built-in math functions operate on `Double` internally even for `Single` inputs. pas-core-math targets `Single` precision throughout, which, in part, explains why it is substantially faster.
 
-| Function   | FPC (Mops/s) | PCM (Mops/s) | Speedup |
-|------------|-------------|--------------|---------|
-| `sinf`     | 45.9        | 133.7        | 2.9×    |
-| `cosf`     | 44.9        | 130.9        | 2.9×    |
-| `tanf`     | 17.4        | 129.2        | 7.4×    |
-| `asinf`    | 8.5         | 403.2        | 47.4×   |
-| `acosf`    | 8.3         | 190.8        | 23.0×   |
-| `atanf`    | 28.2        | 310.6        | 11.0×   |
-| `sinhf`    | 5.4         | 359.7        | 66.6×   |
-| `coshf`    | 5.5         | 400.0        | 72.7×   |
-| `tanhf`    | 31.5        | 287.4        | 9.1×    |
-| `asinhf`   | 27.8        | 234.7        | 8.4×    |
-| `acoshf`   | 6.3         | 186.6        | 29.6×   |
-| `atanhf`   | 7.1         | 357.1        | 50.3×   |
-| `expf`     | 17.2        | 182.5        | 10.6×   |
-| `logf`     | 47.6        | 347.2        | 7.3×    |
-| `log2f`    | 44.1        | 365.0        | 8.3×    |
-| `log10f`   | 14.5        | 378.8        | 26.1×   |
-| `atan2f`   | 17.7        | 94.2         | 5.3×    |
-| `hypotf`   | 65.4        | 196.9        | 3.0×    |
-| `powf`     | 1.8         | 106.8        | 59.3×   |
-| `sincosf`  | 18.2        | 108.0        | 5.9×    |
-
-**On average, PCM is ~22.9× faster than FPC builtins** (arithmetic mean over 20 functions).
+**On average, pas-core-math is ~2.4× faster than FPC builtins**.
 
 ## Correctness Guarantee
 
