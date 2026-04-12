@@ -5,7 +5,7 @@
 // Refer to the git commit history for individual authorship.
 // SPDX-License-Identifier: MIT
 {$I pascoremath.inc}
-unit ccoremath;
+unit ccoremath32;
 
 interface
 

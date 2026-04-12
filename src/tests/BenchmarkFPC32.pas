@@ -5,10 +5,10 @@
 // Refer to the git commit history for individual authorship.
 // SPDX-License-Identifier: MIT
 {$I ../pascoremath.inc}
-program BenchmarkFPC;
+program BenchmarkFPC32;
 
 uses
-  pascoremathtypes, pascoremath, SysUtils, Math, DateUtils, StrUtils;
+  pascoremathtypes, pascoremath32, SysUtils, Math, DateUtils, StrUtils;
 
 type
   TUniFuncP   = function(x: Single): Single;

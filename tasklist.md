@@ -8,7 +8,7 @@ Goal: bit-exact, correctly-rounded results matching the C reference for all 2^32
 ## Status summary
 
 - **All 42 functions ported and committed** (branch: `a1`)
-- **Bug-fix round in progress** — detected with `bin/TestHarness --pct 1`
+- **Bug-fix round in progress** — detected with `bin/TestHarness32 --pct 1`
 - **10 functions fixed** (8 bugs + sinf/cosf/sincosf/tanf x87 precision fix), committed in two commits (`25d897a`, `24acd3c`)
 - **2 functions still failing** at `--pct 1`: `powf` (458 657 mismatches) and `compoundf` (1 903 717 mismatches) — see "Open bugs" section below
 - Benchmark sample: `acosf  C=322.6 Mops/s  Pascal=222.2 Mops/s`
@@ -22,17 +22,17 @@ pas-core-math/
 ├── src/
 │   ├── pascoremath.inc         # compiler directives + CPU/AVX capability flags ({$I pascoremath.inc})
 │   ├── pascoremathtypes.pas    # TUInt128, builtins, trig helpers (rbig, etc.)
-│   ├── pascoremath.pas         # Pascal implementations (pcr_* functions)
-│   ├── ccoremath.pas           # C reference external declarations (cr_* functions)
+│   ├── pascoremath32.pas       # Pascal implementations (pcr_* functions)
+│   ├── ccoremath32.pas         # C reference external declarations (cr_* functions)
 │   ├── laz-project/
 │   │   ├── pas-core-math.lpi
 │   │   └── pas-core-math.lps
 │   ├── tools/
 │   │   └── HexFloatConvert.pas
 │   └── tests/
-│       ├── TestHarness.pas
+│       ├── TestHarness32.pas
 │       ├── TestMulWide.pas
-│       └── Benchmark.pas       # single-threaded Mops/s comparison: cr_* (C) vs pcr_* (Pascal)
+│       └── Benchmark32.pas     # single-threaded Mops/s comparison: cr_* (C) vs pcr_* (Pascal)
 ├── bin/
 └── tasklist.md
 ```
@@ -181,7 +181,7 @@ pas-core-math/
   Pascal implementation, then compares results bit-for-bit for all 2^32 `Single`
   inputs (exhaustive). For bivariate functions, agree on a sampling strategy.
 
-- [x] **0.8** Set up `Benchmark.pas`: single-threaded, 10 million calls per function, two
+- [x] **0.8** Set up `Benchmark32.pas`: single-threaded, 10 million calls per function, two
   independent timed loops. Reports Mops/s for `cr_*` (C) and `pcr_*` (Pascal) and
   validates agreement via XOR sink. Pattern:
   ```pascal
@@ -208,13 +208,13 @@ pas-core-math/
   ```
   The sink doubles as a quick sanity check — `MISMATCH` means the two implementations
   disagree on at least one input in the sample. Full correctness is validated by
-  `TestHarness.pas` (exhaustive 2^32).
+  `TestHarness32.pas` (exhaustive 2^32).
 
 ---
 
 ## Phase 1 — Simple univariate (no u128, no FMA, ≤ 130 lines)
 
-Port in this order. All functions live in `pascoremath.pas`, named `pcr_<name>f`.
+Port in this order. All functions live in `pascoremath32.pas`, named `pcr_<name>f`.
 
 - [x] **1.01** `rsqrt`   — 89 lines
 - [x] **1.02** `tanh`    — 89 lines
@@ -295,7 +295,7 @@ Apply this checklist to every function before marking it done:
 - [ ] `__attribute__((noinline))` replaced with `[noinline]`
 - [ ] `CORE_MATH_SUPPORT_ERRNO` blocks omitted (out of scope for Pascal port)
 - [ ] Exhaustive test passes (bit-exact match against C reference for all inputs)
-- [ ] C function `cr_<name>f` declared in `ccoremath.pas`; Pascal equivalent named `pcr_<name>f` in `pascoremath.pas`
+- [ ] C function `cr_<name>f` declared in `ccoremath32.pas`; Pascal equivalent named `pcr_<name>f` in `pascoremath32.pas`
 
 ---
 
@@ -303,7 +303,7 @@ Apply this checklist to every function before marking it done:
 
 1. **`rbig()` must not be duplicated.** The large-argument range-reduction helper `rbig()` is
    byte-for-byte identical in `sin`, `cos`, `tan`, and `sincos`. It must live once in
-   `pascoremathtypes.pas` and be called by all four functions in `pascoremath.pas`, not duplicated.
+   `pascoremathtypes.pas` and be called by all four functions in `pascoremath32.pas`, not duplicated.
    Duplication would make any future bug fix require four parallel edits.
 
 2. **`sincos` has a different API — an explicit decision is required.** The C signature is
@@ -395,7 +395,7 @@ Apply this checklist to every function before marking it done:
    inlining is not beneficial — the cost of marking `inline` unnecessarily is zero.
 
 10. **Benchmark every function.** After each function passes exhaustive testing, run
-    `Benchmark.pas` and record the Mops/s ratio (Pascal vs C). A large gap is a signal
+    `Benchmark32.pas` and record the Mops/s ratio (Pascal vs C). A large gap is a signal
     to investigate missed inlining or suboptimal code generation.
 
 ---
@@ -480,7 +480,7 @@ subnormal handling path (search for `// subnormal numbers`); it is likely that t
 is missing a guard or has an incorrect comparison for this range.
 
 **How to debug:**
-- Add `--diag 10` to the TestHarness bivariate output (already supported as of commit `25d897a`)
+- Add `--diag 10` to the TestHarness32 bivariate output (already supported as of commit `25d897a`)
   and focus on tiny subnormal x (bits 0x0000_0001 to roughly 0x007F_FFFF) with large positive y.
 - Compare `pcr_compoundf` step-by-step with C for input `x=$000001AD, y=$55555703`.
 - Grep for `subnormal` in `compoundf.c` and verify the corresponding Pascal guard conditions.

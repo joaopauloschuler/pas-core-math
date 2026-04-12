@@ -5,10 +5,10 @@
 // Refer to the git commit history for individual authorship.
 // SPDX-License-Identifier: MIT
 {$I ../pascoremath.inc}
-program TestHarness;
+program TestHarness32;
 
 uses
-  pascoremathtypes, pascoremath, ccoremath, SysUtils, Math;
+  pascoremathtypes, pascoremath32, ccoremath32, SysUtils, Math;
 
 type
   TUniFuncC   = function(x: Single): Single; cdecl;
