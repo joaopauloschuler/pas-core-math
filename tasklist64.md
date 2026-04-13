@@ -156,7 +156,7 @@ Required operations, in dependency order:
 
 **`AddDInt` requires `pcr_clzll`** (task 0.5) — do not implement it until 0.5 is done.
 
-**`MulDInt` requires `MulWide`** — already present in `pascoremathtypes.pas` from binary32.
+**`MulDInt` requires `Mulu64u64`** — already present in `pascoremathtypes.pas` from binary32.
 
 **`DIntFromD` requires `pcr_clzll`** — also blocked on 0.5.
 

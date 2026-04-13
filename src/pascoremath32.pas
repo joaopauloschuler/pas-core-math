@@ -5521,10 +5521,10 @@ var
 begin
   e_exp := Int32((u shr 23) and $FF);
   m := UInt64((u and $007FFFFF) or $800000);  // ~0u>>9 = $007FFFFF, 1<<23 = $800000
-  p0 := MulWide(m, sincos_ipi[0]);
-  p1 := MulWide(m, sincos_ipi[1]); p1 := p1 + p0.hi;
-  p2 := MulWide(m, sincos_ipi[2]); p2 := p2 + p1.hi;
-  p3 := MulWide(m, sincos_ipi[3]); p3 := p3 + p2.hi;
+  p0 := Mulu64u64(m, sincos_ipi[0]);
+  p1 := Mulu64u64(m, sincos_ipi[1]); p1 := p1 + p0.hi;
+  p2 := Mulu64u64(m, sincos_ipi[2]); p2 := p2 + p1.hi;
+  p3 := Mulu64u64(m, sincos_ipi[3]); p3 := p3 + p2.hi;
   p3h := p3.hi;
   p3l := p3.lo;
   p2l := p2.lo;
@@ -5904,10 +5904,10 @@ var
 begin
   e_exp := Int32((u shr 23) and $FF);
   m_val := UInt64((u and $007FFFFF) or $800000);
-  p0 := MulWide(m_val, sincos_ipi[0]);
-  p1 := MulWide(m_val, sincos_ipi[1]); p1 := p1 + p0.hi;
-  p2 := MulWide(m_val, sincos_ipi[2]); p2 := p2 + p1.hi;
-  p3 := MulWide(m_val, sincos_ipi[3]); p3 := p3 + p2.hi;
+  p0 := Mulu64u64(m_val, sincos_ipi[0]);
+  p1 := Mulu64u64(m_val, sincos_ipi[1]); p1 := p1 + p0.hi;
+  p2 := Mulu64u64(m_val, sincos_ipi[2]); p2 := p2 + p1.hi;
+  p3 := Mulu64u64(m_val, sincos_ipi[3]); p3 := p3 + p2.hi;
   p3h := p3.hi;
   p3l := p3.lo;
   p2l := p2.lo;
