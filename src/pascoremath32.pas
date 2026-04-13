@@ -3497,20 +3497,47 @@ end;
 { c is flat: c[k*2]=c[k][0], c[k*2+1]=c[k][1] }
 function polydd(xh, xl: Double; n: Int32; const c: array of Double; out l: Double): Double; inline;
 var
-  i: Int32;
+  i, i2: Int32;
   ch, cl, th, tl: Double;
 begin
   i := n - 1;
-  ch := c[i*2];
-  cl := c[i*2+1];
-  Dec(i);
-  while i >= 0 do begin
+  i2 := i * 2;
+  ch := c[i2];
+  cl := c[i2 + 1];
+  Dec(i2,2);
+  while i2 >= 8 do begin
     ch := muldd(xh, xl, ch, cl, cl);
-    th := ch + c[i*2];
-    tl := (c[i*2] - th) + ch;
+    th := ch + c[i2];
+    tl := (c[i2] - th) + ch;
     ch := th;
-    cl := cl + tl + c[i*2+1];
-    Dec(i);
+    cl := cl + tl + c[i2 + 1];
+    Dec(i2,2);
+    ch := muldd(xh, xl, ch, cl, cl);
+    th := ch + c[i2];
+    tl := (c[i2] - th) + ch;
+    ch := th;
+    cl := cl + tl + c[i2 + 1];
+    Dec(i2,2);
+    ch := muldd(xh, xl, ch, cl, cl);
+    th := ch + c[i2];
+    tl := (c[i2] - th) + ch;
+    ch := th;
+    cl := cl + tl + c[i2 + 1];
+    Dec(i2,2);
+    ch := muldd(xh, xl, ch, cl, cl);
+    th := ch + c[i2];
+    tl := (c[i2] - th) + ch;
+    ch := th;
+    cl := cl + tl + c[i2 + 1];
+    Dec(i2,2);
+  end;
+  while i2 >= 0 do begin
+    ch := muldd(xh, xl, ch, cl, cl);
+    th := ch + c[i2];
+    tl := (c[i2] - th) + ch;
+    ch := th;
+    cl := cl + tl + c[i2 + 1];
+    Dec(i2,2);
   end;
   l := cl;
   Result := ch;
