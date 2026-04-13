@@ -30,6 +30,10 @@ operator +(const a: TUInt128; b: UInt64): TUInt128; inline;
 
 function Mulu64u64(a, b: UInt64): TUInt128; inline;
 
+const
+  cNaNSingle: Single = 0.0/0.0;
+  cNaNDouble: Double = 0.0/0.0;
+
 implementation
 
 operator +(const a: TUInt128; b: UInt64): TUInt128; inline;

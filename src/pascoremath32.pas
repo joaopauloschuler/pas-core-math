@@ -2217,7 +2217,7 @@ begin
     if ux = $BF800000 then begin Result := Single(-1.0/0.0); Exit; end;
     ax := ux shl 1;
     if ax > $FF000000 then begin Result := x + x; Exit; end;
-    Result := Single(0.0/0.0); Exit;
+    Result := cNaNSingle; Exit;
   end;
   ax := ux and ($7FFFFFFF);
   if ax >= $7F800000 then begin  // +inf or +nan
@@ -2608,7 +2608,7 @@ begin
         Result := pcr_copysignf(Single(1.0/0.0), x); Exit;
       end;
       if ax_a > $FF000000 then begin Result := x + x; Exit; end;  // nan
-      Result := Single(0.0/0.0); Exit;  // |x|>1
+      Result := cNaNSingle; Exit;  // |x|>1
     end;
     if ax_a < $73713744 then begin  // |x| < 0.000352...
       if ax_a = 0 then begin Result := x; Exit; end;
@@ -3230,7 +3230,7 @@ begin
       Result := 1.0 / x; Exit;            // +/-Inf, raises DivByZero
     end;
     if x < 0.0 then begin                  // negative integer: undefined
-      Result := Single(0.0/0.0); Exit;
+      Result := cNaNSingle; Exit;
     end;
     t0_tg := 1.0; x0_tg := 1.0;
     lp_tg := 1;
