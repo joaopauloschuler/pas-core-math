@@ -21,7 +21,7 @@ var
   Stride: Cardinal;
   DiagMax: Integer;  // max mismatches to print (0 = none)
 
-procedure ReportResult(const FuncName: string; Tested, Mismatches: Int64);
+procedure ReportResult(const FuncName: string; Tested, Mismatches: Int64; MaxError: Double);
 begin
   if Mismatches = 0 then
   begin
@@ -30,7 +30,7 @@ begin
   end
   else
   begin
-    WriteLn(Format('%-16s  tested=%10d  mismatches=%d  FAIL', [FuncName, Tested, Mismatches]));
+    WriteLn(Format('%-16s  tested=%10d  mismatches=%d  FAIL max_error=%.20f', [FuncName, Tested, Mismatches, MaxError]));
     Inc(TotalFail);
   end;
 end;
@@ -60,10 +60,12 @@ var
   cr, pr: Single;
   mismatches, tested: Int64;
   diagShown: Integer;
+  error, max_error: Single;
 begin
   mismatches := 0;
   tested := 0;
   diagShown := 0;
+  max_error := 0;
   u := 0;
   repeat
     v.u := u;
@@ -77,13 +79,15 @@ begin
         rc.f := cr; rp.f := pr;
         WriteLn(Format('  [%s] input=$%8.8x  C=$%8.8x  P=$%8.8x', [name, u, rc.u, rp.u]));
         Inc(diagShown);
+        error := abs(cr - pr);
+        if error > max_error then max_error := error;
       end;
     end;
     Inc(tested);
     if u > High(Cardinal) - Stride then Break;
     Inc(u, Stride);
   until False;
-  ReportResult(name, tested, mismatches);
+  ReportResult(name, tested, mismatches, max_error);
 end;
 
 // ---- bivariate sampled tests ----
@@ -99,9 +103,11 @@ var
   cr, pr: Single;
   mismatches: Int64;
   diagShown: Integer;
+  error, max_error: Single;
 begin
   mismatches := 0;
   diagShown := 0;
+  max_error := 0;
   ux := 0;
   uy := High(Cardinal) div 3;
   for i := 1 to SAMPLES do
@@ -119,12 +125,14 @@ begin
         WriteLn(Format('  [%s] x=$%8.8x y=$%8.8x  C=$%8.8x  P=$%8.8x',
                        [name, ux, uy, rc.u, rp.u]));
         Inc(diagShown);
+        error := abs(cr - pr);
+        if error > max_error then max_error := error;
       end;
     end;
     Inc(ux, STRIDE);
     Inc(uy, STRIDE + 1);
   end;
-  ReportResult(name, SAMPLES, mismatches);
+  ReportResult(name, SAMPLES, mismatches, max_error);
 end;
 
 // ---- sincosf exhaustive test ----
@@ -135,23 +143,33 @@ var
   v: Tb32u32;
   cs, cc, ps, pc: Single;
   mismatches, tested: Int64;
+  error, max_error: Single;
 begin
   mismatches := 0;
   tested := 0;
+  max_error := 0;
   u := 0;
   repeat
     v.u := u;
     cr_sincosf(v.f, @cs, @cc);
     pcr_sincosf(v.f, ps, pc);
     if not BitsMatch(cs, ps) then
-      Inc(mismatches)
-    else if not BitsMatch(cc, pc) then
+    begin
       Inc(mismatches);
+      error := abs(cs - ps);
+      if error > max_error then max_error := error;
+    end;
+    if not BitsMatch(cc, pc) then
+    begin
+      Inc(mismatches);
+      error := abs(cc - pc);
+      if error > max_error then max_error := error;
+    end;
     Inc(tested);
     if u > High(Cardinal) - Stride then Break;
     Inc(u, Stride);
   until False;
-  ReportResult('sincosf', tested, mismatches);
+  ReportResult('sincosf', tested, mismatches, max_error);
 end;
 
 // Pascal wrappers for bivariate C functions (adapts cdecl -> register)
