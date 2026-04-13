@@ -355,7 +355,7 @@ begin
   if p > 31 then
   begin
     if p > 63 then begin Result := 1.0; Exit; end;
-    iq := LongWord(Int32(LongWord(m_int) shl (p - 32)));
+    iq := LongWord(m_int) shl (p - 32);
     Result := S_TABLE[(iq + 32) and 127];
     Exit;
   end;
@@ -498,7 +498,7 @@ begin
   et := e div 3;
   it_ := e mod 3;
   isc := escale_u[it_];
-  isc := isc + UInt64(Int64(Int64(et) - 342) shl 52);
+  isc := isc + UInt64((Int64(et) - 342) shl 52);
   isc := isc or (UInt64(sgn) shl 63);
   cvt2.u := isc;
   z := cvt1.f;
@@ -1963,7 +1963,7 @@ begin
   st_u_val := st_u[(ux shr 24) and $F];
   if ux = st_u_val then
   begin
-    je := (LongWord(Int32(ux) shr 23) - 126);
+    je := (ux shr 23) - 126;
     je_idx := Int32((je * $4D104D4) shr 28);
     Result := Single(je_idx); Exit;
   end;
@@ -2639,8 +2639,8 @@ begin
   mn_a := mn_a shl nz_a;
   jn_a := Int32(mn_a shr 26);
   jd_a := Int32(md_a shr 26);
-  tn_a.u := UInt64(Int64(Int64(mn_a) shl 20) or (Int64(1023) shl 52));
-  td_a.u := UInt64(Int64(Int64(md_a) shl 20) or (Int64(1023) shl 52));
+  tn_a.u := UInt64((Int64(mn_a) shl 20) or (Int64(1023) shl 52));
+  td_a.u := UInt64((Int64(md_a) shl 20) or (Int64(1023) shl 52));
   zn_a := tn_a.f * tr_atanh[jn_a] - 1.0;
   zd_a := td_a.f * tr_atanh[jd_a] - 1.0;
   zn2_a := zn_a * zn_a;
@@ -5049,10 +5049,10 @@ begin
   if (v_iem.u shl 1) = 0 then begin // x = 0
     Result := 1; Exit;
   end;
-  e_iem := Int32(Int32((v_iem.u shl 1) shr 24) - $96);
+  e_iem := Int32((v_iem.u shl 1) shr 24) - $96;
   if (e_iem < -76) or (30 < e_iem) then begin Result := 0; Exit; end;
   vd_iem.f := 1.0 + Double(x);
-  e_iem := Int32(Int32((vd_iem.u shl 1) shr 53) - $433);
+  e_iem := Int32((vd_iem.u shl 1) shr 53) - $433;
   if (y >= 0.0) and (cf_isint(y) <> 0) then begin
     m_iem := vd_iem.u and $FFFFFFFFFFFFF;
     if e_iem >= -1074 then
@@ -5092,7 +5092,7 @@ begin
   end;
   // second branch: y is not a non-negative integer
   n_iem := w_iem.u and $7FFFFF;
-  f_iem := Int32(Int32((w_iem.u shl 1) shr 24) - $96);
+  f_iem := Int32((w_iem.u shl 1) shr 24) - $96;
   if f_iem >= -149 then
     n_iem := n_iem or $800000
   else
