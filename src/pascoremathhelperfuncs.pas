@@ -44,12 +44,6 @@ function pcr_fmax(x, y: Double): Double;
 function pcr_fminf(x, y: Single): Single;
 function pcr_fmin(x, y: Double): Double;
 
-// Bit scan forward: index of lowest set bit (0-based); undefined for x=0
-function pcr_bsf32(x: UInt32): Int32; inline;
-
-// Bit scan reverse: index of highest set bit (0-based) = floor(log2(x)); undefined for x=0
-function pcr_bsr32(x: UInt32): Int32; inline;
-
 // Return a NaN (tagp is ignored, matches C nan()/nanf() signature)
 function pcr_nanf(const tagp: PAnsiChar): Single; inline;
 function pcr_nan(const tagp: PAnsiChar): Double; inline;
@@ -309,56 +303,6 @@ begin
   else if IsNan(y) then Result := x
   else if x < y then Result := x
   else Result := y;
-end;
-{$ENDIF}
-
-function pcr_bsf32(x: UInt32): Int32; inline;
-{$IFDEF CPUX86_64}
-var
-  r: LongWord;
-begin
-  asm
-    bsf  eax, x
-    mov  r, eax
-  end;
-  Result := r;
-end;
-{$ELSE}
-var
-  i: Int32;
-begin
-  for i := 0 to 31 do
-    if (x and (UInt32(1) shl i)) <> 0 then
-    begin
-      Result := i;
-      Exit;
-    end;
-  Result := -1;  // undefined for x=0
-end;
-{$ENDIF}
-
-function pcr_bsr32(x: UInt32): Int32; inline;
-{$IFDEF CPUX86_64}
-var
-  r: LongWord;
-begin
-  asm
-    bsr  eax, x
-    mov  r, eax
-  end;
-  Result := r;
-end;
-{$ELSE}
-var
-  i: Int32;
-begin
-  Result := -1;
-  for i := 31 downto 0 do
-    if (x and (UInt32(1) shl i)) <> 0 then
-    begin
-      Result := i;
-      Exit;
-    end;
 end;
 {$ENDIF}
 

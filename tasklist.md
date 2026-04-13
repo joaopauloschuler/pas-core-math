@@ -31,7 +31,7 @@ pas-core-math/
 │   │   └── HexFloatConvert.pas
 │   └── tests/
 │       ├── TestHarness32.pas
-│       ├── TestMulWide.pas
+│       ├── TestMulu64u64.pas
 │       └── Benchmark32.pas     # single-threaded Mops/s comparison: cr_* (C) vs pcr_* (Pascal)
 ├── bin/
 └── tasklist.md
@@ -137,7 +137,7 @@ pas-core-math/
   end;
   ```
 
-- [x] **0.2** Implement `MulWide(a, b: UInt64): TUInt128` in `pascoremathtypes.pas`.
+- [x] **0.2** Implement `Mulu64u64(a, b: UInt64): TUInt128` in `pascoremathtypes.pas`.
   - Primary path: x86-64 inline assembly using the `MUL` instruction (`rdx:rax = rax * src`).
   - Portable fallback: four 32-bit partial products for non-x86-64 targets (ARM, etc.).
 
@@ -150,7 +150,7 @@ pas-core-math/
     Result.hi := a.hi + UInt64(Result.lo < b);  // carry
   end;
   ```
-  Mark `inline` — it is a hot-path operation called inside `MulWide`. Also try marking `MulWide` itself as `inline`; trust the compiler to handle it.
+  Mark `inline` — it is a hot-path operation called inside `Mulu64u64`. Also try marking `Mulu64u64` itself as `inline`; trust the compiler to handle it.
 
 - [x] **0.4** Define type-punning records in `pascoremathtypes.pas`:
   ```pascal
@@ -274,7 +274,7 @@ Port in this order. All functions live in `pascoremath32.pas`, named `pcr_<name>
 
 ## Phase 5 — u128 functions (hardest)
 
-Depends on Phase 0.2–0.3 being fully correct. Validate `MulWide` independently before
+Depends on Phase 0.2–0.3 being fully correct. Validate `Mulu64u64` independently before
 starting this phase.
 
 - [x] **5.01** `sin`    — 222 lines
@@ -327,7 +327,7 @@ Apply this checklist to every function before marking it done:
 5. **`roundeven_finite` is architecturally complex and deserves its own sub-task.** The C
    source has four distinct implementations selected at compile time: AVX, SSE4.1, ARMv8, and
    a portable software fallback using bit manipulation. Task 0.5 lists it as a single line but
-   it warrants the same treatment as `MulWide` (task 0.2): implement the software fallback
+   it warrants the same treatment as `Mulu64u64` (task 0.2): implement the software fallback
    first, then add an x86-64 SSE4.1/AVX path, and validate both against the C reference.
 
 6. **Two-pass rounding (Ziv's strategy) — the slow path must never be removed.** Several
@@ -344,7 +344,7 @@ Apply this checklist to every function before marking it done:
 1. **`TUInt128` is a plain record — no variant/case.** Defined as `record lo, hi: UInt64 end`.
    The variant form was considered but rejected in favour of simplicity and explicit field access.
 
-2. **`MulWide` is a named function, not an overloaded `*` operator.** FPC already owns the
+2. **`Mulu64u64` is a named function, not an overloaded `*` operator.** FPC already owns the
    signature `UInt64 * UInt64 → UInt64` and will not allow a second overload with a different
    return type. A named function is the only option.
 
@@ -354,7 +354,7 @@ Apply this checklist to every function before marking it done:
    general 128-bit shift operator is not needed and should not be added.
 
 4. **Phase 5 (sin/cos/tan/sincos) is explicitly blocked on Phase 0.2–0.3 being fully validated.**
-   A silent bug in `MulWide` or the `+` overload would corrupt all four functions with no
+   A silent bug in `Mulu64u64` or the `+` overload would corrupt all four functions with no
    obvious failure mode, since the error only manifests for large-argument inputs that trigger
    `rbig()`.
 
@@ -371,7 +371,7 @@ Apply this checklist to every function before marking it done:
 2. **Convert hex float constants systematically.** Never retype a constant by hand.
    Use the conversion utility from task 0.6 for every lookup table.
 
-3. **`MulWide` must be correct before Phase 5.** Validate it with known pairs covering
+3. **`Mulu64u64` must be correct before Phase 5.** Validate it with known pairs covering
    overflow, zero, and maximum-value cases before porting any u128 function.
 
 4. **FMA correctness is critical.** Verify that FPC's `Math.FMA` produces correctly-
@@ -387,7 +387,7 @@ Apply this checklist to every function before marking it done:
    to build familiarity gradually. Do not skip ahead.
 
 8. **ASM is allowed and encouraged where beneficial.** Use inline assembly for
-   performance-critical infrastructure (`MulWide`, `BsfDWord`/`BsfQWord`, etc.).
+   performance-critical infrastructure (`Mulu64u64`, `BsfDWord`/`BsfQWord`, etc.).
    Always provide a portable Pascal fallback for non-x86-64 targets.
 
 9. **Inline everything possible.** Mark all small helpers, wrappers, type-punning

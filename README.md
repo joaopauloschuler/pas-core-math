@@ -32,7 +32,7 @@ All functions use the `pcr_` prefix (Pascal Correctly Rounded). The C reference 
 /
 ├── <a href="src/">src/</a>
 │   ├── <a href="src/pascoremath32.pas">pascoremath32.pas</a>          # Main library — 42 pcr_* functions (binary32)
-│   ├── <a href="src/pascoremathtypes.pas">pascoremathtypes.pas</a>       # Shared types, bit-cast helpers, MulWide (x86_64 ASM)
+│   ├── <a href="src/pascoremathtypes.pas">pascoremathtypes.pas</a>       # Shared types, bit-cast helpers, Mulu64u64 (x86_64 ASM)
 │   ├── <a href="src/pascoremathhelperfuncs.pas">pascoremathhelperfuncs.pas</a> # Primitives: fmaf, fabsf, sqrtf, etc.
 │   ├── <a href="src/hexfloat.pas">hexfloat.pas</a>               # Utility to parse C99 hex float literals
 │   ├── <a href="src/ccoremath32.pas">ccoremath32.pas</a>            # External declarations for C reference (cr_* functions, binary32)

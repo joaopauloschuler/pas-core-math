@@ -28,7 +28,7 @@ type
 
 operator +(const a: TUInt128; b: UInt64): TUInt128; inline;
 
-function MulWide(a, b: UInt64): TUInt128; inline;
+function Mulu64u64(a, b: UInt64): TUInt128; inline;
 
 implementation
 
@@ -38,7 +38,7 @@ begin
   Result.hi := a.hi + UInt64(Result.lo < b);  // carry
 end;
 
-function MulWide(a, b: UInt64): TUInt128; inline;
+function Mulu64u64(a, b: UInt64): TUInt128; inline;
 {$IFDEF CPUX86_64}
 var
   rlo, rhi: UInt64;

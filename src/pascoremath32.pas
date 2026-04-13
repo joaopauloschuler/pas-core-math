@@ -488,7 +488,7 @@ begin
     if au >= LongWord($FF shl 24) then begin Result := x + x; Exit; end;  // inf/nan
     if au = 0 then begin Result := x; Exit; end;  // +-0
     // subnormal
-    nz := 24 - Int32(pcr_bsr32(au));  // = clz(au) - 7
+    nz := 24 - Int32(BsrDWord(au));  // = clz(au) - 7
     au := au shl nz;
     if nz > 1 then e := e - LongWord(nz - 1) else e := e;
   end;
@@ -889,7 +889,7 @@ begin
       Result := neg_inf_t.f;
       Exit;
     end;
-    n := 23 - Int32(pcr_bsr32(ux));  // = clz(ux) - 8
+    n := 23 - Int32(BsrDWord(ux));  // = clz(ux) - 8
     ux := ux shl n;
     ux := ux - LongWord(n shl 23);
   end;
@@ -1255,7 +1255,7 @@ begin
       t.u := $FFC00000; Result := t.f; Exit;
     end;
     // subnormal
-    n := 23 - Int32(pcr_bsr32(ux));
+    n := 23 - Int32(BsrDWord(ux));
     ux := ux shl n;
     ux := ux - LongWord(n shl 23);
   end;
@@ -1974,7 +1974,7 @@ begin
       pcr_feraiseexcept_divbyzero;
       t.u := $FF800000; Result := t.f; Exit;
     end;
-    n := 23 - Int32(pcr_bsr32(ux));
+    n := 23 - Int32(BsrDWord(ux));
     ux := ux shl n;
     ux := ux - LongWord(n shl 23);
   end;
@@ -2635,7 +2635,7 @@ begin
   e_a := ax_a shr 24;
   md_a := ((ux_a shl 8) or ($80000000)) shr (126 - e_a);
   mn_a := UInt32(-Int32(md_a));
-  nz_a := 32 - pcr_bsr32(mn_a);  // = clz(mn)+1
+  nz_a := 32 - Int32(BsrDWord(mn_a));  // = clz(mn)+1
   mn_a := mn_a shl nz_a;
   jn_a := Int32(mn_a shr 26);
   jd_a := Int32(md_a shr 26);
@@ -4030,7 +4030,7 @@ begin
     e_ie := Int32((vw.u shl 1) shr 24) - $96;
     if e_ie >= -149 then m_ie := m_ie or $800000
     else Inc(e_ie);
-    t_ie := pcr_bsf32(m_ie);
+    t_ie := Int32(BsfDWord(m_ie));
     m_ie := m_ie shr t_ie;
     e_ie := e_ie + t_ie;
     if (y0 = 0) or (y0 = 1) then begin Result := 1; Exit; end;
@@ -4045,7 +4045,7 @@ begin
     my64 := UInt64(m_ie) * UInt64(m_ie);
     t_ie := 2;
     while t_ie < y_int_ie do begin my64 := my64 * UInt64(m_ie); Inc(t_ie); end;
-    t_ie := pcr_bsr32(m_ie) + 1;  { 32 - clz(m_ie) }
+    t_ie := Int32(BsrDWord(m_ie)) + 1;  { 32 - clz(m_ie) }
     ez_ie := e_ie * y_int_ie + t_ie;
     if (ez_ie <= -149) or (128 < ez_ie) then begin Result := 0; Exit; end;
     Result := Ord(e_ie * y_int_ie >= -149);
@@ -4056,7 +4056,7 @@ begin
   f_ie := Int32((ww.u shl 1) shr 24) - $96;
   if f_ie >= -149 then n_ie := n_ie or $800000
   else Inc(f_ie);
-  t_ie := pcr_bsf32(n_ie);
+  t_ie := Int32(BsfDWord(n_ie));
   n_ie := n_ie shr t_ie;
   f_ie := f_ie + t_ie;
   { Decompose |x| = m * 2^e with m odd }
@@ -4064,7 +4064,7 @@ begin
   e_ie := Int32((vw.u shl 1) shr 24) - $96;
   if e_ie >= -149 then m_ie := m_ie or $800000
   else Inc(e_ie);
-  t_ie := pcr_bsf32(m_ie);
+  t_ie := Int32(BsfDWord(m_ie));
   m_ie := m_ie shr t_ie;
   e_ie := e_ie + t_ie;
   if y0 < 0 then begin
@@ -4073,7 +4073,7 @@ begin
       if e_ie >= 0 then ez_ie := -(Int32(e_ie) shl f_ie) * Int32(n_ie)
       else ez_ie := (Int32(-e_ie) shl f_ie) * Int32(n_ie);
     end else begin
-      t_ie := pcr_bsf32(UInt32(e_ie));
+      t_ie := Int32(BsfDWord(UInt32(e_ie)));
       if (-f_ie) > t_ie then begin Result := 0; Exit; end;
       ez_ie := sar_i32(-e_ie, -f_ie) * Int32(n_ie);
     end;
@@ -4096,7 +4096,7 @@ begin
   end;
   my32 := m_ie; n0_ie := n_ie;
   while n0_ie > 1 do begin Dec(n0_ie); my32 := my32 * m_ie; end;
-  t_ie := pcr_bsr32(my32) + 1;  { 32 - clz(my32) }
+  t_ie := Int32(BsrDWord(my32)) + 1;  { 32 - clz(my32) }
   Result := Ord((-149 <= e_ie * Int32(n_ie)) and
                 (e_ie * Int32(n_ie) + t_ie <= 128));
 end;
@@ -5097,7 +5097,7 @@ begin
     n_iem := n_iem or $800000
   else
     Inc(f_iem);
-  t_iem := pcr_bsf32(n_iem);
+  t_iem := Int32(BsfDWord(n_iem));
   n_iem := n_iem shr t_iem;
   Inc(f_iem, t_iem);
   m_iem := vd_iem.u and $FFFFFFFFFFFFF;
@@ -5110,7 +5110,7 @@ begin
   Inc(e_iem, t_iem);
   if y < 0.0 then begin
     if m_iem <> 1 then begin Result := 0; Exit; end;
-    t_iem := pcr_bsf32(UInt32(e_iem));
+    t_iem := Int32(BsfDWord(UInt32(e_iem)));
     if -f_iem > t_iem then begin Result := 0; Exit; end;
     if e_iem >= 0 then begin
       if f_iem >= 0 then
@@ -5147,7 +5147,7 @@ begin
     my_iem := my_iem * m_iem;
     Dec(n0_iem);
   end;
-  t_iem := 1 + pcr_bsr32(UInt32(my_iem));
+  t_iem := 1 + Int32(BsrDWord(UInt32(my_iem)));
   if (-149 <= e_iem * Int32(n_iem)) and (e_iem * Int32(n_iem) + t_iem <= 128) then
     Result := 1
   else
@@ -5521,10 +5521,10 @@ var
 begin
   e_exp := Int32((u shr 23) and $FF);
   m := UInt64((u and $007FFFFF) or $800000);  // ~0u>>9 = $007FFFFF, 1<<23 = $800000
-  p0 := MulWide(m, sincos_ipi[0]);
-  p1 := MulWide(m, sincos_ipi[1]); p1 := p1 + p0.hi;
-  p2 := MulWide(m, sincos_ipi[2]); p2 := p2 + p1.hi;
-  p3 := MulWide(m, sincos_ipi[3]); p3 := p3 + p2.hi;
+  p0 := Mulu64u64(m, sincos_ipi[0]);
+  p1 := Mulu64u64(m, sincos_ipi[1]); p1 := p1 + p0.hi;
+  p2 := Mulu64u64(m, sincos_ipi[2]); p2 := p2 + p1.hi;
+  p3 := Mulu64u64(m, sincos_ipi[3]); p3 := p3 + p2.hi;
   p3h := p3.hi;
   p3l := p3.lo;
   p2l := p2.lo;
@@ -5904,10 +5904,10 @@ var
 begin
   e_exp := Int32((u shr 23) and $FF);
   m_val := UInt64((u and $007FFFFF) or $800000);
-  p0 := MulWide(m_val, sincos_ipi[0]);
-  p1 := MulWide(m_val, sincos_ipi[1]); p1 := p1 + p0.hi;
-  p2 := MulWide(m_val, sincos_ipi[2]); p2 := p2 + p1.hi;
-  p3 := MulWide(m_val, sincos_ipi[3]); p3 := p3 + p2.hi;
+  p0 := Mulu64u64(m_val, sincos_ipi[0]);
+  p1 := Mulu64u64(m_val, sincos_ipi[1]); p1 := p1 + p0.hi;
+  p2 := Mulu64u64(m_val, sincos_ipi[2]); p2 := p2 + p1.hi;
+  p3 := Mulu64u64(m_val, sincos_ipi[3]); p3 := p3 + p2.hi;
   p3h := p3.hi;
   p3l := p3.lo;
   p2l := p2.lo;

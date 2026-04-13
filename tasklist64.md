@@ -156,7 +156,7 @@ Required operations, in dependency order:
 
 **`AddDInt` requires `pcr_clzll`** (task 0.5) — do not implement it until 0.5 is done.
 
-**`MulDInt` requires `MulWide`** — already present in `pascoremathtypes.pas` from binary32.
+**`MulDInt` requires `Mulu64u64`** — already present in `pascoremathtypes.pas` from binary32.
 
 **`DIntFromD` requires `pcr_clzll`** — also blocked on 0.5.
 
@@ -417,6 +417,8 @@ Apply this checklist to every function before marking it done:
 - [ ] `dint64_t` operations replaced with `TDInt64` and the typed procedures
 - [ ] Sampling test passes (no mismatches over ≥ 10^9 random inputs + structured coverage)
 - [ ] C function `cr_<name>` declared in `ccoremath64.pas`; Pascal equivalent named `pcr_<name>` in `pascoremath64.pas`
+- [ ] All integer variables declared as `Int32` (not `Integer`) for explicit 32-bit signed intent
+- [ ] No redundant typecast patterns (see rule 11 below)
 
 ---
 
@@ -469,6 +471,26 @@ Apply this checklist to every function before marking it done:
 
 10. **No `compound` function in binary64.** The binary32 library has `compoundf`; binary64
     does not. The function count is 41, not 42.
+
+11. **Use `Int32`, not `Integer`, for all 32-bit signed integer variables.** `Int32` makes
+    the bit-width explicit and immune to any future ambiguity. `Integer` is always 32-bit in
+    FPC, but the intent is not obvious to a reader. The binary32 port was updated to use
+    `Int32` consistently (April 2026) — follow the same convention in binary64.
+
+12. **Avoid redundant typecast patterns — they are C translation artifacts.** When porting
+    from C, the following patterns appear but carry no semantic meaning in Pascal and should
+    be removed:
+
+    | Pattern | Why it is redundant | Simplification |
+    |---|---|---|
+    | `Int32(Int32(...))` | Arithmetic on `Int32` stays `Int32`; outer cast is a no-op | Drop outer `Int32(...)` |
+    | `Int64(Int64(...))` | Same redundancy at 64-bit | Drop outer `Int64(...)` |
+    | `LongWord(Int32(LongWord(...)))` | `Int32` in the middle does not change any bits | Drop the `Int32(...)` layer |
+    | `LongWord(Int32(x) shr n)` where `x: LongWord` | `shr` is always logical in Pascal; the `Int32` cast buys nothing when the high bit of `x` is guaranteed 0 | Use `x shr n` directly |
+
+    These arise because C requires explicit `(uint32_t)(int32_t)` casts around signed/unsigned
+    operations. Pascal's type system handles the same cases without the extra layers. Keep
+    casts that genuinely change signedness or width; remove those that simply round-trip.
 
 ---
 
