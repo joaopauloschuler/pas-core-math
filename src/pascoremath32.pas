@@ -3480,7 +3480,7 @@ end;
 
 { ── muldd / polydd: double-double helpers shared by pcr_atan2f and pcr_atan2pif ── }
 
-function muldd(xh, xl, ch, cl: Double; out l: Double): Double;
+function muldd(xh, xl, ch, cl: Double; out l: Double): Double; inline;
 var
   ahlh, alhh, ahhh, ahhl: Double;
 begin
@@ -3495,7 +3495,7 @@ begin
 end;
 
 { c is flat: c[k*2]=c[k][0], c[k*2+1]=c[k][1] }
-function polydd(xh, xl: Double; n: Int32; const c: array of Double; out l: Double): Double;
+function polydd(xh, xl: Double; n: Int32; const c: array of Double; out l: Double): Double; inline;
 var
   i: Int32;
   ch, cl, th, tl: Double;
@@ -3571,7 +3571,7 @@ end;
 
 { ── pcr_atan2f_tiny: Taylor approx for tiny y/x ───────────────────────────── }
 
-function pcr_atan2f_tiny(y, x: Single): Single;
+function pcr_atan2f_tiny(y, x: Single): Single; inline;
 const
   c_third = -0.3333333333333333;  { -0x1.5555555555555p-2 }
 var

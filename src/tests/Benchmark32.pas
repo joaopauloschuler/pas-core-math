@@ -24,6 +24,8 @@ const
 var
   GlobalSink: LongWord = 0;
   PWins, CWins, PTies: Int32;
+  TotalSpeedup: Double = 0.0;
+  BenchCount: Int32 = 0;
 
 procedure BenchUni(const name: string; pfC: TUniFuncC; pfP: TUniFuncP);
 var
@@ -74,6 +76,11 @@ begin
   if mopsP > mopsC * (1.0 + TIE_THRESHOLD) then Inc(PWins)
   else if mopsC > mopsP * (1.0 + TIE_THRESHOLD) then Inc(CWins)
   else Inc(PTies);
+  if mopsC > 0 then
+  begin
+    TotalSpeedup := TotalSpeedup + mopsP / mopsC;
+    Inc(BenchCount);
+  end;
   WriteLn(Format('%-16s  C: %6.1f Mops/s  Pascal: %6.1f Mops/s  sink=%s%s',
     [name, mopsC, mopsP,
      IfThen(cSink = pSink, 'MATCH', 'MISMATCH'),
@@ -136,6 +143,11 @@ begin
   if mopsP > mopsC * (1.0 + TIE_THRESHOLD) then Inc(PWins)
   else if mopsC > mopsP * (1.0 + TIE_THRESHOLD) then Inc(CWins)
   else Inc(PTies);
+  if mopsC > 0 then
+  begin
+    TotalSpeedup := TotalSpeedup + mopsP / mopsC;
+    Inc(BenchCount);
+  end;
   WriteLn(Format('%-16s  C: %6.1f Mops/s  Pascal: %6.1f Mops/s  sink=%s%s',
     [name, mopsC, mopsP,
      IfThen(cSink = pSink, 'MATCH', 'MISMATCH'),
@@ -271,5 +283,12 @@ begin
 
   WriteLn;
   WriteLn(Format('Pascal won: %d  |  C won: %d  |  Ties (<%d%%): %d', [PWins, CWins, Round(TIE_THRESHOLD * 100), PTies]));
+  if BenchCount > 0 then
+    if TotalSpeedup / BenchCount >= 1.0 then
+      WriteLn(Format('On average, Pascal is %.2fx faster than C (arithmetic mean over %d functions)',
+        [TotalSpeedup / BenchCount, BenchCount]))
+    else
+      WriteLn(Format('On average, Pascal is %.2fx slower than C (arithmetic mean over %d functions)',
+        [BenchCount / TotalSpeedup, BenchCount]));
   WriteLn(Format('GlobalSink = %u (prevents dead-code elimination)', [GlobalSink]));
 end.
