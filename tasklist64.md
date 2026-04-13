@@ -202,6 +202,13 @@ Mapping:
 - Edge case: `clzll(0)` is undefined in C; in practice all callers guard against 0 before
   calling it, but add an assertion or guard in debug builds.
 
+**Use `BsrQWord` directly — no ASM block needed.** `BsrQWord` is a genuine FPC 3.2.2
+compiler intrinsic (like `BsrDWord` used in the binary32 port). Because it is not an
+`asm` block, the `inline` directive on `pcr_clzll` will actually take effect and every
+call site will be inlined to a single `BSR` instruction. An `asm` block would silently
+suppress inlining, as was the case with the old `pcr_bsf32`/`pcr_bsr32` helpers that
+were replaced in April 2026.
+
 ```pascal
 function pcr_clzll(x: UInt64): Integer; inline;
 {$IFDEF CPUX86_64}
@@ -477,7 +484,18 @@ Apply this checklist to every function before marking it done:
     FPC, but the intent is not obvious to a reader. The binary32 port was updated to use
     `Int32` consistently (April 2026) — follow the same convention in binary64.
 
-12. **Avoid redundant typecast patterns — they are C translation artifacts.** When porting
+12. **Do not write local bit-scan or arithmetic-shift helpers — use FPC intrinsics directly.**
+    The binary32 port went through three rounds of this cleanup (all April 2026):
+    - `pcr_bsf32`/`pcr_bsr32` (asm blocks, `inline` silently ignored) → `BsfDWord`/`BsrDWord`
+    - `cf_bsf64`/`cf_bsr64` (asm blocks, not even marked `inline`) → `BsfQWord`/`BsrQWord`
+    - `sar_i32`/`sar_i64` (conditional-branch fallback) → `SarLongInt`/`SarInt64`
+
+    All six of `BsfDWord`, `BsrDWord`, `BsfQWord`, `BsrQWord`, `SarLongInt`, `SarInt64`
+    are genuine FPC 3.2.2 compiler intrinsics in the `System` unit — no `uses` clause
+    needed, and all inline correctly at every call site. Do not reintroduce local wrappers
+    for these operations in `pascoremath64.pas`.
+
+13. **Avoid redundant typecast patterns — they are C translation artifacts.** When porting
     from C, the following patterns appear but carry no semantic meaning in Pascal and should
     be removed:
 
@@ -551,9 +569,13 @@ Apply this checklist to every function before marking it done:
 8. **Work sequentially within each phase.** The ordering is chosen so each function builds
    familiarity with the infrastructure before the next, harder one.
 
-9. **ASM is allowed and encouraged for infrastructure.** `pcr_clzll` (BSR instruction),
-   `pcr_fma` (VFMADD213SD), and potentially `pcr_fasttwosum` (to prevent x87 spills) are
-   all candidates for x86-64 inline assembly. Always keep a portable fallback.
+9. **Prefer FPC intrinsics over inline ASM for bit-scan operations.** `BsrQWord` and
+   `BsfQWord` are genuine FPC 3.2.2 compiler intrinsics — they emit the correct instruction
+   on x86-64 and have portable fallbacks on other targets, all without an `asm` block.
+   Functions containing `asm` blocks cannot be inlined by FPC, so `inline` is silently
+   ignored on x86-64. Use `BsrQWord`/`BsfQWord` directly (or in a thin `inline` wrapper
+   like `pcr_clzll`) to get true inlining. ASM remains appropriate only for `pcr_fma`
+   (VFMADD213SD) and `pcr_fasttwosum` where SSE2 evaluation order must be forced.
 
 10. **Benchmark every function.** After each function passes sampling tests, run
     `Benchmark64.pas` and record the Mops/s ratio (Pascal vs C). A large gap signals

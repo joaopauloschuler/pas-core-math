@@ -56,19 +56,6 @@ function pcr_tanf(x: Single): Single; inline;
 
 implementation
 
-// Arithmetic right shift helpers (FPC shr is always logical)
-function sar_i32(x: Int32; n: Int32): Int32; inline;
-begin
-  if x >= 0 then Result := x shr n
-  else Result := not(not(x) shr n);
-end;
-
-function sar_i64(x: Int64; n: Int32): Int64; inline;
-begin
-  if x >= 0 then Result := x shr n
-  else Result := not(not(x) shr n);
-end;
-
 // Shared polynomial evaluator degree-12 (used by acosf, asinf)
 function pcr_poly12(z: Double; const c: array of Double): Double;
 var z2, z4, c0, c2, c4, c6, c8, c10: Double;
@@ -584,7 +571,7 @@ begin
   z := k; z2 := z * z;
   fs := sn[0] + z2 * (sn[1] + z2 * sn[2]);
   fc := cn[0] + z2 * (cn[1] + z2 * cn[2]);
-  iq := LongWord(sar_i32(m_int, s)); iq := (iq + 1) shr 1;
+  iq := LongWord(SarLongInt(m_int, s)); iq := (iq + 1) shr 1;
   is_idx := iq and 127;
   ic_idx := (iq + 32) and 127;
   ts := S_TABLE[is_idx];
@@ -893,7 +880,7 @@ begin
     ux := ux shl n;
     ux := ux - LongWord(n shl 23);
   end;
-  e := sar_i32(Int32(ux), 23) - $7F;
+  e := SarLongInt(Int32(ux), 23) - $7F;
   m := ux and $7FFFFF;
   if m = 0 then begin Result := Single(e); Exit; end;
   j := Int32((m + (1 shl 16)) shr 17);
@@ -1160,7 +1147,7 @@ begin
   jp_idx := jp and 31;
   jp_shr5 := jp shr 5;  // jp > 0, so logical = arithmetic
   jm_idx := jm and 31;
-  jm_shr5 := sar_i64(jm, 5);
+  jm_shr5 := SarInt64(jm, 5);
   sp.u := tb_arr[jp_idx] + (UInt64(jp_shr5) shl 52);
   sm.u := tb_arr[jm_idx] + (UInt64(jm_shr5) shl 52);
   te := c_arr[0] + h2 * c_arr[2];
@@ -1262,7 +1249,7 @@ begin
   if ux = LongWord(127 shl 23) then begin Result := 0.0; Exit; end;
   m := ux and LongWord((1 shl 23) - 1);
   j := (m + LongWord(1 shl (23-7))) shr (23-6);
-  e := sar_i32(Int32(ux), 23) - 127;
+  e := SarLongInt(Int32(ux), 23) - 127;
   tz.u := (UInt64(m) shl 29) or (UInt64($3FF) shl 52);
   z := tz.f * tr[j] - 1.0;
   z2 := z * z;
@@ -1337,7 +1324,7 @@ begin
     k := Int32((t.u shr 23) and $FF) - 127;
     if (k >= 0) and (k < 9) and ((t.u shl (9 + k)) = 0) then
     begin
-      msk := sar_i32(Int32(t.u), 31); // -1 if negative, 0 if positive
+      msk := SarLongInt(Int32(t.u), 31); // -1 if negative, 0 if positive
       m_int := Int32((t.u and $7FFFFF) or (1 shl 23)) shr (23 - k);
       m_int := (m_int xor msk) - msk + 127;
       if (m_int > 0) and (m_int < 255) then
@@ -1650,7 +1637,7 @@ begin
   ia := Double(i64a);
   j := i64a and $F;
   e64 := i64a - j;
-  e64 := sar_i64(e64, 4);
+  e64 := SarInt64(e64, 4);
   s := tb_e2m1[j];
   su.u := UInt64(e64 + $3FF) shl 52;
   s := s * su.f;
@@ -1978,7 +1965,7 @@ begin
     ux := ux shl n;
     ux := ux - LongWord(n shl 23);
   end;
-  e := sar_i32(Int32(ux), 23) - 127;
+  e := SarLongInt(Int32(ux), 23) - 127;
   m64 := Int64(ux and LongWord((1 shl 23) - 1));
   j := (m64 + (1 shl (23-7))) shr (23-6);
   tz.u := (UInt64(m64) shl 29) or (UInt64($3FF) shl 52);
@@ -2125,8 +2112,8 @@ begin
   axd := ax_f;
   x2 := axd * axd;
   jt.f := x2 * iln2_e - 1024.00390625; // 0x1.00004p+10
-  j_idx := sar_i64(Int64(jt.u shl 12), 48); // sign-extend 16-bit field
-  S.u := UInt64(sar_i64(j_idx, 7) + (Int64($3FF) or Int64(sgn shl 11))) shl 52;
+  j_idx := SarInt64(Int64(jt.u shl 12), 48); // sign-extend 16-bit field
+  S.u := UInt64(SarInt64(j_idx, 7) + (Int64($3FF) or Int64(sgn shl 11))) shl 52;
   d := (x2 + ln2h_e * j_idx) + ln2l_e * j_idx;
   d2 := d * d;
   e0 := E_tbl[j_idx and 127];
@@ -3493,7 +3480,7 @@ end;
 
 { ── muldd / polydd: double-double helpers shared by pcr_atan2f and pcr_atan2pif ── }
 
-function muldd(xh, xl, ch, cl: Double; out l: Double): Double;
+function muldd(xh, xl, ch, cl: Double; out l: Double): Double; inline;
 var
   ahlh, alhh, ahhh, ahhl: Double;
 begin
@@ -3508,7 +3495,7 @@ begin
 end;
 
 { c is flat: c[k*2]=c[k][0], c[k*2+1]=c[k][1] }
-function polydd(xh, xl: Double; n: Int32; const c: array of Double; out l: Double): Double;
+function polydd(xh, xl: Double; n: Int32; const c: array of Double; out l: Double): Double; inline;
 var
   i: Int32;
   ch, cl, th, tl: Double;
@@ -3584,7 +3571,7 @@ end;
 
 { ── pcr_atan2f_tiny: Taylor approx for tiny y/x ───────────────────────────── }
 
-function pcr_atan2f_tiny(y, x: Single): Single;
+function pcr_atan2f_tiny(y, x: Single): Single; inline;
 const
   c_third = -0.3333333333333333;  { -0x1.5555555555555p-2 }
 var
@@ -4075,7 +4062,7 @@ begin
     end else begin
       t_ie := Int32(BsfDWord(UInt32(e_ie)));
       if (-f_ie) > t_ie then begin Result := 0; Exit; end;
-      ez_ie := sar_i32(-e_ie, -f_ie) * Int32(n_ie);
+      ez_ie := SarLongInt(-e_ie, -f_ie) * Int32(n_ie);
     end;
     Result := Ord((-149 <= ez_ie) and (ez_ie < 128));
     Exit;
@@ -4193,7 +4180,7 @@ begin
   et_a2 := Int32((ty_a2.u shr 23) and $FF) - $7F;
   if (8 + et_a2) >= 0 then kk_a2 := ty_a2.u shl (8 + et_a2)
   else kk_a2 := ty_a2.u shr (-8 - et_a2);
-  isintflag_a2 := (((kk_a2 shl 1) or UInt32(sar_i32(et_a2, 31))) = 0) or (et_a2 >= 23);
+  isintflag_a2 := (((kk_a2 shl 1) or UInt32(SarLongInt(et_a2, 31))) = 0) or (et_a2 >= 23);
   ll_a2.f := el_a2;
   lh_a2.f := eh_a2;
   { Adjust for borderline rounding }
@@ -4510,7 +4497,7 @@ begin
   h_pf := pcr_fma(l_pf, y_pf, zt_pf - ia_pf);
   il_pf := Int64(Trunc(ia_pf));
   jl_pf := il_pf and $F;
-  el_pf := sar_i64(il_pf - jl_pf, 4);
+  el_pf := SarInt64(il_pf - jl_pf, 4);
   s_pf := tb_pf[jl_pf];
   su_pf.u := UInt64(Int64($3FF) + el_pf) shl 52;
   s_pf := s_pf * su_pf.f;
@@ -4754,45 +4741,6 @@ const
   CF_XMAX: array[0..15] of UInt64 = (
     0, 16777215, 5791, 321, 75, 31, 17, 11, 7, 5, 5, 3, 3, 3, 3, 3
   );
-
-// ── BSF/BSR 64-bit helpers ────────────────────────────────────────────────────
-function cf_bsf64(x: UInt64): Int32;
-{$IFDEF CPUX86_64}
-var r: QWord;
-begin
-  asm
-    bsf rax, x
-    mov r, rax
-  end;
-  Result := Int32(r);
-end;
-{$ELSE}
-var i: Int32;
-begin
-  Result := 0;
-  for i := 0 to 63 do
-    if (x and (UInt64(1) shl i)) <> 0 then begin Result := i; Exit; end;
-end;
-{$ENDIF}
-
-function cf_bsr64(x: UInt64): Int32;
-{$IFDEF CPUX86_64}
-var r: QWord;
-begin
-  asm
-    bsr rax, x
-    mov r, rax
-  end;
-  Result := Int32(r);
-end;
-{$ELSE}
-var i: Int32;
-begin
-  Result := 0;
-  for i := 63 downto 0 do
-    if (x and (UInt64(1) shl i)) <> 0 then begin Result := i; Exit; end;
-end;
-{$ENDIF}
 
 // ── MXCSR flag save/restore ───────────────────────────────────────────────────
 function cf_get_flag: DWord;
@@ -5059,7 +5007,7 @@ begin
       m_iem := m_iem or $10000000000000
     else
       Inc(e_iem);
-    t_iem := cf_bsf64(m_iem);
+    t_iem := Int32(BsfQWord(m_iem));
     m_iem := m_iem shr t_iem;
     Inc(e_iem, t_iem);
     if (y = 0.0) or (y = 1.0) then begin
@@ -5083,7 +5031,7 @@ begin
       my_iem := my_iem * m_iem;
       Inc(t2_iem);
     end;
-    t_iem := 1 + cf_bsr64(my_iem);
+    t_iem := 1 + Int32(BsrQWord(my_iem));
     ez_iem := e_iem * y_int_iem + t_iem;
     if (ez_iem <= -149) or (128 < ez_iem) then begin Result := 0; Exit; end;
     if my_iem > $1000000 then midpoint := 1;
@@ -5105,7 +5053,7 @@ begin
     m_iem := m_iem or $10000000000000
   else
     Inc(e_iem);
-  t_iem := cf_bsf64(m_iem);
+  t_iem := Int32(BsfQWord(m_iem));
   m_iem := m_iem shr t_iem;
   Inc(e_iem, t_iem);
   if y < 0.0 then begin
@@ -5116,12 +5064,12 @@ begin
       if f_iem >= 0 then
         ez_iem := -(e_iem shl f_iem) * Int32(n_iem)
       else
-        ez_iem := -sar_i32(e_iem, -f_iem) * Int32(n_iem);
+        ez_iem := -SarLongInt(e_iem, -f_iem) * Int32(n_iem);
     end else begin
       if f_iem >= 0 then
         ez_iem := ((-e_iem) shl f_iem) * Int32(n_iem)
       else
-        ez_iem := sar_i32(-e_iem, -f_iem) * Int32(n_iem);
+        ez_iem := SarLongInt(-e_iem, -f_iem) * Int32(n_iem);
     end;
     if (-149 <= ez_iem) and (ez_iem < 128) then Result := 1 else Result := 0;
     Exit;
@@ -5209,8 +5157,8 @@ begin
     w_e22.f := qh_e22 + (ql_e22 + err_e22);
     w_e22.u := UInt64(Int64(w_e22.u) + Int64(k_e22) * Int64($10000000000000));
     if exact <> 0 then begin
-      vtz_e22 := cf_bsf64(v_e22.u);
-      wtz_e22 := cf_bsf64(w_e22.u);
+      vtz_e22 := Int32(BsfQWord(v_e22.u));
+      wtz_e22 := Int32(BsfQWord(w_e22.u));
       cf_set_flag(flag);
       if vtz_e22 >= wtz_e22 then Result := Single(v_e22.f)
       else Result := Single(w_e22.f);
@@ -5541,8 +5489,8 @@ begin
     i_val := Int32((p3l shl (s - 64)) or (p2l shr (128 - s)));
     a_val := Int64((p2l shl (s - 64)) or (p1l shr (128 - s)));
   end;
-  sgn := sar_i32(Int32(u), 31);   // 0 if positive, -1 if negative
-  sm  := sar_i64(a_val, 63);        // sign extension of a
+  sgn := SarLongInt(Int32(u), 31);   // 0 if positive, -1 if negative
+  sm  := SarInt64(a_val, 63);        // sign extension of a
   i_val := i_val - Int32(sm);
   Result := Double(a_val xor Int64(sgn)) * 5.421010862427522e-20;  // *2^-64
   i_val := (i_val xor sgn) - sgn;
@@ -5924,8 +5872,8 @@ begin
     i_val := Int32((p3l shl (s_shift - 64)) or (p2l shr (128 - s_shift)));
     a_val := Int64((p2l shl (s_shift - 64)) or (p1l shr (128 - s_shift)));
   end;
-  sgn   := sar_i32(Int32(u), 31);
-  sm    := sar_i64(a_val, 63);
+  sgn   := SarLongInt(Int32(u), 31);
+  sm    := SarInt64(a_val, 63);
   i_val := i_val - Int32(sm);
   Result := Double(a_val xor Int64(sgn)) * 5.421010862427522e-20;  // *2^-64
   i_val := (i_val xor sgn) - sgn;

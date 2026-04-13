@@ -263,7 +263,11 @@ begin
   WriteLn(Format('PCM won: %d  |  FPC won: %d  |  Ties (<%d%%): %d',
     [PCMWins, FPCWins, Round(TIE_THRESHOLD * 100), PTies]));
   if BenchCount > 0 then
-    WriteLn(Format('On average, PCM is %.1fx faster than FPC (arithmetic mean over %d functions)',
-      [TotalSpeedup / BenchCount, BenchCount]));
+    if TotalSpeedup / BenchCount >= 1.0 then
+      WriteLn(Format('On average, PCM is %.2fx faster than FPC (arithmetic mean over %d functions)',
+        [TotalSpeedup / BenchCount, BenchCount]))
+    else
+      WriteLn(Format('On average, PCM is %.2fx slower than FPC (arithmetic mean over %d functions)',
+        [BenchCount / TotalSpeedup, BenchCount]));
   WriteLn(Format('GlobalSink = %u (prevents dead-code elimination)', [GlobalSink]));
 end.
