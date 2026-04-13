@@ -197,6 +197,11 @@ begin
   if mopsPCM > mopsFPC * (1.0 + TIE_THRESHOLD) then Inc(PCMWins)
   else if mopsFPC > mopsPCM * (1.0 + TIE_THRESHOLD) then Inc(FPCWins)
   else Inc(PTies);
+  if mopsFPC > 0 then
+  begin
+    TotalSpeedup := TotalSpeedup + mopsPCM / mopsFPC;
+    Inc(BenchCount);
+  end;
   WriteLn(Format('%-16s  FPC: %6.1f Mops/s  PCM: %6.1f Mops/s%s',
     ['sincosf', mopsFPC, mopsPCM,
      IfThen(mopsPCM > mopsFPC * (1.0 + TIE_THRESHOLD), '  FASTER! YAY!',

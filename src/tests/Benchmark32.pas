@@ -207,6 +207,11 @@ begin
   if mopsP > mopsC * (1.0 + TIE_THRESHOLD) then Inc(PWins)
   else if mopsC > mopsP * (1.0 + TIE_THRESHOLD) then Inc(CWins)
   else Inc(PTies);
+  if mopsC > 0 then
+  begin
+    TotalSpeedup := TotalSpeedup + mopsP / mopsC;
+    Inc(BenchCount);
+  end;
   WriteLn(Format('%-16s  C: %6.1f Mops/s  Pascal: %6.1f Mops/s  sink=%s%s',
     ['sincosf', mopsC, mopsP,
      IfThen(cSink = pSink, 'MATCH', 'MISMATCH'),
