@@ -57,13 +57,13 @@ function pcr_tanf(x: Single): Single; inline;
 implementation
 
 // Arithmetic right shift helpers (FPC shr is always logical)
-function sar_i32(x: Integer; n: Integer): Integer; inline;
+function sar_i32(x: Int32; n: Int32): Int32; inline;
 begin
   if x >= 0 then Result := x shr n
   else Result := not(not(x) shr n);
 end;
 
-function sar_i64(x: Int64; n: Integer): Int64; inline;
+function sar_i64(x: Int64; n: Int32): Int64; inline;
 begin
   if x >= 0 then Result := x shr n
   else Result := not(not(x) shr n);
@@ -132,7 +132,7 @@ var
   xd: Double;
   ix: Tb32u32;
   m: LongWord;
-  e, k: Integer;
+  e, k: Int32;
   r, dr: Tb32u32;
 begin
   xd := x;
@@ -157,7 +157,7 @@ begin
   begin
     if ix.u <> $0055B7BD then
     begin
-      e := Integer(ix.u shr 23);
+      e := Int32(ix.u shr 23);
       k := 1;
       if ix.u = $002F7E2A then e := -1;
       if m = $55B7BD00 then k := 0;
@@ -188,7 +188,7 @@ var
   z: Double;
   t: Tb32u32;
   ux: LongWord;
-  e: Integer;
+  e: Int32;
   x2: Single;
   z2, z4, z8: Double;
   n0, n2, n4, n6: Double;
@@ -196,7 +196,7 @@ var
   r: Double;
 begin
   z := x; t.f := x; ux := t.u;
-  e := Integer((ux shr 23) and $FF);
+  e := Int32((ux shr 23) and $FF);
   if e = $FF then
   begin
     if (ux shl 9) <> 0 then begin Result := x + x; Exit; end;
@@ -238,7 +238,7 @@ const
     0.19415473041607811, 0.012196596718179518, 0.00011321825378267113);
 var
   t: Tb32u32;
-  e: Integer;
+  e: Int32;
   gt: Boolean;
   f: Single;
   z, z2, z4, z8: Double;
@@ -248,7 +248,7 @@ var
   ax: LongWord;
 begin
   t.f := x;
-  e := Integer((t.u shr 23) and $FF);
+  e := Int32((t.u shr 23) and $FF);
   gt := e >= 127;
   if e > 127 + 24 then  // |x| >= 2^25
   begin
@@ -319,16 +319,16 @@ const
     -6.531156331319305e-23, 7.109333835435933e-46, -3.0954114513195225e-69);
 var
   ix: Tb32u32;
-  e, m_int, s, p: Integer;
+  e, m_int, s, p: Int32;
   m_uw: LongWord;
-  k: Integer;
+  k: Int32;
   iq: LongWord;
   is_idx, ic_idx: LongWord;
   ts, tc, z, z2, fs, fc, r: Double;
   ax: LongWord;
 begin
   ix.f := x;
-  e := Integer((ix.u shr 23) and $FF);
+  e := Int32((ix.u shr 23) and $FF);
   if e = $FF then
   begin
     if (ix.u shl 9) = 0 then
@@ -340,7 +340,7 @@ begin
     Exit;
   end;
   m_uw := (ix.u and $7FFFFF) or $800000;
-  m_int := Integer(m_uw);
+  m_int := Int32(m_uw);
   s := 143 - e;
   p := e - 112;
   if p < 0 then  // |x| < 2^-15
@@ -355,11 +355,11 @@ begin
   if p > 31 then
   begin
     if p > 63 then begin Result := 1.0; Exit; end;
-    iq := LongWord(Integer(LongWord(m_int) shl (p - 32)));
+    iq := LongWord(Int32(LongWord(m_int) shl (p - 32)));
     Result := S_TABLE[(iq + 32) and 127];
     Exit;
   end;
-  k := Integer(LongWord(m_int) shl p);
+  k := Int32(LongWord(m_int) shl p);
   if k = 0 then
   begin
     iq := LongWord(m_int) shr (32 - p);
@@ -467,7 +467,7 @@ var
   au: LongWord;
   sgn: LongWord;
   e: LongWord;
-  nz: Integer;
+  nz: Int32;
   mant: LongWord;
   cvt1, cvt2: Tb64u64;
   et, it_: LongWord;
@@ -488,7 +488,7 @@ begin
     if au >= LongWord($FF shl 24) then begin Result := x + x; Exit; end;  // inf/nan
     if au = 0 then begin Result := x; Exit; end;  // +-0
     // subnormal
-    nz := 24 - Integer(pcr_bsr32(au));  // = clz(au) - 7
+    nz := 24 - Int32(pcr_bsr32(au));  // = clz(au) - 7
     au := au shl nz;
     if nz > 1 then e := e - LongWord(nz - 1) else e := e;
   end;
@@ -539,14 +539,14 @@ const
     -6.531156331319305e-23, 7.109333835435933e-46, -3.0954114513195225e-69);
 var
   ix: Tb32u32;
-  e, m_int, sgn, s, si: Integer;
+  e, m_int, sgn, s, si: Int32;
   iq: LongWord;
   is_idx, ic_idx: LongWord;
   ts, tc, z, z2, fs, fc, r: Double;
-  k: Integer;
+  k: Int32;
 begin
   ix.f := x;
-  e := Integer((ix.u shr 23) and $FF);
+  e := Int32((ix.u shr 23) and $FF);
   if e = $FF then
   begin
     if (ix.u shl 9) = 0 then
@@ -557,8 +557,8 @@ begin
       Result := x + x;
     Exit;
   end;
-  m_int := Integer((ix.u and $7FFFFF) or $800000);
-  sgn := -Integer(ix.u shr 31);  // 0 or -1
+  m_int := Int32((ix.u and $7FFFFF) or $800000);
+  sgn := -Int32(ix.u shr 31);  // 0 or -1
   m_int := (m_int xor sgn) - sgn;
   s := 143 - e;
   if s < 0 then  // |x| >= 2^17
@@ -580,7 +580,7 @@ begin
   begin
     Result := pcr_copysignf(0.0, x); Exit;
   end;
-  k := Integer(LongWord(m_int) shl (31 - s));
+  k := Int32(LongWord(m_int) shl (31 - s));
   z := k; z2 := z * z;
   fs := sn[0] + z2 * (sn[1] + z2 * sn[2]);
   fc := cn[0] + z2 * (cn[1] + z2 * cn[2]);
@@ -608,7 +608,7 @@ const
 var
   t: Tb32u32;
   ta: LongWord;
-  e: Integer;
+  e: Int32;
   gt: Boolean;
   z, z2, z4, z8: Double;
   cn0, cn2, cn4, cn6: Double;
@@ -616,7 +616,7 @@ var
   r: Double;
 begin
   t.f := x;
-  e := Integer((t.u shr 23) and $FF);
+  e := Int32((t.u shr 23) and $FF);
   gt := e >= 127;
   ta := t.u and $7FFFFFFF;
   if ta >= $4C700518 then  // |x| >= 0x1.e00a3p+25
@@ -756,7 +756,7 @@ var
   t: Tb32u32;
   ax_f: Single;
   az, z: Double;
-  e, s, i: Integer;
+  e, s, i: Int32;
   z2, z4, c0_v, c2_v, c4_v, c6_v, f, r: Double;
   o_val: Double;
 begin
@@ -764,7 +764,7 @@ begin
   ax_f := pcr_fabsf(x);
   az := ax_f;
   z := x;
-  e := Integer((t.u shr 23) and $FF);
+  e := Int32((t.u shr 23) and $FF);
   if e >= 127 then
   begin
     if x = 1.0 then begin Result := 0.0; Exit; end;
@@ -777,7 +777,7 @@ begin
   s := 146 - e;
   i := 0;
   if s < 32 then
-    i := Integer(((t.u and $7FFFFF) or $800000) shr s);
+    i := Int32(((t.u and $7FFFFF) or $800000) shr s);
   z2 := z * z; z4 := z2 * z2;
   if i = 0 then
   begin
@@ -853,10 +853,10 @@ var
   t: Tb32u32;
   xd: Tb64u64;
   ux: LongWord;
-  n: Integer;
-  e: Integer;
+  n: Int32;
+  e: Int32;
   m: LongWord;
-  j: Integer;
+  j: Int32;
   z, z2, el, f: Double;
   lb_s, ub_s: Single;
   c0: Double;
@@ -889,14 +889,14 @@ begin
       Result := neg_inf_t.f;
       Exit;
     end;
-    n := 23 - Integer(pcr_bsr32(ux));  // = clz(ux) - 8
+    n := 23 - Int32(pcr_bsr32(ux));  // = clz(ux) - 8
     ux := ux shl n;
     ux := ux - LongWord(n shl 23);
   end;
-  e := sar_i32(Integer(ux), 23) - $7F;
+  e := sar_i32(Int32(ux), 23) - $7F;
   m := ux and $7FFFFF;
   if m = 0 then begin Result := Single(e); Exit; end;
-  j := Integer((m + (1 shl 16)) shr 17);
+  j := Int32((m + (1 shl 16)) shr 17);
   xd.u := (UInt64(m) shl 29) or (UInt64($3FF) shl 52);
   z := xd.f * ix_arr[j] - 1.0;
   z2 := z * z;
@@ -952,14 +952,14 @@ var
   t: Tb32u32;
   ax_f: Single;
   az, z: Double;
-  e, s, i: Integer;
+  e, s, i: Int32;
   z2, z4, c0_v, c2_v, c4_v, c6_v, f, r: Double;
 begin
   t.f := x;
   ax_f := pcr_fabsf(x);
   az := ax_f;
   z := x;
-  e := Integer((t.u shr 23) and $FF);
+  e := Int32((t.u shr 23) and $FF);
   if e >= 127 then
   begin
     if ax_f = 1.0 then begin Result := pcr_copysignf(0.5, x); Exit; end;
@@ -971,7 +971,7 @@ begin
   s := 146 - e;
   i := 0;
   if s < 32 then
-    i := Integer(((t.u and $7FFFFF) or $800000) shr s);
+    i := Int32(((t.u and $7FFFFF) or $800000) shr s);
   z2 := z * z; z4 := z2 * z2;
   if i = 0 then
   begin
@@ -1009,7 +1009,7 @@ var
   ix: Tb32u32;
   e_bits: LongWord;
   x4, nx4, dx4, ni, zf: Single;
-  k: Integer;
+  k: Int32;
   a: LongWord;
   z, z2, z4, r: Double;
   pos_inf_t, neg_inf_t: Tb32u32;
@@ -1237,7 +1237,7 @@ var
   tz: Tb64u64;
   ux, m: LongWord;
   j: LongWord;
-  e, n: Integer;
+  e, n: Int32;
   z, z2, r, el, dr, f: Double;
   ub, lb: Single;
 begin
@@ -1255,14 +1255,14 @@ begin
       t.u := $FFC00000; Result := t.f; Exit;
     end;
     // subnormal
-    n := 23 - Integer(pcr_bsr32(ux));
+    n := 23 - Int32(pcr_bsr32(ux));
     ux := ux shl n;
     ux := ux - LongWord(n shl 23);
   end;
   if ux = LongWord(127 shl 23) then begin Result := 0.0; Exit; end;
   m := ux and LongWord((1 shl 23) - 1);
   j := (m + LongWord(1 shl (23-7))) shr (23-6);
-  e := sar_i32(Integer(ux), 23) - 127;
+  e := sar_i32(Int32(ux), 23) - 127;
   tz.u := (UInt64(m) shl 29) or (UInt64($3FF) shl 52);
   z := tz.f * tr[j] - 1.0;
   z2 := z * z;
@@ -1326,7 +1326,7 @@ var
   u: Tb32u32;
   sv: Tb64u64;
   ux: LongWord;
-  k, m_int, msk: Integer;
+  k, m_int, msk: Int32;
   offd, xd, h, h2, r: Double;
   ub, lb: Single;
 begin
@@ -1334,11 +1334,11 @@ begin
   // check if x is an exact integer (low 16 bits of mantissa zero)
   if (t.u and $FFFF) = 0 then
   begin
-    k := Integer((t.u shr 23) and $FF) - 127;
+    k := Int32((t.u shr 23) and $FF) - 127;
     if (k >= 0) and (k < 9) and ((t.u shl (9 + k)) = 0) then
     begin
-      msk := sar_i32(Integer(t.u), 31); // -1 if negative, 0 if positive
-      m_int := Integer((t.u and $7FFFFF) or (1 shl 23)) shr (23 - k);
+      msk := sar_i32(Int32(t.u), 31); // -1 if negative, 0 if positive
+      m_int := Int32((t.u and $7FFFFF) or (1 shl 23)) shr (23 - k);
       m_int := (m_int xor msk) - msk + 127;
       if (m_int > 0) and (m_int < 255) then
       begin
@@ -1443,7 +1443,7 @@ var
   r: Tb64u64;
   xd: Tb64u64;
   ux, ax: LongWord;
-  e: Integer;
+  e: Int32;
   m52: UInt64;
   j: LongWord;
   zd, z2, z4, f: Double;
@@ -1491,7 +1491,7 @@ begin
   end;
   // larger path
   tp.f := zd + 1.0;
-  e := Integer(tp.u shr 52) - $3FF;
+  e := Int32(tp.u shr 52) - $3FF;
   m52 := tp.u and ($FFFFFFFFFFFFFFFF shr 12); // ~0ull>>12
   j := LongWord((tp.u shr (52-5)) and 31);
   xd.u := m52 or (UInt64($3FF) shl 52);
@@ -1937,11 +1937,11 @@ var
   ux: LongWord;
   m64: Int64;
   j: Int64;
-  e, n: Integer;
+  e, n: Int32;
   z, z2, r, f, el, dr: Double;
   ub, lb: Single;
   je, st_u_val: LongWord;
-  je_idx: Integer;
+  je_idx: Int32;
 begin
   t.f := x;
   ux := t.u;
@@ -1963,8 +1963,8 @@ begin
   st_u_val := st_u[(ux shr 24) and $F];
   if ux = st_u_val then
   begin
-    je := (LongWord(Integer(ux) shr 23) - 126);
-    je_idx := Integer((je * $4D104D4) shr 28);
+    je := (LongWord(Int32(ux) shr 23) - 126);
+    je_idx := Int32((je * $4D104D4) shr 28);
     Result := Single(je_idx); Exit;
   end;
   if ux < $00800000 then // subnormal
@@ -1974,11 +1974,11 @@ begin
       pcr_feraiseexcept_divbyzero;
       t.u := $FF800000; Result := t.f; Exit;
     end;
-    n := 23 - Integer(pcr_bsr32(ux));
+    n := 23 - Int32(pcr_bsr32(ux));
     ux := ux shl n;
     ux := ux - LongWord(n shl 23);
   end;
-  e := sar_i32(Integer(ux), 23) - 127;
+  e := sar_i32(Int32(ux), 23) - 127;
   m64 := Int64(ux and LongWord((1 shl 23) - 1));
   j := (m64 + (1 shl (23-7))) shr (23-6);
   tz.u := (UInt64(m64) shl 29) or (UInt64($3FF) shl 52);
@@ -2214,9 +2214,9 @@ var
   xd: Tb64u64;
   ux, ax: UInt32;
   zz: Double;
-  e_exp: Integer;
+  e_exp: Int32;
   m64: UInt64;
-  j32: Integer;
+  j32: Int32;
   dd, d2, el_v: Double;
   f_v, lb_v: Double;
   ub_v: Single;
@@ -2250,10 +2250,10 @@ begin
     end;
   end;
   tp.f := zz + 1.0;
-  e_exp := Integer((tp.u shr 52) - $3FF);
+  e_exp := Int32((tp.u shr 52) - $3FF);
   m64 := tp.u and (not UInt64(0) shr 12);
   if m64 = 0 then begin Result := Single(e_exp); Exit; end;
-  j32 := Integer((m64 + (UInt64(1) shl (52-7))) shr (52-6));
+  j32 := Int32((m64 + (UInt64(1) shl (52-7))) shr (52-6));
   xd.u := m64 or (UInt64($3FF) shl 52);
   dd := xd.f * ix_l2p1[j32] - 1.0;
   d2 := dd * dd;
@@ -2344,9 +2344,9 @@ var
   ux_e: UInt32;
   ss, zz_e, vf: Double;
   ax_f: Single;
-  i_erf: Integer;
+  i_erf: Int32;
   z2_e, z4_e, z8_e, c0_e, c2_e, c4_e, c6_e: Double;
-  row_e: Integer;
+  row_e: Int32;
 begin
   ax_f := pcr_fabsf(x);
   tv_e.f := ax_f;
@@ -2600,8 +2600,8 @@ var
   sgn_a: Double;
   e_a: UInt32;
   md_a, mn_a: UInt32;
-  nz_a: Integer;
-  jn_a, jd_a: Integer;
+  nz_a: Int32;
+  jn_a, jd_a: Int32;
   tn_a, td_a: Tb64u64;
   zn_a, zd_a, zn2_a, zd2_a: Double;
   rn_a, rd_a, r_a: Double;
@@ -2637,8 +2637,8 @@ begin
   mn_a := UInt32(-Int32(md_a));
   nz_a := 32 - pcr_bsr32(mn_a);  // = clz(mn)+1
   mn_a := mn_a shl nz_a;
-  jn_a := Integer(mn_a shr 26);
-  jd_a := Integer(md_a shr 26);
+  jn_a := Int32(mn_a shr 26);
+  jd_a := Int32(md_a shr 26);
   tn_a.u := UInt64(Int64(Int64(mn_a) shl 20) or (Int64(1023) shl 52));
   td_a.u := UInt64(Int64(Int64(md_a) shl 20) or (Int64(1023) shl 52));
   zn_a := tn_a.f * tr_atanh[jn_a] - 1.0;
@@ -2832,7 +2832,7 @@ var
   zl: Double;
   tz_l: Tb64u64;
   m64_l: UInt64;
-  e_l, j_l: Integer;
+  e_l, j_l: Int32;
   vv_l, v2_l, v4_l: Double;
   f_l, lj_v: Double;
   ub_l: Single;
@@ -2865,8 +2865,8 @@ begin
   end;
   tz_l.f := zl + 1.0;
   m64_l := tz_l.u and (not UInt64(0) shr 12);
-  e_l := Integer((tz_l.u shr 52) - 1023);
-  j_l := Integer(m64_l shr 46);
+  e_l := Int32((tz_l.u shr 52) - 1023);
+  j_l := Int32(m64_l shr 46);
   tz_l.u := m64_l or (UInt64($3FF) shl 52);
   if m64_l = 0 then begin
     if (ux_l = 0) or (ux_l = $80000000) then begin Result := x; Exit; end;
@@ -2990,7 +2990,7 @@ var
   xd_a: Double;
   tp_a: Tb64u64;
   m_a: UInt64;
-  j_a, e_a: Integer;
+  j_a, e_a: Int32;
   ww_a: Tb64u64;
   z_a, z2_a: Double;
   r_a: Tb64u64;
@@ -3016,8 +3016,8 @@ begin
     x2_a := xd_a * xd_a;
     tp_a.f := xd_a + Sqrt(x2_a + 1.0);
     m_a := tp_a.u and (not UInt64(0) shr 12);
-    j_a := Integer((m_a + (UInt64(1) shl (52-8))) shr (52-7));
-    e_a := Integer((tp_a.u shr 52) - $3FF);
+    j_a := Int32((m_a + (UInt64(1) shl (52-8))) shr (52-7));
+    e_a := Int32((tp_a.u shr 52) - $3FF);
     ww_a.u := m_a or (UInt64($3FF) shl 52);
     z_a := ww_a.f * ix_asinh_acosh[j_a] - 1.0;
     z2_a := z_a * z_a;
@@ -3058,7 +3058,7 @@ var
   zz_ac, a_ac, x2_ac: Double;
   z2_ac, z4_ac, f_ac: Double;
   m64_ac: UInt64;
-  j_ac, e_ac: Integer;
+  j_ac, e_ac: Int32;
   c0_ac, c2_ac, c4_ac: Double;
   Lh_ac, Ll_ac, hh_ac: Double;
 begin
@@ -3090,8 +3090,8 @@ begin
     x2_ac := zz_ac * zz_ac;
     tp_ac.f := zz_ac + Sqrt(x2_ac - 1.0);
     m64_ac := tp_ac.u and (not UInt64(0) shr 12);
-    j_ac   := Integer((m64_ac + (UInt64(1) shl (52-8))) shr (52-7));
-    e_ac   := Integer((tp_ac.u shr 52) - $3FF);
+    j_ac   := Int32((m64_ac + (UInt64(1) shl (52-8))) shr (52-7));
+    e_ac   := Int32((tp_ac.u shr 52) - $3FF);
     ww_ac.u := m64_ac or (UInt64($3FF) shl 52);
     zz_ac  := ww_ac.f * ix_asinh_acosh[j_ac] - 1.0;
     z2_ac  := zz_ac * zz_ac;
@@ -3156,12 +3156,12 @@ const
     0.5714285714285714, 0.5517241379310345, 0.5333333333333333, 0.5161290322580645);
 var
   t_aln: Tb64u64;
-  e_aln, i_aln: Integer;
+  e_aln, i_aln: Int32;
   z_aln, z2_aln, z4_aln: Double;
 begin
   t_aln.f := x;
-  e_aln := Integer(Int64(t_aln.u shr 52) - $3FF);
-  i_aln := Integer((t_aln.u shr 48) and $F);
+  e_aln := Int32(Int64(t_aln.u shr 52) - $3FF);
+  i_aln := Int32((t_aln.u shr 48) and $F);
   t_aln.u := (t_aln.u and $000FFFFFFFFFFFFF) or $3FF0000000000000;
   z_aln := ix_aln[i_aln] * t_aln.f - 1.0;
   z2_aln := z_aln * z_aln; z4_aln := z2_aln * z2_aln;
@@ -3199,7 +3199,7 @@ var
   w_tg, x0_tg, t0_tg: Double;
   fx_tg: Single;
   k_tg: Int32;
-  jm_tg, j_tg, lp_tg, idx_tg: Integer;
+  jm_tg, j_tg, lp_tg, idx_tg: Int32;
 begin
   t_tg.f := x;
   ax_tg := t_tg.u shl 1;
@@ -3375,7 +3375,7 @@ var
   h_lg, h2_lg, h4_lg: Double;
   r_lg: Single;
   tl_lg: UInt64;
-  a_lg, b_lg, mi_lg: Integer;
+  a_lg, b_lg, mi_lg: Int32;
 begin
   ax_lg := Abs(x);
   t_lg.f := ax_lg;
@@ -3389,7 +3389,7 @@ begin
     if t_lg.u = $7F800000 then begin Result := x * x; Exit; end;  // +/-Inf → +Inf
     Result := x + x; Exit;  // NaN
   end;
-  // Integer input
+  // Int32 input
   if fx_lg = x then begin
     if x <= 0.0 then begin
       pcr_feraiseexcept_divbyzero;
@@ -3508,9 +3508,9 @@ begin
 end;
 
 { c is flat: c[k*2]=c[k][0], c[k*2+1]=c[k][1] }
-function polydd(xh, xl: Double; n: Integer; const c: array of Double; out l: Double): Double;
+function polydd(xh, xl: Double; n: Int32; const c: array of Double; out l: Double): Double;
 var
-  i: Integer;
+  i: Int32;
   ch, cl, th, tl: Double;
 begin
   i := n - 1;
@@ -3535,7 +3535,7 @@ function pcr_hypotf(x, y: Single): Single;
 var
   ax, ay, at_h, c_h: Single;
   tx_h, ty_h: Tb32u32;
-  snan_x, snan_y: Integer;
+  snan_x, snan_y: Int32;
   xd, yd, x2, y2, r2, r_h, cd_h, ir2, dr2, rs, dz_h, dr_h, rh, rl: Double;
   t_h: Tb64u64;
 begin
@@ -3666,7 +3666,7 @@ var
   yinf_a2, xinf_a2, gt_a2: UInt32;
   i_a2: UInt32;
   zx_a2, zy_a2, z_a2, r_a2: Double;
-  d_a2: Integer;
+  d_a2: Int32;
   z2_a2, z4_a2, z8_a2: Double;
   cn0_a2, cn2_a2, cn4_a2, cn6_a2: Double;
   cd0_a2, cd2_a2, cd4_a2, cd6_a2: Double;
@@ -3718,7 +3718,7 @@ begin
   { z = x/y if |y|>|x|, z = y/x otherwise }
   z_a2 := (m_a2[gt_a2]*zx_a2 + m_a2[1-gt_a2]*zy_a2) /
           (m_a2[gt_a2]*zy_a2 + m_a2[1-gt_a2]*zx_a2);
-  d_a2 := Integer(ax_a2) - Integer(ay_a2);
+  d_a2 := Int32(ax_a2) - Int32(ay_a2);
   if (d_a2 < 226492416) and (d_a2 > -226492416) then begin  { 27<<23 }
     z2_a2 := z_a2 * z_a2;
     z4_a2 := z2_a2 * z2_a2;
@@ -3965,10 +3965,10 @@ begin
 end;
 
 function isint_pf(y0: Single): Boolean;
-var wy: Tb32u32; ey, s: Integer;
+var wy: Tb32u32; ey, s: Int32;
 begin
   wy.f := y0;
-  ey := Integer((wy.u shr 23) and $FF) - 127;
+  ey := Int32((wy.u shr 23) and $FF) - 127;
   s := ey + 9;
   if ey >= 0 then begin
     if s >= 32 then begin Result := True; Exit; end;
@@ -3979,10 +3979,10 @@ begin
 end;
 
 function isodd_pf(y0: Single): Boolean;
-var wy: Tb32u32; ey, s: Integer; oddb: UInt32;
+var wy: Tb32u32; ey, s: Int32; oddb: UInt32;
 begin
   wy.f := y0;
-  ey := Integer((wy.u shr 23) and $FF) - 127;
+  ey := Int32((wy.u shr 23) and $FF) - 127;
   s := ey + 9;
   oddb := 0;
   if ey >= 0 then begin
@@ -4000,14 +4000,14 @@ begin
   Result := (u.u and $7FFFFFFF) > $7FC00000;
 end;
 
-function is_exact_pf(x0, y0: Single): Integer;
+function is_exact_pf(x0, y0: Single): Int32;
 const
   xmax_ie: array[0..15] of UInt32 = (0, $FFFFFF, 4095, 255, 63, 27, 15, 9,
                                       7, 5, 5, 3, 3, 3, 3, 3);
 var
   vw, ww: Tb32u32;
   m_ie, n_ie: UInt32;
-  t_ie, y_int_ie: Integer;
+  t_ie, y_int_ie: Int32;
   e_ie, f_ie: Int32;
   my64: UInt64;
   my32, n0_ie: UInt32;
@@ -4040,7 +4040,7 @@ begin
       Exit;
     end;
     if (y0 < 0) or (y0 > 15) then begin Result := 0; Exit; end;
-    y_int_ie := Integer(Trunc(y0));
+    y_int_ie := Int32(Trunc(y0));
     if m_ie > xmax_ie[y_int_ie] then begin Result := 0; Exit; end;
     my64 := UInt64(m_ie) * UInt64(m_ie);
     t_ie := 2;
@@ -4103,7 +4103,7 @@ end;
 
 { ── pcr_powf_accurate2 ──────────────────────────────────────────────────── }
 
-function pcr_powf_accurate2(x0, y0: Single; is_exact_val: Integer): Single;
+function pcr_powf_accurate2(x0, y0: Single; is_exact_val: Int32): Single;
 const
   o_a2: array[0..1] of Double = (1.0, 2.0);
   { ch[][2] flat: 13 pairs }
@@ -4146,12 +4146,12 @@ const
 var
   x_a2, y_a2: Double;
   t_a2: Tb64u64;
-  e_a2, k_a2: Integer;
+  e_a2, k_a2: Int32;
   xm_a2, xp_a2, zh_a2, zl_a2, z2l_a2, z2h_a2: Double;
   ey_a2, eh_a2, el_a2, ee_a2: Double;
   r_a2: Tb64u64;
   ty_a2: Tb32u32;
-  et_a2: Integer;
+  et_a2: Int32;
   kk_a2: UInt32;
   isintflag_a2: Boolean;
   ll_a2, lh_a2: Tb64u64;
@@ -4159,7 +4159,7 @@ var
 begin
   x_a2 := x0; y_a2 := y0;
   t_a2.f := x_a2;
-  e_a2 := Integer((t_a2.u shr 52) and $7FF) - $3FF;
+  e_a2 := Int32((t_a2.u shr 52) and $7FF) - $3FF;
   t_a2.u := t_a2.u and ($FFFFFFFFFFFFFFFF shr 12);  { clear exponent+sign }
   k_a2 := Ord(t_a2.u > UInt64($6a09e667f3bcd));
   e_a2 := e_a2 + k_a2;
@@ -4190,7 +4190,7 @@ begin
   r_a2.u := UInt64(Int64($3FF) + Int64(Trunc(ee_a2))) shl 52;
   { Check if y is an odd integer }
   ty_a2.f := y0;
-  et_a2 := Integer((ty_a2.u shr 23) and $FF) - $7F;
+  et_a2 := Int32((ty_a2.u shr 23) and $FF) - $7F;
   if (8 + et_a2) >= 0 then kk_a2 := ty_a2.u shl (8 + et_a2)
   else kk_a2 := ty_a2.u shr (-8 - et_a2);
   isintflag_a2 := (((kk_a2 shl 1) or UInt32(sar_i32(et_a2, 31))) = 0) or (et_a2 >= 23);
@@ -4381,7 +4381,7 @@ var
   x_pf, y_pf: Double;
   tx_pf, ty_pf: Tb64u64;
   m_pf: UInt64;
-  e_pf, j_pf, k_pf: Integer;
+  e_pf, j_pf, k_pf: Int32;
   xd_pf: Tb64u64;
   z_pf, z2_pf, z4_pf: Double;
   c6_pf, c4_pf, c2_pf, c0_pf: Double;
@@ -4394,7 +4394,7 @@ var
   w_pf: Double;
   rr_pf: Tb64u64;
   off_pf: UInt64;
-  et_pf: Integer;
+  et_pf: Int32;
   kk_pf: UInt64;
   res_pf: Single;
 begin
@@ -4468,8 +4468,8 @@ begin
   end;
   { Main path: x > 0 finite, y finite nonzero }
   m_pf := tx_pf.u and (not UInt64(0)) shr 12;  { 52-bit mantissa }
-  e_pf := Integer((tx_pf.u shr 52) and $7FF) - $3FF;
-  j_pf := Integer((Int64(m_pf) + (Int64(1) shl 46)) shr 47);
+  e_pf := Int32((tx_pf.u shr 52) and $7FF) - $3FF;
+  j_pf := Int32((Int64(m_pf) + (Int64(1) shl 46)) shr 47);
   k_pf := Ord(j_pf > 13);
   e_pf := e_pf + k_pf;
   xd_pf.u := m_pf or (UInt64($3FF) shl 52);
@@ -4527,7 +4527,7 @@ begin
     Exit;
   end;
   { Sign correction for odd integer y }
-  et_pf := Integer((ty_pf.u shr 52) and $7FF) - $3FF;
+  et_pf := Int32((ty_pf.u shr 52) and $7FF) - $3FF;
   if et_pf >= -11 then kk_pf := ty_pf.u shl (11 + et_pf)
   else kk_pf := ty_pf.u shr (-11 - et_pf);
   if ((kk_pf shl 1) = 0) and (kk_pf <> 0) then
@@ -4756,7 +4756,7 @@ const
   );
 
 // ── BSF/BSR 64-bit helpers ────────────────────────────────────────────────────
-function cf_bsf64(x: UInt64): Integer;
+function cf_bsf64(x: UInt64): Int32;
 {$IFDEF CPUX86_64}
 var r: QWord;
 begin
@@ -4764,10 +4764,10 @@ begin
     bsf rax, x
     mov r, rax
   end;
-  Result := Integer(r);
+  Result := Int32(r);
 end;
 {$ELSE}
-var i: Integer;
+var i: Int32;
 begin
   Result := 0;
   for i := 0 to 63 do
@@ -4775,7 +4775,7 @@ begin
 end;
 {$ENDIF}
 
-function cf_bsr64(x: UInt64): Integer;
+function cf_bsr64(x: UInt64): Int32;
 {$IFDEF CPUX86_64}
 var r: QWord;
 begin
@@ -4783,10 +4783,10 @@ begin
     bsr rax, x
     mov r, rax
   end;
-  Result := Integer(r);
+  Result := Int32(r);
 end;
 {$ELSE}
-var i: Integer;
+var i: Int32;
 begin
   Result := 0;
   for i := 63 downto 0 do
@@ -4832,12 +4832,12 @@ begin
 end;
 
 // ── isint: returns non-zero if y is an integer ────────────────────────────────
-function cf_isint(y: Single): Integer; inline;
+function cf_isint(y: Single): Int32; inline;
 var wy_ii: Tb32u32;
-    ey_ii, s_ii: Integer;
+    ey_ii, s_ii: Int32;
 begin
   wy_ii.f := y;
-  ey_ii := Integer((wy_ii.u shr 23) and $FF) - 127;
+  ey_ii := Int32((wy_ii.u shr 23) and $FF) - 127;
   s_ii := ey_ii + 9;
   if ey_ii >= 0 then begin
     if s_ii >= 32 then begin Result := 1; Exit; end;
@@ -4968,7 +4968,7 @@ var u_lp: Double;
     v_lp: Tb64u64;
     m_lp: UInt64;
     e_lp: Int64;
-    i_lp: Integer;
+    i_lp: Int32;
     t_lp, z_lp, p_lp: Double;
 begin
   u_lp := 1.0 + x;
@@ -4979,7 +4979,7 @@ begin
   v_lp.u := UInt64(Int64(v_lp.u) - e_lp * Int64($10000000000000));
   t_lp := v_lp.f;
   v_lp.f := v_lp.f + 2.0;
-  i_lp := Integer(v_lp.u shr 45) - $2002D;
+  i_lp := Int32(v_lp.u shr 45) - $2002D;
   z_lp := pcr_fma(CF_INV[i_lp], t_lp, -1.0);
   p_lp := cf_p1(z_lp);
   Result := Double(e_lp) + (CF_LOG2INV[i_lp][0] + p_lp);
@@ -4990,7 +4990,7 @@ function cf_exp2_1(t: Double): Single;
 var k_e1: Double;
     r_e1: Double;
     v_e1, err_e1: Tb64u64;
-    i_e1: Integer;
+    i_e1: Int32;
     lb_e1, rb_e1: Single;
 begin
   {$IFDEF CPUX86_64}
@@ -5004,7 +5004,7 @@ begin
   {$ENDIF}
   r_e1 := t - k_e1;
   v_e1.f := 3.015625 + r_e1;
-  i_e1 := Integer(v_e1.u shr 46) - $10010;
+  i_e1 := Int32(v_e1.u shr 46) - $10010;
   r_e1 := r_e1 - CF_EXP2T[i_e1];
   v_e1.f := CF_EXP2U[i_e1][0] * cf_q1(r_e1);
   err_e1.f := 5.062616992290714e-13; // 0x1.1dp-41
@@ -5024,20 +5024,20 @@ begin
 end;
 
 // ── is_exact_or_midpoint ──────────────────────────────────────────────────────
-function cf_is_exact_or_midpoint(x, y: Single; var midpoint: Integer): Integer;
+function cf_is_exact_or_midpoint(x, y: Single; var midpoint: Int32): Int32;
 var v_iem, w_iem: Tb32u32;
     vd_iem: Tb64u64;
     e_iem: Int32;
     m_iem: UInt64;
-    t_iem: Integer;
+    t_iem: Int32;
     my_iem: UInt64;
-    y_int_iem: Integer;
+    y_int_iem: Int32;
     ez_iem: Int32;
     n_iem: UInt32;
     f_iem: Int32;
-    t2_iem: Integer;
+    t2_iem: Int32;
     n0_iem: UInt32;
-    iters_iem: Integer;
+    iters_iem: Int32;
     dm_iem: Double;
     s_iem: Double;
 begin
@@ -5075,7 +5075,7 @@ begin
       Exit;
     end;
     if (y < 0.0) or (y > 15.0) then begin Result := 0; Exit; end;
-    y_int_iem := Integer(Trunc(y));
+    y_int_iem := Int32(Trunc(y));
     if m_iem > CF_XMAX[y_int_iem] then begin Result := 0; Exit; end;
     my_iem := m_iem * m_iem;
     t2_iem := 2;
@@ -5155,7 +5155,7 @@ begin
 end;
 
 // ── exp2_2: accurate path for 2^(h+l) → Single ───────────────────────────────
-function cf_exp2_2(h, l: Double; x, y: Single; exact: Integer; flag: DWord): Single;
+function cf_exp2_2(h, l: Double; x, y: Single; exact: Int32; flag: DWord): Single;
 const
   CF_ERR_E22: array[0..1] of Double = (
     8.744365362193872e-26,  // 0x1.b1p-84
@@ -5164,12 +5164,12 @@ const
 var k_e22: Double;
     r_e22: Double;
     v_e22, w_e22: Tb64u64;
-    i_e22: Integer;
+    i_e22: Int32;
     qh_e22, ql_e22: Double;
     small_e22: Boolean;
     err_e22: Double;
     left_e22, right_e22: Single;
-    vtz_e22, wtz_e22: Integer;
+    vtz_e22, wtz_e22: Int32;
 begin
   if y = 1.0 then begin
     cf_set_flag(flag);
@@ -5193,7 +5193,7 @@ begin
   r_e22 := h - k_e22;
   cf_fast_two_sum(h, l, r_e22, l);
   v_e22.f := 3.015625 + h;
-  i_e22 := Integer(v_e22.u shr 46) - $10010;
+  i_e22 := Int32(v_e22.u shr 46) - $10010;
   h := h - CF_EXP2T[i_e22];
   cf_fast_two_sum(h, l, h, l);
   cf_q2(qh_e22, ql_e22, h, l);
@@ -5236,7 +5236,7 @@ procedure cf_log2p1_accurate(var h, l: Double; x: Double);
 var v_la: Tb64u64;
     m_la: UInt64;
     e_la: Int64;
-    i_la: Integer;
+    i_la: Int32;
     r_la, zh_la, zl_la, ph_la, pl_la, t_la: Double;
 begin
   if 1.0 >= x then begin
@@ -5255,7 +5255,7 @@ begin
   h := h * CF_SCALE[e_la + 29];
   l := l * CF_SCALE[e_la + 29];
   v_la.f := 2.0 + h;
-  i_la := Integer(v_la.u shr 45) - $2002D;
+  i_la := Int32(v_la.u shr 45) - $2002D;
   r_la := CF_INV[i_la];
   zh_la := pcr_fma(r_la, h, -1.0);
   zl_la := r_la * l;
@@ -5268,7 +5268,7 @@ begin
 end;
 
 // ── accurate_path ─────────────────────────────────────────────────────────────
-function cf_accurate_path(x, y: Single; exact: Integer; flag: DWord): Single;
+function cf_accurate_path(x, y: Single; exact: Int32; flag: DWord): Single;
 var h_ap, l_ap: Double;
 begin
   cf_log2p1_accurate(h_ap, l_ap, Double(x));
@@ -5281,7 +5281,7 @@ function cf_special(x, y: Single): Single;
 var nx_sp, ny_sp: Tb32u32;
     ax_sp, ay_sp: LongWord;
     mone_sp: Tb32u32;
-    sy_sp: Integer;
+    sy_sp: Int32;
 begin
   nx_sp.f := x;
   ny_sp.f := y;
@@ -5305,7 +5305,7 @@ begin
     if ax_sp > (LongWord($FF) shl 24) then begin Result := x + y; Exit; end;
     if ay_sp = (LongWord($FF) shl 24) then begin // y = +/-Inf
       if nx_sp.u > mone_sp.u then begin Result := 0.0 / 0.0; Exit; end;
-      sy_sp := Integer(ny_sp.u shr 31);
+      sy_sp := Int32(ny_sp.u shr 31);
       if nx_sp.u = mone_sp.u then begin
         if sy_sp = 0 then Result := 0.0
         else Result := -y;
@@ -5354,7 +5354,7 @@ var nx_cf, ny_cf: Tb32u32;
     tx_cf, ty_cf, t_cf: Tb64u64;
     flag_cf: DWord;
     l_cf: Double;
-    midpoint_cf, exact_cf: Integer;
+    midpoint_cf, exact_cf: Int32;
     res_cf: Single;
 begin
   mone_cf.f := -1.0;
@@ -5513,13 +5513,13 @@ const
 // and sets *q to the octant index.
 function sincos_rbig(u: LongWord; q: PInteger): Double;
 var
-  e_exp, k, s, i_val, sgn: Integer;
+  e_exp, k, s, i_val, sgn: Int32;
   m, p3h, p3l, p2l, p1l: UInt64;
   p0, p1, p2, p3: TUInt128;
   a_val: Int64;
   sm: Int64;
 begin
-  e_exp := Integer((u shr 23) and $FF);
+  e_exp := Int32((u shr 23) and $FF);
   m := UInt64((u and $007FFFFF) or $800000);  // ~0u>>9 = $007FFFFF, 1<<23 = $800000
   p0 := MulWide(m, sincos_ipi[0]);
   p1 := MulWide(m, sincos_ipi[1]); p1 := p1 + p0.hi;
@@ -5532,18 +5532,18 @@ begin
   k := e_exp - 124;
   s := k - 23;
   if s < 64 then begin
-    i_val := Integer((p3h shl s) or (p3l shr (64 - s)));
+    i_val := Int32((p3h shl s) or (p3l shr (64 - s)));
     a_val := Int64((p3l shl s) or (p2l shr (64 - s)));
   end else if s = 64 then begin
-    i_val := Integer(p3l);
+    i_val := Int32(p3l);
     a_val := Int64(p2l);
   end else begin  // s > 64
-    i_val := Integer((p3l shl (s - 64)) or (p2l shr (128 - s)));
+    i_val := Int32((p3l shl (s - 64)) or (p2l shr (128 - s)));
     a_val := Int64((p2l shl (s - 64)) or (p1l shr (128 - s)));
   end;
-  sgn := sar_i32(Integer(u), 31);   // 0 if positive, -1 if negative
+  sgn := sar_i32(Int32(u), 31);   // 0 if positive, -1 if negative
   sm  := sar_i64(a_val, 63);        // sign extension of a
-  i_val := i_val - Integer(sm);
+  i_val := i_val - Int32(sm);
   Result := Double(a_val xor Int64(sgn)) * 5.421010862427522e-20;  // *2^-64
   i_val := (i_val xor sgn) - sgn;
   q^ := i_val;
@@ -5561,7 +5561,7 @@ begin
   idh  := C_IDH * x;
   id_d := pcr_roundeven(idh);
   Q_r.f := C_BIG + id_d;
-  q^ := Integer(LongWord(Q_r.u));
+  q^ := Int32(LongWord(Q_r.u));
   Result := idh - id_d;
 end;
 
@@ -5580,7 +5580,7 @@ begin
   idh  := C_IDH * x;
   id_d := pcr_roundeven(idh);
   Q_r.f := C_BIG + id_d;
-  q^ := Integer(LongWord(Q_r.u));
+  q^ := Int32(LongWord(Q_r.u));
   Result := (idh - id_d) + idl;
 end;
 
@@ -5625,7 +5625,7 @@ const
 var
   t32, trh, trl: Tb32u32;
   ax: LongWord;
-  i: Integer;
+  i: Int32;
 begin
   t32.f := x;
   ax := t32.u and $7FFFFFFF;
@@ -5645,7 +5645,7 @@ function sinf_big(x: Single): Single;
 var
   t32: Tb32u32;
   ax: LongWord;
-  ia: Integer;
+  ia: Int32;
   z_r, z2, z4, aa, bb, s0, c0, r_val: Double;
   t_nan: Tb32u32;
 begin
@@ -5702,7 +5702,7 @@ const
 var
   t32, trh, trl: Tb32u32;
   ax: LongWord;
-  i: Integer;
+  i: Int32;
 begin
   t32.f := x;
   ax := t32.u and $7FFFFFFF;
@@ -5723,7 +5723,7 @@ var
   t32: Tb32u32;
   t64: Tb64u64;
   ax: LongWord;
-  ia: Integer;
+  ia: Int32;
   z_r, z2, z4, aa, bb, s0, c0, r_val: Double;
   tail: UInt64;
   t_nan: Tb32u32;
@@ -5764,7 +5764,7 @@ function pcr_sinf(x: Single): Single;
 var
   t32: Tb32u32;
   ax: LongWord;
-  ia: Integer;
+  ia: Int32;
   z0_d, z_d: Double;
   z2, z4, aa, bb, s0, c0: Double;
   r_val: Double;
@@ -5823,7 +5823,7 @@ function pcr_cosf(x: Single): Single;
 var
   t32: Tb32u32;
   ax: LongWord;
-  ia: Integer;
+  ia: Int32;
   z0_d, z_d: Double;
   z2, z4, aa, bb, c0, s0: Double;
   r_val: Double;
@@ -5896,13 +5896,13 @@ const
 
 function tanf_rbig(u: LongWord; q: PInteger): Double;
 var
-  e_exp, k, s_shift, i_val, sgn: Integer;
+  e_exp, k, s_shift, i_val, sgn: Int32;
   m_val, p3h, p3l, p2l, p1l: UInt64;
   p0, p1, p2, p3: TUInt128;
   a_val: Int64;
   sm: Int64;
 begin
-  e_exp := Integer((u shr 23) and $FF);
+  e_exp := Int32((u shr 23) and $FF);
   m_val := UInt64((u and $007FFFFF) or $800000);
   p0 := MulWide(m_val, sincos_ipi[0]);
   p1 := MulWide(m_val, sincos_ipi[1]); p1 := p1 + p0.hi;
@@ -5915,18 +5915,18 @@ begin
   k       := e_exp - 127;   // tanf uses e-127; sincos_rbig uses e-124
   s_shift := k - 23;
   if s_shift < 64 then begin
-    i_val := Integer((p3h shl s_shift) or (p3l shr (64 - s_shift)));
+    i_val := Int32((p3h shl s_shift) or (p3l shr (64 - s_shift)));
     a_val := Int64((p3l shl s_shift) or (p2l shr (64 - s_shift)));
   end else if s_shift = 64 then begin
-    i_val := Integer(p3l);
+    i_val := Int32(p3l);
     a_val := Int64(p2l);
   end else begin  // s_shift > 64
-    i_val := Integer((p3l shl (s_shift - 64)) or (p2l shr (128 - s_shift)));
+    i_val := Int32((p3l shl (s_shift - 64)) or (p2l shr (128 - s_shift)));
     a_val := Int64((p2l shl (s_shift - 64)) or (p1l shr (128 - s_shift)));
   end;
-  sgn   := sar_i32(Integer(u), 31);
+  sgn   := sar_i32(Int32(u), 31);
   sm    := sar_i64(a_val, 63);
-  i_val := i_val - Integer(sm);
+  i_val := i_val - Int32(sm);
   Result := Double(a_val xor Int64(sgn)) * 5.421010862427522e-20;  // *2^-64
   i_val := (i_val xor sgn) - sgn;
   q^ := i_val;
@@ -5947,7 +5947,7 @@ begin
   idh  := C_IDH * x;
   id_d := pcr_roundeven(idh);
   Q_r.f := C_BIG + id_d;
-  q^   := Integer(LongWord(Q_r.u));
+  q^   := Int32(LongWord(Q_r.u));
   Result := (idh - id_d) + idl;
 end;
 
@@ -6014,7 +6014,7 @@ const
 var
   t32: Tb32u32;
   ax: LongWord;
-  ii: Integer;
+  ii: Int32;
 begin
   t32.f := x;
   ax := t32.u and $7FFFFFFF;
@@ -6033,7 +6033,7 @@ procedure sincosf_big(x: Single; var sout, cout: Single);
 var
   t32: Tb32u32;
   ax: LongWord;
-  ia: Integer;
+  ia: Int32;
   z_r, z2, z4, aa, bb, s0, c0, s_d, c_d: Double;
   tr: Tb64u64;
   tail: UInt64;
@@ -6076,7 +6076,7 @@ procedure pcr_sincosf(x: Single; out s, c: Single);
 var
   t32: Tb32u32;
   ax: LongWord;
-  ia: Integer;
+  ia: Int32;
   z0_d, z_d, z2, z4, aa, bb, s0, c0: Double;
 begin
   t32.f := x;
@@ -6164,7 +6164,7 @@ const
   );
 var
   t32: Tb32u32;
-  e_exp, i_q, jj: Integer;
+  e_exp, i_q, jj: Int32;
   z, z2, z4, n_v, n2, d_v, d2, s0, s1, r1: Double;
   tr: Tb64u64;
   tail: UInt64;
@@ -6172,7 +6172,7 @@ var
   x2: Single;
 begin
   t32.f := x;
-  e_exp := Integer((t32.u shr 23) and $FF);
+  e_exp := Int32((t32.u shr 23) and $FF);
   if e_exp < 127 + 28 then begin   // |x| < 2^28
     if e_exp < 115 then begin       // |x| < 2^-13 (exponent < 127-12 = 115)
       if e_exp < 102 then begin     // |x| < 2^-26 (exponent < 127-25 = 102)

@@ -21,13 +21,13 @@ const
 
 var
   GlobalSink: LongWord = 0;
-  PCMWins, FPCWins, PTies: Integer;
+  PCMWins, FPCWins, PTies: Int32;
   TotalSpeedup: Double = 0.0;
-  BenchCount: Integer = 0;
+  BenchCount: Int32 = 0;
 
 procedure BenchUni(const name: string; pfFPC: TUniFuncP; pfPCM: TUniFuncP);
 var
-  i: Integer;
+  i: Int32;
   u: Cardinal;
   v, r: Tb32u32;
   sink: LongWord;
@@ -84,7 +84,7 @@ end;
 
 procedure BenchBivar(const name: string; pfFPC: TBivarFuncP; pfPCM: TBivarFuncP);
 var
-  i: Integer;
+  i: Int32;
   ux, uy: Cardinal;
   vx, vy, r: Tb32u32;
   sink: LongWord;
@@ -147,7 +147,7 @@ end;
 
 procedure BenchSinCos;
 var
-  i: Integer;
+  i: Int32;
   u: Cardinal;
   v, rs, rc: Tb32u32;
   sink: LongWord;

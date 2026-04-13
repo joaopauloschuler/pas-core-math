@@ -17,9 +17,9 @@ type
   TBivarFuncP = function(x, y: Single): Single;
 
 var
-  TotalPass, TotalFail: Integer;
+  TotalPass, TotalFail: Int32;
   Stride: Cardinal;
-  DiagMax: Integer;  // max mismatches to print (0 = none)
+  DiagMax: Int32;  // max mismatches to print (0 = none)
 
 procedure ReportResult(const FuncName: string; Tested, Mismatches: Int64; MaxError: Double);
 begin
@@ -59,7 +59,7 @@ var
   v, rc, rp: Tb32u32;
   cr, pr: Single;
   mismatches, tested: Int64;
-  diagShown: Integer;
+  diagShown: Int32;
   error, max_error: Single;
 begin
   mismatches := 0;
@@ -97,12 +97,12 @@ const
   SAMPLES = 10000000;
   STRIDE  = High(Cardinal) div SAMPLES;
 var
-  i: Integer;
+  i: Int32;
   ux, uy: Cardinal;
   vx, vy, rc, rp: Tb32u32;
   cr, pr: Single;
   mismatches: Int64;
-  diagShown: Integer;
+  diagShown: Int32;
   error, max_error: Single;
 begin
   mismatches := 0;
@@ -188,8 +188,8 @@ function wrap_compound_p(x, y: Single): Single; begin Result := pcr_compoundf(x,
 
 function ParsePct: Cardinal;
 var
-  i: Integer;
-  pct: Integer;
+  i: Int32;
+  pct: Int32;
 begin
   Result := 1; // default: 100% => stride 1
   DiagMax := 0;

@@ -45,10 +45,10 @@ function pcr_fminf(x, y: Single): Single;
 function pcr_fmin(x, y: Double): Double;
 
 // Bit scan forward: index of lowest set bit (0-based); undefined for x=0
-function pcr_bsf32(x: UInt32): Integer; inline;
+function pcr_bsf32(x: UInt32): Int32; inline;
 
 // Bit scan reverse: index of highest set bit (0-based) = floor(log2(x)); undefined for x=0
-function pcr_bsr32(x: UInt32): Integer; inline;
+function pcr_bsr32(x: UInt32): Int32; inline;
 
 // Return a NaN (tagp is ignored, matches C nan()/nanf() signature)
 function pcr_nanf(const tagp: PAnsiChar): Single; inline;
@@ -143,11 +143,11 @@ end;
 // For |x| >= 2^23 the value is already an integer.
 var
   v: Tb32u32;
-  e, shift: Integer;
+  e, shift: Int32;
   mask, frac, half: LongWord;
 begin
   v.f := x;
-  e := Integer((v.u shr 23) and $FF) - 127;  // unbiased exponent
+  e := Int32((v.u shr 23) and $FF) - 127;  // unbiased exponent
   if e >= 23 then
   begin
     // Already an integer (or inf/nan)
@@ -192,10 +192,10 @@ begin
   begin
     // Exactly halfway: round to even (check integer bit)
     if (v.u and (1 shl shift)) <> 0 then
-      // Integer part is odd => round up
+      // Int32 part is odd => round up
       v.u := (v.u and (not mask)) + (1 shl shift)
     else
-      // Integer part is even => round down
+      // Int32 part is even => round down
       v.u := v.u and (not mask);
   end;
   Result := v.f;
@@ -214,12 +214,12 @@ end;
 // Portable fallback: round to nearest even using bit manipulation.
 var
   v: Tb64u64;
-  e, shift: Integer;
+  e, shift: Int32;
   mask, half: UInt64;
   frac: UInt64;
 begin
   v.f := x;
-  e := Integer((v.u shr 52) and $7FF) - 1023;
+  e := Int32((v.u shr 52) and $7FF) - 1023;
   if e >= 52 then begin Result := x; Exit; end;
   if e < 0 then begin
     if e = -1 then begin
@@ -312,7 +312,7 @@ begin
 end;
 {$ENDIF}
 
-function pcr_bsf32(x: UInt32): Integer; inline;
+function pcr_bsf32(x: UInt32): Int32; inline;
 {$IFDEF CPUX86_64}
 var
   r: LongWord;
@@ -325,7 +325,7 @@ begin
 end;
 {$ELSE}
 var
-  i: Integer;
+  i: Int32;
 begin
   for i := 0 to 31 do
     if (x and (UInt32(1) shl i)) <> 0 then
@@ -337,7 +337,7 @@ begin
 end;
 {$ENDIF}
 
-function pcr_bsr32(x: UInt32): Integer; inline;
+function pcr_bsr32(x: UInt32): Int32; inline;
 {$IFDEF CPUX86_64}
 var
   r: LongWord;
@@ -350,7 +350,7 @@ begin
 end;
 {$ELSE}
 var
-  i: Integer;
+  i: Int32;
 begin
   Result := -1;
   for i := 31 downto 0 do

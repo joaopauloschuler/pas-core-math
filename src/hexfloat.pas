@@ -21,13 +21,13 @@ uses Math, SysUtils;
 
 function HexToDouble(const s: string): Double;
 var
-  p: Integer;
+  p: Int32;
   neg: Boolean;
   mantissa: Double;
-  exp: Integer;
+  exp: Int32;
   negexp: Boolean;
   c: Char;
-  digit: Integer;
+  digit: Int32;
   intpart: Double;
   fracpart: Double;
   fracscale: Double;
