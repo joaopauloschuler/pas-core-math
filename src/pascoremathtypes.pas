@@ -33,6 +33,8 @@ function Mulu64u64(a, b: UInt64): TUInt128; inline;
 const
   cNaNSingle: Single = 0.0/0.0;
   cNaNDouble: Double = 0.0/0.0;
+  // 2^(-127): subnormal Single used to trigger IEEE 754 underflow via multiplication
+  cUnderflowSingle: Single = 5.877471754111438e-39;
 
 implementation
 

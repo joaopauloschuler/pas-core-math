@@ -3257,9 +3257,9 @@ begin
   end;
   if x < -42.0 then begin                  // negative non-integer, |gamma| < 2^-151
     if (k_tg and 1) = 0 then
-      Result := Single(5.877471754111438e-39) * Single(5.877471754111438e-39)
+      Result := cUnderflowSingle * cUnderflowSingle
     else
-      Result := Single(5.877471754111438e-39) * Single(-5.877471754111438e-39);
+      Result := cUnderflowSingle * -cUnderflowSingle;
     Exit;
   end;
   // Main polynomial path: gamma(x) via polynomial around 2.875
