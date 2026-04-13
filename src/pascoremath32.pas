@@ -3206,9 +3206,11 @@ begin
     rt_tg.f := f_tg;
     if ((rt_tg.u + 2) and $0FFFFFFF) < 4 then
       for idx_tg := 0 to 9 do
+      begin
         if t_tg.u = tb_xu[idx_tg] then begin
           Result := tb_f[idx_tg] + tb_df[idx_tg]; Exit;
         end;
+      end;
     Result := Single(f_tg); Exit;
   end;
   // Safe single-precision floor: |x|>=2^23 means x is already exact integer
@@ -3232,6 +3234,20 @@ begin
     end;
     t0_tg := 1.0; x0_tg := 1.0;
     lp_tg := 1;
+    while lp_tg + 4 < k_tg do begin
+      t0_tg := t0_tg * x0_tg;
+      x0_tg := x0_tg + 1.0;
+      Inc(lp_tg);
+      t0_tg := t0_tg * x0_tg;
+      x0_tg := x0_tg + 1.0;
+      Inc(lp_tg);
+      t0_tg := t0_tg * x0_tg;
+      x0_tg := x0_tg + 1.0;
+      Inc(lp_tg);
+      t0_tg := t0_tg * x0_tg;
+      x0_tg := x0_tg + 1.0;
+      Inc(lp_tg);
+    end;
     while lp_tg < k_tg do begin
       t0_tg := t0_tg * x0_tg;
       x0_tg := x0_tg + 1.0;
@@ -3263,6 +3279,24 @@ begin
     w_tg := z_tg;
     j_tg := jm_tg - 1;
     // Pairwise: compute z1*z2 independently of w chain, halving sequential depth.
+    while j_tg >= 8 do begin
+      z_tg := z_tg - step_tg;
+      w_tg := w_tg * (z_tg * (z_tg - step_tg));  // z*next independent of prev w
+      z_tg := z_tg - step_tg;
+      Dec(j_tg, 2);
+      z_tg := z_tg - step_tg;
+      w_tg := w_tg * (z_tg * (z_tg - step_tg));  // z*next independent of prev w
+      z_tg := z_tg - step_tg;
+      Dec(j_tg, 2);
+      z_tg := z_tg - step_tg;
+      w_tg := w_tg * (z_tg * (z_tg - step_tg));  // z*next independent of prev w
+      z_tg := z_tg - step_tg;
+      Dec(j_tg, 2);
+      z_tg := z_tg - step_tg;
+      w_tg := w_tg * (z_tg * (z_tg - step_tg));  // z*next independent of prev w
+      z_tg := z_tg - step_tg;
+      Dec(j_tg, 2);
+    end;
     while j_tg >= 2 do begin
       z_tg := z_tg - step_tg;
       w_tg := w_tg * (z_tg * (z_tg - step_tg));  // z*next independent of prev w
@@ -3279,9 +3313,11 @@ begin
   rt_tg.f := f_tg;
   if ((rt_tg.u + 2) and $0FFFFFFF) < 8 then
     for idx_tg := 0 to 9 do
+    begin
       if t_tg.u = tb_xu[idx_tg] then begin
         Result := tb_f[idx_tg] + tb_df[idx_tg]; Exit;
       end;
+    end;
   Result := Single(f_tg);
 end;
 
