@@ -26,6 +26,40 @@ CORE-MATH is a research project from INRIA providing correctly-rounded implement
 
 All functions use the `pcr_` prefix (Pascal Correctly Rounded). The C reference declarations use the `cr_` prefix.
 
+## Functions Beyond FPC's Math Unit
+
+FPC's `Math` unit does not provide single-function equivalents for 18 of the 42 implemented functions. The table below shows the closest FPC compound expression for each, together with why the pas-core-math version is preferable.
+
+| Function | Computes | Nearest FPC expression | Why pas-core-math is better |
+|---|---|---|---|
+| `pcr_acospif` | acos(x) / π | `ArcCos(x) / Pi` | Correctly rounded in one step; no rounding loss from the division |
+| `pcr_asinpif` | asin(x) / π | `ArcSin(x) / Pi` | Same as above |
+| `pcr_atanpif` | atan(x) / π | `ArcTan(x) / Pi` | Same as above |
+| `pcr_atan2pif` | atan2(y,x) / π | `ArcTan2(y,x) / Pi` | Same as above |
+| `pcr_cospif` | cos(x · π) | `Cos(x * Pi)` | Avoids cancellation error near x = 0.5; returns exact 0.0 there |
+| `pcr_sinpif` | sin(x · π) | `Sin(x * Pi)` | Returns exact 1.0 at x = 0.5, exact 0.0 at integers |
+| `pcr_tanpif` | tan(x · π) | `Tan(x * Pi)` | Returns +Inf at x = 0.5; FPC returns a large finite value |
+| `pcr_cbrtf` | x^(1/3) | `Power(x, 1/3)` | Handles negative inputs correctly; correctly rounded |
+| `pcr_rsqrtf` | 1 / √x | `1 / Sqrt(x)` | Single correctly-rounded operation instead of two |
+| `pcr_exp2f` | 2^x | `Power(2, x)` | Faster and correctly rounded |
+| `pcr_exp2m1f` | 2^x − 1 | `Power(2, x) - 1` | Accurate near x = 0 where subtraction cancels |
+| `pcr_exp10f` | 10^x | `Power(10, x)` | Faster and correctly rounded |
+| `pcr_exp10m1f` | 10^x − 1 | `Power(10, x) - 1` | Accurate near x = 0 |
+| `pcr_expm1f` | e^x − 1 | `Exp(x) - 1` | Accurate near x = 0 where subtraction cancels |
+| `pcr_log1pf` | ln(1 + x) | `Ln(1 + x)` | Accurate near x = 0 where addition cancels |
+| `pcr_log2p1f` | log₂(1 + x) | `Log2(1 + x)` | Accurate near x = 0 |
+| `pcr_log10p1f` | log₁₀(1 + x) | `Log10(1 + x)` | Accurate near x = 0 |
+| `pcr_compoundf` | (1 + x)^n | `Power(1 + x, n)` | Accurate for small x |
+
+The following four functions have **no FPC equivalent** at all:
+
+| Function | Computes |
+|---|---|
+| `pcr_erff` | Error function erf(x) |
+| `pcr_erfcf` | Complementary error function erfc(x) |
+| `pcr_lgammaf` | Natural logarithm of the Gamma function |
+| `pcr_tgammaf` | Gamma function Γ(x) |
+
 ## Repository Layout
 
 <pre>
