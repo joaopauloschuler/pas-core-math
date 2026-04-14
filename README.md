@@ -94,6 +94,12 @@ cd src/tests
 bash build.sh
 ```
 
+To enable AVX2 and tune for a modern Intel/AMD core:
+
+```bash
+bash build.sh -dAVX2 -CfAVX2 -CpCOREI -OpCOREI
+```
+
 This compiles both the Pascal library and the C reference library, then links the test and benchmark binaries into `bin/`.
 
 ## Running

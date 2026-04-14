@@ -236,6 +236,9 @@ function pcm_hypotf(x, y: Single): Single;  begin Result := pcr_hypotf(x, y);  e
 function pcm_powf(x, y: Single): Single;    begin Result := pcr_powf(x, y);    end;
 
 begin
+  {$IFDEF AVX2}
+  WriteLn('Compiled with AVX2.');
+  {$ENDIF}
   SetExceptionMask([exInvalidOp, exDenormalized, exZeroDivide,
                     exOverflow, exUnderflow, exPrecision]);
 

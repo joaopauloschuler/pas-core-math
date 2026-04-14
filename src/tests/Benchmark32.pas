@@ -234,6 +234,9 @@ function wrap_pow_p(x, y: Single): Single;      begin Result := pcr_powf(x, y); 
 function wrap_compound_p(x, y: Single): Single; begin Result := pcr_compoundf(x, y); end;
 
 begin
+  {$IFDEF AVX2}
+  WriteLn('Compiled with AVX2.');
+  {$ENDIF}
   // Mask all FP exceptions: we iterate over all bit patterns including NaN/Inf
   SetExceptionMask([exInvalidOp, exDenormalized, exZeroDivide,
                     exOverflow, exUnderflow, exPrecision]);

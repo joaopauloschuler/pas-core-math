@@ -57,7 +57,7 @@ fi
 # ---- Clean compiled Pascal artifacts ----
 find "$SRC_DIR" -maxdepth 1 \( -name '*.ppu' -o -name '*.o' \) -delete
 
-FPC_FLAGS="-O3 -Fi.. -Fu.. -FE$BIN_DIR -Fl$SRC_DIR"
+FPC_FLAGS="-O3 -Fi.. -Fu.. -FE$BIN_DIR -Fl$SRC_DIR $@"
 
 # ---- Step 2: Compile TestHarness32 ----
 echo

@@ -126,6 +126,10 @@ begin
 end;
 
 begin
+  {$IFDEF AVX2}
+  WriteLn('Compiled with AVX2.');
+  {$ENDIF}
+
   SetExceptionMask([exInvalidOp, exDenormalized, exZeroDivide,
                     exOverflow, exUnderflow, exPrecision]);
 
