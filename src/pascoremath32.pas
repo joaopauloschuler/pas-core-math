@@ -4517,7 +4517,7 @@ begin
     Exit;
   end;
   { Main path: x > 0 finite, y finite nonzero }
-  m_pf := tx_pf.u and (not UInt64(0)) shr 12;  { 52-bit mantissa }
+  m_pf := tx_pf.u and ((not UInt64(0)) shr 12);  { 52-bit mantissa }
   e_pf := Int32((tx_pf.u shr 52) and $7FF) - $3FF;
   j_pf := Int32((Int64(m_pf) + (Int64(1) shl 46)) shr 47);
   k_pf := Ord(j_pf > 13);
