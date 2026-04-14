@@ -13,9 +13,9 @@ uses
   Math, SysUtils, pascoremathtypes;
 
 // Fused multiply-add — hardware FMA3 on x86-64; 80-bit approximation elsewhere.
-// Not marked inline: pure-asm body uses System V AMD64 ABI (params in xmm0/1/2).
-function pcr_fmaf(x, y, z: Single): Single;
-function pcr_fma(x, y, z: Double): Double;
+// Pure-asm body uses System V AMD64 ABI (params in xmm0/1/2).
+function pcr_fmaf(x, y, z: Single): Single; {$IFNDEF AVX2} inline; {$ENDIF}
+function pcr_fma(x, y, z: Double): Double; {$IFNDEF AVX2} inline; {$ENDIF}
 
 // Absolute value
 function pcr_fabsf(x: Single): Single; inline;
@@ -30,19 +30,19 @@ function pcr_sqrtf(x: Single): Single; inline;
 function pcr_sqrt(x: Double): Double; inline;
 
 // Round to nearest even integer — SSE4.1 ROUNDSD/ROUNDSS on x86-64; bit-manip elsewhere.
-// Not marked inline: pure-asm body uses System V AMD64 ABI (param in xmm0, result in xmm0).
-function pcr_roundevenf(x: Single): Single;
-function pcr_roundeven(x: Double): Double;
+// Pure-asm body uses System V AMD64 ABI (param in xmm0, result in xmm0).
+function pcr_roundevenf(x: Single): Single; {$IFNDEF AVX2} inline; {$ENDIF}
+function pcr_roundeven(x: Double): Double; {$IFNDEF AVX2} inline; {$ENDIF}
 
 // NaN-aware maximum — MAXSS/MAXSD on x86-64; branch fallback elsewhere.
-// Not marked inline: pure-asm body uses System V AMD64 ABI (params in xmm0/xmm1).
-function pcr_fmaxf(x, y: Single): Single;
-function pcr_fmax(x, y: Double): Double;
+// Pure-asm body uses System V AMD64 ABI (params in xmm0/xmm1).
+function pcr_fmaxf(x, y: Single): Single; {$IFNDEF AVX2} inline; {$ENDIF}
+function pcr_fmax(x, y: Double): Double; {$IFNDEF AVX2} inline; {$ENDIF}
 
 // NaN-aware minimum — MINSS/MINSD on x86-64; branch fallback elsewhere.
-// Not marked inline: pure-asm body uses System V AMD64 ABI (params in xmm0/xmm1).
-function pcr_fminf(x, y: Single): Single;
-function pcr_fmin(x, y: Double): Double;
+// Pure-asm body uses System V AMD64 ABI (params in xmm0/xmm1).
+function pcr_fminf(x, y: Single): Single; {$IFNDEF AVX2} inline; {$ENDIF}
+function pcr_fmin(x, y: Double): Double; {$IFNDEF AVX2} inline; {$ENDIF}
 
 // Return a NaN (tagp is ignored, matches C nan()/nanf() signature)
 function pcr_nanf(const tagp: PAnsiChar): Single; inline;
@@ -84,17 +84,17 @@ begin
 end;
 {$ENDIF}
 
-function pcr_fabsf(x: Single): Single; inline;
+function pcr_fabsf(x: Single): Single;
 begin
   Result := Abs(x);
 end;
 
-function pcr_fabs(x: Double): Double; inline;
+function pcr_fabs(x: Double): Double;
 begin
   Result := Abs(x);
 end;
 
-function pcr_copysignf(x, y: Single): Single; inline;
+function pcr_copysignf(x, y: Single): Single;
 var
   vx, vy: Tb32u32;
 begin
@@ -104,7 +104,7 @@ begin
   Result := vx.f;
 end;
 
-function pcr_copysign(x, y: Double): Double; inline;
+function pcr_copysign(x, y: Double): Double;
 var
   vx, vy: Tb64u64;
 begin
@@ -114,12 +114,12 @@ begin
   Result := vx.f;
 end;
 
-function pcr_sqrtf(x: Single): Single; inline;
+function pcr_sqrtf(x: Single): Single;
 begin
   Result := Sqrt(x);
 end;
 
-function pcr_sqrt(x: Double): Double; inline;
+function pcr_sqrt(x: Double): Double;
 begin
   Result := Sqrt(x);
 end;
@@ -306,17 +306,17 @@ begin
 end;
 {$ENDIF}
 
-function pcr_nanf(const tagp: PAnsiChar): Single; inline;
+function pcr_nanf(const tagp: PAnsiChar): Single;
 begin
   Result := Single(NaN);
 end;
 
-function pcr_nan(const tagp: PAnsiChar): Double; inline;
+function pcr_nan(const tagp: PAnsiChar): Double;
 begin
   Result := NaN;
 end;
 
-procedure pcr_feraiseexcept_invalid; inline;
+procedure pcr_feraiseexcept_invalid;
 var
   x: Single;
 begin
@@ -325,7 +325,7 @@ begin
   x := x / x;
 end;
 
-procedure pcr_feraiseexcept_divbyzero; inline;
+procedure pcr_feraiseexcept_divbyzero; 
 var
   x: Single;
 begin
