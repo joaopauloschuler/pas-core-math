@@ -77,6 +77,12 @@ echo "Compiling BenchmarkFPC32.pas ..."
 fpc $FPC_FLAGS "$SCRIPT_DIR/BenchmarkFPC32.pas"
 echo "BenchmarkFPC32 compiled -> $BIN_DIR/BenchmarkFPC32"
 
+# ---- Step 5: Compile FixedTest32 ----
+echo
+echo "Compiling FixedTest32.pas ..."
+fpc $FPC_FLAGS "$SCRIPT_DIR/FixedTest32.pas"
+echo "FixedTest32 compiled -> $BIN_DIR/FixedTest32"
+
 echo
 echo "Build complete."
 echo
@@ -84,3 +90,4 @@ echo "Run tests with:"
 echo "  LD_LIBRARY_PATH=$SRC_DIR $BIN_DIR/TestHarness32"
 echo "  LD_LIBRARY_PATH=$SRC_DIR $BIN_DIR/Benchmark32"
 echo "  LD_LIBRARY_PATH=$SRC_DIR $BIN_DIR/BenchmarkFPC32"
+echo "  LD_LIBRARY_PATH=$SRC_DIR $BIN_DIR/FixedTest32"
