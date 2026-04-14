@@ -4002,7 +4002,7 @@ end;
 
 { ── pcr_powf helpers ───────────────────────────────────────────────────── }
 
-function mulddd_pf(xh, xl, ch: Double; out l: Double): Double;
+function mulddd_pf(xh, xl, ch: Double; out l: Double): Double; inline;
 var ahlh, ahhh, ahhl: Double;
 begin
   ahlh := ch * xl;
@@ -4014,7 +4014,7 @@ begin
   Result := ch;
 end;
 
-function isint_pf(y0: Single): Boolean;
+function isint_pf(y0: Single): Boolean; inline;
 var wy: Tb32u32; ey, s: Int32;
 begin
   wy.f := y0;
@@ -4028,7 +4028,7 @@ begin
   Result := (wy.u shl 1) = 0;
 end;
 
-function isodd_pf(y0: Single): Boolean;
+function isodd_pf(y0: Single): Boolean; inline;
 var wy: Tb32u32; ey, s: Int32; oddb: UInt32;
 begin
   wy.f := y0;
@@ -4042,7 +4042,7 @@ begin
   Result := oddb <> 0;
 end;
 
-function is_signalingf_pf(x: Single): Boolean;
+function is_signalingf_pf(x: Single): Boolean; inline;
 var u: Tb32u32;
 begin
   u.f := x;
@@ -4050,7 +4050,7 @@ begin
   Result := (u.u and $7FFFFFFF) > $7FC00000;
 end;
 
-function is_exact_pf(x0, y0: Single): Int32;
+function is_exact_pf(x0, y0: Single): Int32; inline;
 const
   xmax_ie: array[0..15] of UInt32 = (0, $FFFFFF, 4095, 255, 63, 27, 15, 9,
                                       7, 5, 5, 3, 3, 3, 3, 3);
@@ -4892,7 +4892,7 @@ begin
 end;
 
 // ── p1: approximates log2(1+z) for |z|<=1/64 ─────────────────────────────────
-function cf_p1(z: Double): Double;
+function cf_p1(z: Double): Double; inline;
 var z2_p1, z4_p1, c5_p1, c3_p1, c1_p1: Double;
 begin
   z2_p1 := z * z;
@@ -4907,7 +4907,7 @@ begin
 end;
 
 // ── p2: double-double approx of log2(1+zh+zl) ────────────────────────────────
-procedure cf_p2(var h, l: Double; zh, zl: Double);
+procedure cf_p2(var h, l: Double; zh, zl: Double); inline;
 var t_p2: Double;
 begin
   h := CF_P2C[17]; // degree 13
@@ -4939,7 +4939,7 @@ begin
 end;
 
 // ── q1: approximates 2^z for |z|<=2^-6 ──────────────────────────────────────
-function cf_q1(z: Double): Double;
+function cf_q1(z: Double): Double; inline;
 var z2_q1, c3_q1, c0_q1, c2_q1: Double;
 begin
   z2_q1 := z * z;
@@ -4950,7 +4950,7 @@ begin
 end;
 
 // ── q2: double-double approx of 2^(h+l) ──────────────────────────────────────
-procedure cf_q2(var qh, ql: Double; h, l: Double);
+procedure cf_q2(var qh, ql: Double; h, l: Double); inline;
 var h2_q2, c7_q2, c5_q2, t_q2: Double;
 begin
   h2_q2 := h * h;
@@ -4974,7 +4974,7 @@ begin
 end;
 
 // ── _log2p1 (fast approximation of log2(1+x)) ────────────────────────────────
-function cf_log2p1_fast(x: Double): Double;
+function cf_log2p1_fast(x: Double): Double; inline;
 var u_lp: Double;
     v_lp: Tb64u64;
     m_lp: UInt64;
@@ -4997,7 +4997,7 @@ begin
 end;
 
 // ── exp2_1: fast path 2^t → Single (returns -1 if rounding test fails) ────────
-function cf_exp2_1(t: Double): Single;
+function cf_exp2_1(t: Double): Single; {$IFNDEF AVX2} inline; {$ENDIF}
 var k_e1: Double;
     r_e1: Double;
     v_e1, err_e1: Tb64u64;
@@ -5035,7 +5035,7 @@ begin
 end;
 
 // ── is_exact_or_midpoint ──────────────────────────────────────────────────────
-function cf_is_exact_or_midpoint(x, y: Single; var midpoint: Int32): Int32;
+function cf_is_exact_or_midpoint(x, y: Single; var midpoint: Int32): Int32; inline;
 var v_iem, w_iem: Tb32u32;
     vd_iem: Tb64u64;
     e_iem: Int32;
@@ -5166,7 +5166,7 @@ begin
 end;
 
 // ── exp2_2: accurate path for 2^(h+l) → Single ───────────────────────────────
-function cf_exp2_2(h, l: Double; x, y: Single; exact: Int32; flag: DWord): Single;
+function cf_exp2_2(h, l: Double; x, y: Single; exact: Int32; flag: DWord): Single; {$IFNDEF AVX2} inline; {$ENDIF}
 const
   CF_ERR_E22: array[0..1] of Double = (
     8.744365362193872e-26,  // 0x1.b1p-84
@@ -5243,7 +5243,7 @@ begin
 end;
 
 // ── log2p1_accurate: double-double approx of log2(1+x) ───────────────────────
-procedure cf_log2p1_accurate(var h, l: Double; x: Double);
+procedure cf_log2p1_accurate(var h, l: Double; x: Double); inline;
 var v_la: Tb64u64;
     m_la: UInt64;
     e_la: Int64;
@@ -5279,7 +5279,7 @@ begin
 end;
 
 // ── accurate_path ─────────────────────────────────────────────────────────────
-function cf_accurate_path(x, y: Single; exact: Int32; flag: DWord): Single;
+function cf_accurate_path(x, y: Single; exact: Int32; flag: DWord): Single; inline;
 var h_ap, l_ap: Double;
 begin
   cf_log2p1_accurate(h_ap, l_ap, Double(x));
@@ -5288,7 +5288,7 @@ begin
 end;
 
 // ── cf_special: handles special/edge cases ────────────────────────────────────
-function cf_special(x, y: Single): Single;
+function cf_special(x, y: Single): Single; inline;
 var nx_sp, ny_sp: Tb32u32;
     ax_sp, ay_sp: LongWord;
     mone_sp: Tb32u32;
@@ -5357,7 +5357,7 @@ begin
 end;
 
 // ── pcr_compoundf: main entry point ──────────────────────────────────────────
-function pcr_compoundf(x, n: Single): Single;
+function pcr_compoundf(x, n: Single): Single; inline;
 var nx_cf, ny_cf: Tb32u32;
     mone_cf: Tb32u32;
     ax_cf, ay_cf: LongWord;
@@ -5522,7 +5522,7 @@ const
 // ---- rbig: range-reduction for large arguments (shared sinf/cosf) ---------
 // Maps x = 2^(e-127) * m  into  result in [-0.5, 0.5] scaled by pi/2,
 // and sets *q to the octant index.
-function sincos_rbig(u: LongWord; q: PInteger): Double;
+function sincos_rbig(u: LongWord; q: PInteger): Double; inline;
 var
   e_exp, k, s, i_val, sgn: Int32;
   m, p3h, p3l, p2l, p1l: UInt64;
@@ -5609,7 +5609,7 @@ begin
 end;
 
 // sinf database lookup for hard cases
-function sinf_db(x: Single; r: Double): Single;
+function sinf_db(x: Single; r: Double): Single; inline;
 const
   n = 4;
   // absolute-value bit patterns of the argument
@@ -5652,7 +5652,7 @@ begin
 end;
 
 // as_sinf_big: handles |x| > 2^26
-function sinf_big(x: Single): Single;
+function sinf_big(x: Single): Single; inline;
 var
   t32: Tb32u32;
   ax: LongWord;
@@ -5686,7 +5686,7 @@ end;
 // ---- cosf helpers ----------------------------------------------------------
 
 // cosf database lookup for hard cases
-function cosf_db(x: Single; r: Double): Single;
+function cosf_db(x: Single; r: Double): Single; inline;
 const
   n = 5;
   db_uarg: array[0..n-1] of LongWord = (
@@ -5729,7 +5729,7 @@ begin
 end;
 
 // as_cosf_big: handles |x| > 2^26
-function cosf_big(x: Single): Single;
+function cosf_big(x: Single): Single; inline;
 var
   t32: Tb32u32;
   t64: Tb64u64;
