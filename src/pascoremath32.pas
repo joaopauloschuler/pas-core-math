@@ -5102,7 +5102,7 @@ begin
     Exit;
   end;
   // second branch: y is not a non-negative integer
-  n_iem := w_iem.u and $7FFFFF;
+  n_iem := w_iem.u and UInt64($7FFFFF);
   f_iem := Int32((w_iem.u shl 1) shr 24) - $96;
   if f_iem >= -149 then
     n_iem := n_iem or UInt32($800000)
@@ -5111,7 +5111,7 @@ begin
   t_iem := Int32(BsfDWord(n_iem));
   n_iem := n_iem shr t_iem;
   Inc(f_iem, t_iem);
-  m_iem := vd_iem.u and $FFFFFFFFFFFFF;
+  m_iem := vd_iem.u and UInt64($FFFFFFFFFFFFF);
   if e_iem >= -1074 then
     m_iem := m_iem or UInt64($10000000000000)
   else
@@ -5260,7 +5260,7 @@ begin
   end else
     cf_fast_two_sum(h, l, x, 1.0);
   v_la.f := h;
-  m_la := v_la.u and $FFFFFFFFFFFFF;
+  m_la := v_la.u and UInt64($FFFFFFFFFFFFF);
   e_la := Int64(v_la.u shr 52) - $3FF;
   if m_la >= UInt64($6A09E667F3BCD) then Inc(e_la);
   h := h * CF_SCALE[e_la + 29];
@@ -5531,7 +5531,7 @@ var
   sm: Int64;
 begin
   e_exp := Int32((u shr 23) and $FF);
-  m := UInt64((u and $007FFFFF) or $800000);  // ~0u>>9 = $007FFFFF, 1<<23 = $800000
+  m := UInt64((u and UInt64($007FFFFF)) or UInt64($800000));  // ~0u>>9 = $007FFFFF, 1<<23 = $800000
   p0 := Mulu64u64(m, sincos_ipi[0]);
   p1 := Mulu64u64(m, sincos_ipi[1]); p1 := p1 + p0.hi;
   p2 := Mulu64u64(m, sincos_ipi[2]); p2 := p2 + p1.hi;
@@ -5614,24 +5614,24 @@ const
   n = 4;
   // absolute-value bit patterns of the argument
   db_uarg: array[0..n-1] of UInt32 = (
-    $46199998,  // |0x1.33333p+13|
-    $3F3ADC51,  // |0x1.75b8a2p-1|
-    $3FA7832A,  // |0x1.4f0654p+0|
-    $4116CBE4   // |0x1.2d97c8p+3|
+    UInt32($46199998),  // |0x1.33333p+13|
+    UInt32($3F3ADC51),  // |0x1.75b8a2p-1|
+    UInt32($3FA7832A),  // |0x1.4f0654p+0|
+    UInt32($4116CBE4)   // |0x1.2d97c8p+3|
   );
   // rh bit patterns
   db_urh: array[0..n-1] of UInt32 = (
-    $BEB1FA5D,  // -0x1.63f4bap-2
-    $3F2AB445,  // 0x1.55688ap-1
-    $3F7741B6,  // 0x1.ee836cp-1
-    $B2CCDE2D   // -0x1.99bc5ap-26
+    UInt32($BEB1FA5D),  // -0x1.63f4bap-2
+    UInt32($3F2AB445),  // 0x1.55688ap-1
+    UInt32($3F7741B6),  // 0x1.ee836cp-1
+    UInt32($B2CCDE2D)   // -0x1.99bc5ap-26
   );
   // rl bit patterns
   db_url: array[0..n-1] of UInt32 = (
-    $B2000000,  // -0x1p-27
-    $B2800000,  // -0x1p-26
-    $B2800000,  // -0x1p-26
-    $A6000000   // -0x1p-51
+    UInt32($B2000000),  // -0x1p-27
+    UInt32($B2800000),  // -0x1p-26
+    UInt32($B2800000),  // -0x1p-26
+    UInt32($A6000000)   // -0x1p-51
   );
 var
   t32, trh, trl: Tb32u32;
@@ -5639,7 +5639,7 @@ var
   i: Int32;
 begin
   t32.f := x;
-  ax := t32.u and $7FFFFFFF;
+  ax := t32.u and UInt32($7FFFFFFF);
   for i := 0 to n - 1 do begin
     if db_uarg[i] = ax then begin
       trh.u := db_urh[i];
@@ -5662,13 +5662,13 @@ var
 begin
   t32.f := x;
   ax := t32.u shl 1;
-  if ax >= $FF000000 then begin    // nan or +-inf
+  if ax >= UInt32($FF000000) then begin    // nan or +-inf
     if (ax shl 8) <> 0 then begin  // nan: propagate
       Result := x + x;
       Exit;
     end;
     // infinity: return NaN
-    t_nan.u := $7FC00000;
+    t_nan.u := UInt32($7FC00000);
     Result := t_nan.f;
     Exit;
   end;
@@ -5690,25 +5690,25 @@ function cosf_db(x: Single; r: Double): Single; inline;
 const
   n = 5;
   db_uarg: array[0..n-1] of UInt32 = (
-    $4096CBE4,  // |0x1.2d97c8p+2|
-    $5922AA80,  // |0x1.4555p+51|
-    $5AA4542C,  // |0x1.48a858p+54|
-    $5F18B878,  // |0x1.3170fp+63|
-    $6115CB11   // |0x1.2b9622p+67|
+    UInt32($4096CBE4),  // |0x1.2d97c8p+2|
+    UInt32($5922AA80),  // |0x1.4555p+51|
+    UInt32($5AA4542C),  // |0x1.48a858p+54|
+    UInt32($5F18B878),  // |0x1.3170fp+63|
+    UInt32($6115CB11)   // |0x1.2b9622p+67|
   );
   db_urh: array[0..n-1] of UInt32 = (
-    $324CDE2E,  // 0x1.99bc5cp-27
-    $3F08AEBF,  // 0x1.115d7ep-1
-    $3EFA40A4,  // 0x1.f48148p-2
-    $3F7F14BB,  // 0x1.fe2976p-1
-    $3F78142F   // 0x1.f0285ep-1
+    UInt32($324CDE2E),  // 0x1.99bc5cp-27
+    UInt32($3F08AEBF),  // 0x1.115d7ep-1
+    UInt32($3EFA40A4),  // 0x1.f48148p-2
+    UInt32($3F7F14BB),  // 0x1.fe2976p-1
+    UInt32($3F78142F)   // 0x1.f0285ep-1
   );
   db_url: array[0..n-1] of UInt32 = (
-    $A5800000,  // -0x1p-52
-    $B2800000,  // -0x1p-26
-    $32000000,  //  0x1p-27
-    $32800000,  //  0x1p-26
-    $B2800000   // -0x1p-26
+    UInt32($A5800000),  // -0x1p-52
+    UInt32($B2800000),  // -0x1p-26
+    UInt32($32000000),  //  0x1p-27
+    UInt32($32800000),  //  0x1p-26
+    UInt32($B2800000)   // -0x1p-26
   );
 var
   t32, trh, trl: Tb32u32;
@@ -5716,7 +5716,7 @@ var
   i: Int32;
 begin
   t32.f := x;
-  ax := t32.u and $7FFFFFFF;
+  ax := t32.u and UInt32($7FFFFFFF);
   for i := 0 to n - 1 do begin
     if db_uarg[i] = ax then begin
       trh.u := db_urh[i];
@@ -5741,13 +5741,13 @@ var
 begin
   t32.f := x;
   ax := t32.u shl 1;
-  if ax >= $FF000000 then begin    // nan or +-inf
+  if ax >= UInt32($FF000000) then begin    // nan or +-inf
     if (ax shl 8) <> 0 then begin  // nan: propagate
       Result := x + x;
       Exit;
     end;
     // infinity: return NaN
-    t_nan.u := $7FC00000;
+    t_nan.u := UInt32($7FC00000);
     Result := t_nan.f;
     Exit;
   end;
@@ -5968,15 +5968,15 @@ end;
 procedure sincosf_database(x: Single; var sout, cout: Single);
 const
   sc_db_uarg: array[0..8] of UInt32 = (
-    $46199998,   // 0x1.33333p+13
-    $3F3ADC51,   // 0x1.75b8a2p-1
-    $3FA7832A,   // 0x1.4f0654p+0
-    $4116CBE4,   // 0x1.2d97c8p+3
-    $4096CBE4,   // 0x1.2d97c8p+2
-    $5922AA80,   // 0x1.4555p+51
-    $5AA4542C,   // 0x1.48a858p+54
-    $5F18B878,   // 0x1.3170fp+63
-    $6115CB11    // 0x1.2b9622p+67
+    UInt32($46199998),   // 0x1.33333p+13
+    UInt32($3F3ADC51),   // 0x1.75b8a2p-1
+    UInt32($3FA7832A),   // 0x1.4f0654p+0
+    UInt32($4116CBE4),   // 0x1.2d97c8p+3
+    UInt32($4096CBE4),   // 0x1.2d97c8p+2
+    UInt32($5922AA80),   // 0x1.4555p+51
+    UInt32($5AA4542C),   // 0x1.48a858p+54
+    UInt32($5F18B878),   // 0x1.3170fp+63
+    UInt32($6115CB11)    // 0x1.2b9622p+67
   );
   sc_db_sh: array[0..8] of Double = (
     -0.34761324524879456,      // -0x1.63f4bap-2
@@ -6028,7 +6028,7 @@ var
   ii: Int32;
 begin
   t32.f := x;
-  ax := t32.u and $7FFFFFFF;
+  ax := t32.u and UInt32($7FFFFFFF);
   for ii := 0 to 8 do begin
     if sc_db_uarg[ii] = ax then begin
       sout := sinf_add_sign(x, Single(sc_db_sh[ii]), Single(sc_db_sl[ii]));
@@ -6051,7 +6051,7 @@ var
 begin
   t32.f := x;
   ax := t32.u shl 1;
-  if ax >= $FF000000 then begin
+  if ax >= UInt32($FF000000) then begin
     if (ax shl 8) <> 0 then begin
       sout := x + x;   // NaN: propagate
       cout := x + x;
@@ -6093,9 +6093,9 @@ begin
   t32.f := x;
   ax := t32.u shl 1;
   z0_d := Double(x);
-  if ax < $822D97C8 then begin   // |x| < 0x1.2d97c8p+3
-    if ax < $73000000 then begin  // |x| < 0x1p-12
-      if ax < $66000000 then begin  // |x| < 0x1p-25
+  if ax < UInt32($822D97C8) then begin   // |x| < 0x1.2d97c8p+3
+    if ax < UInt32($73000000) then begin  // |x| < 0x1p-12
+      if ax < UInt32($66000000) then begin  // |x| < 0x1p-25
         if ax = 0 then begin
           s := x;
           c := 1.0;
@@ -6110,17 +6110,17 @@ begin
       c := Single((-0.5 * Double(x)) * Double(x) + 1.0);
       Exit;
     end;
-    if ax = $812D97C8 then begin
+    if ax = UInt32($812D97C8) then begin
       sincosf_database(x, s, c);
       Exit;
     end;
     z_d := sincos_rltl0(z0_d, @ia);
   end else begin
-    if ax > $99000000 then begin
+    if ax > UInt32($99000000) then begin
       sincosf_big(x, s, c);
       Exit;
     end;
-    if ax = $8C333330 then begin
+    if ax = UInt32($8C333330) then begin
       sincosf_database(x, s, c);
       Exit;
     end;
@@ -6144,14 +6144,14 @@ end;
 function pcr_tanf(x: Single): Single;
 const
   tanf_db_uarg: array[0..7] of UInt32 = (
-    $3F8A1F62,   // 0x1.143ec4p+0
-    $4D56D355,   // 0x1.ada6aap+27
-    $57D7B0ED,   // 0x1.af61dap+48
-    $5980445E,   // 0x1.0088bcp+52
-    $63FC86FE,   // 0x1.f90dfcp+72
-    $6A662711,   // 0x1.cc4e22p+85
-    $6AD36709,   // 0x1.a6ce12p+86
-    $72B505BB    // 0x1.6a0b76p+102
+    UInt32($3F8A1F62),   // 0x1.143ec4p+0
+    UInt32($4D56D355),   // 0x1.ada6aap+27
+    UInt32($57D7B0ED),   // 0x1.af61dap+48
+    UInt32($5980445E),   // 0x1.0088bcp+52
+    UInt32($63FC86FE),   // 0x1.f90dfcp+72
+    UInt32($6A662711),   // 0x1.cc4e22p+85
+    UInt32($6AD36709),   // 0x1.a6ce12p+86
+    UInt32($72B505BB)    // 0x1.6a0b76p+102
   );
   tanf_db_rh: array[0..7] of Double = (
      1.8670953512191772,      //  0x1.ddf9f6p+0
@@ -6225,7 +6225,7 @@ begin
   tr.f := r1;
   tail := (tr.u + 7) and UInt64($1FFFFFFF);   // ~0ull>>35
   if tail <= 14 then begin
-    ax  := t32.u and $7FFFFFFF;
+    ax  := t32.u and UInt32($7FFFFFFF);
     sgn := t32.u shr 31;
     for jj := 0 to 7 do begin
       if tanf_db_uarg[jj] = ax then begin
