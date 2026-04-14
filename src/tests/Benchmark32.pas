@@ -17,7 +17,7 @@ type
   TBivarFuncP = function(x, y: Single): Single;
 
 const
-  BENCH_N        = 50000000;
+  BENCH_N        = 200000000;
   STRIDE         = High(Cardinal) div BENCH_N;
   TIE_THRESHOLD  = 0.05;
 
