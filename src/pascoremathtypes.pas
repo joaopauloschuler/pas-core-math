@@ -61,25 +61,13 @@ end;
 {$ELSE}
 // Portable fallback: four 32-bit partial products
 var
-  a_lo, a_hi, b_lo, b_hi: UInt64;
-  p0, p1, p2, p3: UInt64;
-  mid: UInt64;
+  MulLo, Temp1, Temp2: UInt64;
 begin
-  a_lo := a and $FFFFFFFF;
-  a_hi := a shr 32;
-  b_lo := b and $FFFFFFFF;
-  b_hi := b shr 32;
-
-  p0 := a_lo * b_lo;
-  p1 := a_lo * b_hi;
-  p2 := a_hi * b_lo;
-  p3 := a_hi * b_hi;
-
-  // Accumulate middle terms (bits 32..95)
-  mid := (p0 shr 32) + (p1 and $FFFFFFFF) + (p2 and $FFFFFFFF);
-
-  Result.lo := (p0 and $FFFFFFFF) or (mid shl 32);
-  Result.hi := p3 + (p1 shr 32) + (p2 shr 32) + (mid shr 32);
+  MulLo := uint64(uint32(a)) * uint64(uint32(b));
+  Temp1 := (a shr 32) * uint64(uint32(b)) + (MulLo shr 32);
+  Temp2 := uint64(uint32(a)) * (b shr 32) + uint64(uint32(Temp1));
+  Result.lo := ((Temp2 and $FFFFFFFF) shl 32) or (MulLo and $FFFFFFFF);
+  Result.hi := (a shr 32) * (b shr 32) + (Temp1 shr 32) + (Temp2 shr 32);
 end;
 {$ENDIF}
 
