@@ -211,7 +211,7 @@ were replaced in April 2026.
 
 ```pascal
 function pcr_clzll(x: UInt64): Integer; inline;
-{$IFDEF CPUX86_64}
+{$IFDEF AVX2}
 begin
   Result := 63 - BsrQWord(x);
 end;

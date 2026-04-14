@@ -45,7 +45,7 @@ begin
 end;
 
 function Mulu64u64(a, b: UInt64): TUInt128; inline;
-{$IFDEF CPUX86_64}
+{$IFDEF AVX2}
 var
   rlo, rhi: UInt64;
 begin

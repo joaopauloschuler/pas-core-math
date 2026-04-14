@@ -419,7 +419,7 @@ Benchmark baseline (2026-04-11, FPC 3.2.2 -O2, x86_64 Linux):
 - [x] **6.1** Replace `pcr_roundeven` / `pcr_roundevenf` with SSE4.1 `ROUNDSD` / `ROUNDSS`
   - Hot path of `sincos_rltl0`, `sincos_rltl`, `tanf_rltl`, `exp10f`, `exp2m1f` and others
   - Current Pascal implementation is ~30 lines with multiple branches; the instruction is 1 cycle
-  - Use `{$IFDEF CPUX86_64}` guard; keep existing bit-manipulation code as the `{$ELSE}` fallback
+  - Use `{$IFDEF AVX2}` guard; keep existing bit-manipulation code as the `{$ELSE}` fallback
   - imm8 = 12 (0x0C): override MXCSR with round-to-nearest-even, suppress precision exception
   - **Primary fix for sinf / cosf / sincosf / tanf gap**
 
@@ -427,7 +427,7 @@ Benchmark baseline (2026-04-11, FPC 3.2.2 -O2, x86_64 Linux):
   - Current implementation uses 80-bit `Extended`, forcing x87 mode on every call despite `{$FPUTYPE SSE64}`
   - `pcr_fma(x,y,z)` is called heavily in `muldd`/`polydd` (atan2f), `powf` (~20 calls), `compoundf`, and others
   - Hardware FMA is also *correctly rounded* — the Extended path is only an approximation for doubles
-  - Use `{$IFDEF CPUX86_64}` guard; keep Extended fallback for non-x86-64 targets
+  - Use `{$IFDEF AVX2}` guard; keep Extended fallback for non-x86-64 targets
   - `VFMADD213SD xmm0, xmm1, xmm2`: xmm0 = xmm0×xmm1 + xmm2
   - **Primary fix for atan2f / powf gap; also expected to fix Bug B (pcr_powf rounding error)**
 
@@ -532,7 +532,7 @@ float32 midpoint.
     end;
   end;
   ```
-  Requires AVX/FMA3 (available on all modern x86_64). Add a `{$IFDEF CPUX86_64}` guard
+  Requires AVX/FMA3 (available on all modern x86_64). Add a `{$IFDEF AVX2}` guard
   with the 80-bit fallback for other architectures.
 - Option 2: Force intermediate variables to be stored to memory (defeating x87 register
   caching) by adding `volatile`-style stores — but FPC has no standard mechanism for this.

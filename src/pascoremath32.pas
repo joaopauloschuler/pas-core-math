@@ -1018,7 +1018,7 @@ begin
     Exit;
   end;
   x4 := 4.0 * x;
-  {$IFDEF CPUX86_64}
+  {$IFDEF AVX2}
   asm
     movss xmm0, x4
     roundss xmm0, xmm0, 12
@@ -1028,7 +1028,7 @@ begin
   nx4 := pcr_roundevenf(x4);
   {$ENDIF}
   dx4 := x4 - nx4;
-  {$IFDEF CPUX86_64}
+  {$IFDEF AVX2}
   asm
     movss xmm0, x
     roundss xmm0, xmm0, 12
@@ -1130,7 +1130,7 @@ begin
     Exit;
   end;
   a_d := iln2 * z;
-  {$IFDEF CPUX86_64}
+  {$IFDEF AVX2}
   asm
     movsd xmm0, a_d
     roundsd xmm0, xmm0, 12
@@ -1721,7 +1721,7 @@ begin
     Result := t.f * Single(zd); Exit;
   end;
   a := iln2 * zd;
-  {$IFDEF CPUX86_64}
+  {$IFDEF AVX2}
   asm
     movsd xmm0, a
     roundsd xmm0, xmm0, 12
@@ -1834,7 +1834,7 @@ begin
     end;
   end;
   a := iln102 * zd;
-  {$IFDEF CPUX86_64}
+  {$IFDEF AVX2}
   asm
     movsd xmm0, a
     roundsd xmm0, xmm0, 12
@@ -2424,7 +2424,7 @@ begin
     Result := Single(zs + (z2_s*zs)*((cp_sinh[0] + z2_s*cp_sinh[1]) + z4_s*(cp_sinh[2] + z2_s*cp_sinh[3]))); Exit;
   end;
   a_s := 46.166241308446828 * zs;
-  {$IFDEF CPUX86_64}
+  {$IFDEF AVX2}
   asm
     movsd xmm0, a_s
     roundsd xmm0, xmm0, 12
@@ -4226,7 +4226,7 @@ begin
   ey_a2 := Double(e_a2) * y_a2;
   eh_a2 := ey_a2 + zh_a2;
   el_a2 := ((ey_a2 - eh_a2) + zh_a2) + zl_a2;
-  {$IFDEF CPUX86_64}
+  {$IFDEF AVX2}
   asm
     movsd xmm0, eh_a2
     roundsd xmm0, xmm0, 12
@@ -4807,7 +4807,7 @@ const
 
 // ── MXCSR flag save/restore ───────────────────────────────────────────────────
 function cf_get_flag: DWord;
-{$IFDEF CPUX86_64}
+{$IFDEF AVX2}
 var r: DWord;
 begin
   asm
@@ -4822,7 +4822,7 @@ end;
 {$ENDIF}
 
 procedure cf_set_flag(flag: DWord);
-{$IFDEF CPUX86_64}
+{$IFDEF AVX2}
 begin
   asm
     ldmxcsr flag
@@ -5004,7 +5004,7 @@ var k_e1: Double;
     i_e1: Int32;
     lb_e1, rb_e1: Single;
 begin
-  {$IFDEF CPUX86_64}
+  {$IFDEF AVX2}
   asm
     movsd xmm0, t
     roundsd xmm0, xmm0, 12
@@ -5187,7 +5187,7 @@ begin
     Result := 1.0 + x;
     Exit;
   end;
-  {$IFDEF CPUX86_64}
+  {$IFDEF AVX2}
   asm
     movsd xmm0, h
     roundsd xmm0, xmm0, 12

@@ -55,7 +55,7 @@ procedure pcr_feraiseexcept_divbyzero; inline;
 implementation
 
 function pcr_fmaf(x, y, z: Single): Single;
-{$IFDEF CPUX86_64}
+{$IFDEF AVX2}
 // Pure-asm: System V AMD64 ABI passes x→xmm0, y→xmm1, z→xmm2; result in xmm0.
 // VFMADD213SS: xmm0 = xmm0 * xmm1 + xmm2  (correctly rounded IEEE 754 FMA).
 assembler;
@@ -70,7 +70,7 @@ end;
 {$ENDIF}
 
 function pcr_fma(x, y, z: Double): Double;
-{$IFDEF CPUX86_64}
+{$IFDEF AVX2}
 // Pure-asm: System V AMD64 ABI passes x→xmm0, y→xmm1, z→xmm2; result in xmm0.
 // VFMADD213SD: xmm0 = xmm0 * xmm1 + xmm2  (correctly rounded IEEE 754 FMA).
 assembler;
@@ -125,7 +125,7 @@ begin
 end;
 
 function pcr_roundevenf(x: Single): Single;
-{$IFDEF CPUX86_64}
+{$IFDEF AVX2}
 // Pure-asm: System V AMD64 ABI passes x→xmm0; result in xmm0.
 // ROUNDSS imm8=12 (0x0C): override MXCSR with round-to-nearest-even, suppress PE.
 assembler;
@@ -197,7 +197,7 @@ end;
 {$ENDIF}
 
 function pcr_roundeven(x: Double): Double;
-{$IFDEF CPUX86_64}
+{$IFDEF AVX2}
 // Pure-asm: System V AMD64 ABI passes x→xmm0; result in xmm0.
 // ROUNDSD imm8=12 (0x0C): override MXCSR with round-to-nearest-even, suppress PE.
 assembler;
@@ -239,7 +239,7 @@ end;
 {$ENDIF}
 
 function pcr_fmaxf(x, y: Single): Single;
-{$IFDEF CPUX86_64}
+{$IFDEF AVX2}
 // Pure-asm: System V AMD64 ABI passes x→xmm0, y→xmm1; result in xmm0.
 // MAXSS returns the larger value; if x (first operand) is NaN, returns y.
 assembler;
@@ -256,7 +256,7 @@ end;
 {$ENDIF}
 
 function pcr_fmax(x, y: Double): Double;
-{$IFDEF CPUX86_64}
+{$IFDEF AVX2}
 // Pure-asm: System V AMD64 ABI passes x→xmm0, y→xmm1; result in xmm0.
 // MAXSD returns the larger value; if x (first operand) is NaN, returns y.
 assembler;
@@ -273,7 +273,7 @@ end;
 {$ENDIF}
 
 function pcr_fminf(x, y: Single): Single;
-{$IFDEF CPUX86_64}
+{$IFDEF AVX2}
 // Pure-asm: System V AMD64 ABI passes x→xmm0, y→xmm1; result in xmm0.
 // MINSS returns the smaller value; if x (first operand) is NaN, returns y.
 assembler;
@@ -290,7 +290,7 @@ end;
 {$ENDIF}
 
 function pcr_fmin(x, y: Double): Double;
-{$IFDEF CPUX86_64}
+{$IFDEF AVX2}
 // Pure-asm: System V AMD64 ABI passes x→xmm0, y→xmm1; result in xmm0.
 // MINSD returns the smaller value; if x (first operand) is NaN, returns y.
 assembler;
