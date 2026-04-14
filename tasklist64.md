@@ -503,8 +503,8 @@ Apply this checklist to every function before marking it done:
     |---|---|---|
     | `Int32(Int32(...))` | Arithmetic on `Int32` stays `Int32`; outer cast is a no-op | Drop outer `Int32(...)` |
     | `Int64(Int64(...))` | Same redundancy at 64-bit | Drop outer `Int64(...)` |
-    | `LongWord(Int32(LongWord(...)))` | `Int32` in the middle does not change any bits | Drop the `Int32(...)` layer |
-    | `LongWord(Int32(x) shr n)` where `x: LongWord` | `shr` is always logical in Pascal; the `Int32` cast buys nothing when the high bit of `x` is guaranteed 0 | Use `x shr n` directly |
+    | `UInt32(Int32(UInt32(...)))` | `Int32` in the middle does not change any bits | Drop the `Int32(...)` layer |
+    | `UInt32(Int32(x) shr n)` where `x: UInt32` | `shr` is always logical in Pascal; the `Int32` cast buys nothing when the high bit of `x` is guaranteed 0 | Use `x shr n` directly |
 
     These arise because C requires explicit `(uint32_t)(int32_t)` casts around signed/unsigned
     operations. Pascal's type system handles the same cases without the extra layers. Keep

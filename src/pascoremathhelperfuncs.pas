@@ -138,7 +138,7 @@ end;
 var
   v: Tb32u32;
   e, shift: Int32;
-  mask, frac, half: LongWord;
+  mask, frac, half: UInt32;
 begin
   v.f := x;
   e := Int32((v.u shr 23) and $FF) - 127;  // unbiased exponent

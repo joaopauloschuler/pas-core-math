@@ -20,7 +20,7 @@ const
   TIE_THRESHOLD  = 0.05;
 
 var
-  GlobalSink: LongWord = 0;
+  GlobalSink: UInt32 = 0;
   PCMWins, FPCWins, PTies: Int32;
   TotalSpeedup: Double = 0.0;
   BenchCount: Int32 = 0;
@@ -30,7 +30,7 @@ var
   i: Int32;
   u: Cardinal;
   v, r: Tb32u32;
-  sink: LongWord;
+  sink: UInt32;
   t0, t1: TDateTime;
   msFPC, msPCM: Int64;
   mopsFPC, mopsPCM: Double;
@@ -87,7 +87,7 @@ var
   i: Int32;
   ux, uy: Cardinal;
   vx, vy, r: Tb32u32;
-  sink: LongWord;
+  sink: UInt32;
   t0, t1: TDateTime;
   msFPC, msPCM: Int64;
   mopsFPC, mopsPCM: Double;
@@ -150,7 +150,7 @@ var
   i: Int32;
   u: Cardinal;
   v, rs, rc: Tb32u32;
-  sink: LongWord;
+  sink: UInt32;
   t0, t1: TDateTime;
   msFPC, msPCM: Int64;
   mopsFPC, mopsPCM: Double;

@@ -22,7 +22,7 @@ const
   TIE_THRESHOLD  = 0.05;
 
 var
-  GlobalSink: LongWord = 0;
+  GlobalSink: UInt32 = 0;
   PWins, CWins, PTies: Int32;
   TotalSpeedup: Double = 0.0;
   BenchCount: Int32 = 0;
@@ -32,11 +32,11 @@ var
   i: Int32;
   u: Cardinal;
   v, r: Tb32u32;
-  sink: LongWord;
+  sink: UInt32;
   t0, t1: TDateTime;
   msC, msP: Int64;
   mopsC, mopsP: Double;
-  cSink, pSink: LongWord;
+  cSink, pSink: UInt32;
 begin
   // C version
   sink := 0;
@@ -93,11 +93,11 @@ var
   i: Int32;
   ux, uy: Cardinal;
   vx, vy, r: Tb32u32;
-  sink: LongWord;
+  sink: UInt32;
   t0, t1: TDateTime;
   msC, msP: Int64;
   mopsC, mopsP: Double;
-  cSink, pSink: LongWord;
+  cSink, pSink: UInt32;
 begin
   // C version
   sink := 0;
@@ -160,11 +160,11 @@ var
   i: Int32;
   u: Cardinal;
   v, rs, rc: Tb32u32;
-  sink: LongWord;
+  sink: UInt32;
   t0, t1: TDateTime;
   msC, msP: Int64;
   mopsC, mopsP: Double;
-  cSink, pSink: LongWord;
+  cSink, pSink: UInt32;
   ps, pc: Single;
 begin
   // C version

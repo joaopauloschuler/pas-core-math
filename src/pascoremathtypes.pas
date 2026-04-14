@@ -17,7 +17,7 @@ type
   Tb32u32 = record
     case Boolean of
       False: (f: Single);
-      True:  (u: LongWord);
+      True:  (u: UInt32);
   end;
 
   Tb64u64 = record

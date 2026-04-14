@@ -155,7 +155,7 @@ pas-core-math/
 - [x] **0.4** Define type-punning records in `pascoremathtypes.pas`:
   ```pascal
   type Tb32u32 = record case Boolean of
-    False: (f: Single);  True: (u: LongWord); end;
+    False: (f: Single);  True: (u: UInt32); end;
   type Tb64u64 = record case Boolean of
     False: (f: Double);  True: (u: UInt64);   end;
   ```
@@ -320,7 +320,7 @@ Apply this checklist to every function before marking it done:
    then.
 
 4. **`BsfDWord` is 32-bit only — use `BsfQWord` for 64-bit values.** The builtins table maps
-   `__builtin_ctz(n)` to `BsfDWord`, which is correct when `n` is a `LongWord`. If `ctz` is
+   `__builtin_ctz(n)` to `BsfDWord`, which is correct when `n` is a `UInt32`. If `ctz` is
    ever called on a `UInt64` value, `BsfQWord` must be used instead. Check the argument type
    at each call site; using the wrong variant silently operates on only the low 32 bits.
 
