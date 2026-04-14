@@ -35,7 +35,6 @@ type
   TBivarFuncP = function(x, y: Single): Single;
 
 var
-  NA: Single;  // NaN sentinel for functions with no FPC equivalent
   s_fpc, c_fpc, s_c, c_c, s_pcr, c_pcr: Single;
 
 // Format a Single as a signed float string: (+1.2345678e+00) or (-1.23...)
@@ -88,6 +87,37 @@ begin
   PrintRow(Format('%s(%g)', [FuncName, x]), FPCResult, pfC(x), pfP(x));
 end;
 
+// Two-column row: C and pcr only (no FPC column), used for functions with no
+// FPC equivalent. MATCH/ERROR compares C vs pcr bit-exactly.
+// The FPC column (31 chars = '  FPC=$' + 8 hex digits + 16-char FmtSingle) is
+// replaced by spaces so C and pcr columns stay aligned with 3-column rows.
+procedure PrintRowCP(const Name: string; CRes, PcrRes: Single);
+const
+  FPC_COL_WIDTH = 31;  // '  FPC=$'(7) + hex(8) + FmtSingle normal float(16)
+var
+  c, p: Tb32u32;
+  verdict: string;
+begin
+  c.f := CRes; p.f := PcrRes;
+  if ((c.u and $7F800000) = $7F800000) and ((c.u and $007FFFFF) <> 0) then
+    verdict := IfThen(((p.u and $7F800000) = $7F800000) and ((p.u and $007FFFFF) <> 0), 'MATCH', 'ERROR')
+  else
+    verdict := IfThen(c.u = p.u, 'MATCH', 'ERROR');
+  WriteLn(
+    Format('%-22s', [Name]) +
+    StringOfChar(' ', FPC_COL_WIDTH) +
+    '  C=$'   + IntToHex(c.u, 8) + FmtSingle(CRes)   +
+    '  pcr=$' + IntToHex(p.u, 8) + FmtSingle(PcrRes) +
+    '  ' + verdict
+  );
+end;
+
+// Evaluate and print a C+pcr-only univariate row (no FPC equivalent).
+procedure PrintUniCP(const FuncName: string; pfC: TUniFuncC; pfP: TUniFuncP; x: Single);
+begin
+  PrintRowCP(Format('%s(%g)', [FuncName, x]), pfC(x), pfP(x));
+end;
+
 // Evaluate and print one bivariate row; label is built from FuncName + x + y.
 procedure PrintBivar(const FuncName: string; FPCResult: Single;
                      pfC: TBivarFuncC; pfP: TBivarFuncP; x, y: Single);
@@ -99,10 +129,8 @@ begin
   SetExceptionMask([exInvalidOp, exDenormalized, exZeroDivide,
                     exOverflow, exUnderflow, exPrecision]);
 
-  NA := NaN;
-
   WriteLn('=== FixedTest32: FPC vs C (cr_*) vs pas-core-math (pcr_*) ===');
-  WriteLn('N/A in the FPC column means no direct FPC Math equivalent.');
+  WriteLn('Functions with no FPC equivalent show only C and pcr columns.');
   WriteLn;
 
   // -----------------------------------------------------------------------
@@ -132,8 +160,8 @@ begin
   // Note: FPC Cos(TEST_X*Pi) differs from CORE-MATH cospif(TEST_X) at the bit level
   PrintUni('cospif',   Cos(TEST_X*Pi),              @cr_cospif,   @pcr_cospif,   TEST_X);
   // erff / erfcf: no FPC built-in
-  PrintUni('erff',     NA,                          @cr_erff,     @pcr_erff,     TEST_X);
-  PrintUni('erfcf',    NA,                          @cr_erfcf,    @pcr_erfcf,    TEST_X);
+  PrintUniCP('erff',                                @cr_erff,     @pcr_erff,     TEST_X);
+  PrintUniCP('erfcf',                               @cr_erfcf,    @pcr_erfcf,    TEST_X);
   PrintUni('expf',     Exp(TEST_X),                 @cr_expf,     @pcr_expf,     TEST_X);
   // exp10f(x) = 10^x; no dedicated FPC built-in
   PrintUni('exp10f',   Power(10, TEST_X),           @cr_exp10f,   @pcr_exp10f,   TEST_X);
@@ -146,7 +174,7 @@ begin
   // expm1f(x) = e^x - 1; no dedicated FPC built-in
   PrintUni('expm1f',   Exp(TEST_X)-1,               @cr_expm1f,   @pcr_expm1f,   TEST_X);
   // lgammaf: no FPC built-in
-  PrintUni('lgammaf',  NA,                          @cr_lgammaf,  @pcr_lgammaf,  TEST_X);
+  PrintUniCP('lgammaf',                             @cr_lgammaf,  @pcr_lgammaf,  TEST_X);
   PrintUni('logf',     Ln(TEST_X),                  @cr_logf,     @pcr_logf,     TEST_X);
   PrintUni('log10f',   Log10(TEST_X),               @cr_log10f,   @pcr_log10f,   TEST_X);
   // log10p1f(x) = log10(1+x); no dedicated FPC built-in
@@ -169,7 +197,7 @@ begin
   // correctly returns +Inf.
   PrintUni('tanpif',   Tan(TEST_X*Pi),              @cr_tanpif,   @pcr_tanpif,   TEST_X);
   // tgammaf: no FPC built-in
-  PrintUni('tgammaf',  NA,                          @cr_tgammaf,  @pcr_tgammaf,  TEST_X);
+  PrintUniCP('tgammaf',                             @cr_tgammaf,  @pcr_tgammaf,  TEST_X);
 
   WriteLn;
 
