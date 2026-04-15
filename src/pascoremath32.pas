@@ -398,7 +398,7 @@ begin
   begin
     // as_special inline
     if t.u = (UInt32($7F) shl 23) then begin Result := 0.0; Exit; end;  // x=1
-    if t.u = (UInt32($17F) shl 23) then begin Result := Single(1.5707963705062866) + Single(-4.371138828673793e-08); Exit; end;  // x=-1
+    if t.u = (UInt32($17F) shl 23) then begin t.u := $40490FDB; Result := t.f; Exit; end;  // x=-1
     if ax > (UInt32($FF) shl 24) then begin Result := x + x; Exit; end;  // nan
     pcr_feraiseexcept_invalid;
     Result := pcr_nanf('');
@@ -422,7 +422,7 @@ begin
   if ax < (UInt32($7E) shl 24) then
   begin
     if t.u = $328885A3 then begin Result := Single(1.5707963705062866) + Single(2.9802322387695312e-08); Exit; end;
-    if t.u = $39826222 then begin Result := Single(1.570796012878418) + Single(2.9802322387695312e-08); Exit; end;
+    if t.u = $39826222 then begin t.u := $3FC907B5; Result := t.f; Exit; end;
     z_sq := xs * xs;
     r := (pi2 - xs) - (xs * z_sq) * pcr_poly12(z_sq, c1);
   end else
