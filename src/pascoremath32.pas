@@ -5046,8 +5046,8 @@ begin
     Exit;
   end;
   err_e1.u := UInt64(Int64(err_e1.u) + Round(k_e1) * Int64($10000000000000));
-  lb_e1 := Single(v_e1.f - err_e1.f);
-  rb_e1 := Single(v_e1.f + err_e1.f);
+  lb_e1 := (v_e1.f - err_e1.f);
+  rb_e1 := (v_e1.f + err_e1.f);
   if lb_e1 <> rb_e1 then begin
     Result := -1.0;
     Exit;
