@@ -100,7 +100,7 @@ var
 begin
   vx.f := x;
   vy.f := y;
-  vx.u := (vx.u and $7FFFFFFF) or (vy.u and $80000000);
+  vx.u := (vx.u and UInt32($7FFFFFFF)) or (vy.u and UInt32($80000000));
   Result := vx.f;
 end;
 
@@ -110,7 +110,7 @@ var
 begin
   vx.f := x;
   vy.f := y;
-  vx.u := (vx.u and $7FFFFFFFFFFFFFFF) or (vy.u and $8000000000000000);
+  vx.u := (vx.u and UInt64($7FFFFFFFFFFFFFFF)) or (vy.u and UInt64($8000000000000000));
   Result := vx.f;
 end;
 
