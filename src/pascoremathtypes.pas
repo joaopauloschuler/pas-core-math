@@ -15,17 +15,15 @@ type
   end;
 
   Tb32u32 = record
-    case integer of
-      0: (f: Single);
-      1: (u: UInt32);
-      2: (b: array[0..7] of byte);
+    case boolean of
+      false: (f: Single);
+      true:  (u: UInt32);
   end;
 
   Tb64u64 = record
-    case integer of
-      0: (f: Double);
-      1: (u: UInt64);
-      2: (b: array[0..15] of byte);
+    case boolean of
+      false: (f: Double);
+      true:  (u: UInt64);
   end;
 
 operator +(const a: TUInt128; b: UInt64): TUInt128; inline;
