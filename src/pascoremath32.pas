@@ -5040,14 +5040,14 @@ begin
   r_e1 := r_e1 - CF_EXP2T[i_e1];
   v_e1.f := CF_EXP2U[i_e1][0] * cf_q1(r_e1);
   err_e1.f := 5.062616992290714e-13; // 0x1.1dp-41
-  v_e1.u := UInt64(Int64(v_e1.u) + Int64(k_e1) * Int64($10000000000000));
+  v_e1.u := UInt64(Int64(v_e1.u) + Round(k_e1) * Int64($10000000000000));
   if v_e1.f < 1.175494350822881e-38 then begin // 0x1.00000000008e2p-126
     Result := -1.0;
     Exit;
   end;
-  err_e1.u := UInt64(Int64(err_e1.u) + Int64(k_e1) * Int64($10000000000000));
-  lb_e1 := Single(v_e1.f) - Single(err_e1.f);
-  rb_e1 := Single(v_e1.f) + Single(err_e1.f);
+  err_e1.u := UInt64(Int64(err_e1.u) + Round(k_e1) * Int64($10000000000000));
+  lb_e1 := Single(v_e1.f - err_e1.f);
+  rb_e1 := Single(v_e1.f + err_e1.f);
   if lb_e1 <> rb_e1 then begin
     Result := -1.0;
     Exit;
@@ -5237,9 +5237,9 @@ begin
     small_e22 := (k_e22 = 0.0) and (i_e22 = 16) and (pcr_fabs(h) <= 3.814697265625e-06);
     if small_e22 then err_e22 := CF_ERR_E22[1] else err_e22 := CF_ERR_E22[0];
     v_e22.f := qh_e22 + (ql_e22 - err_e22);
-    v_e22.u := UInt64(Int64(v_e22.u) + Int64(k_e22) * Int64($10000000000000));
+    v_e22.u := UInt64(Int64(v_e22.u) + Round(k_e22) * Int64($10000000000000));
     w_e22.f := qh_e22 + (ql_e22 + err_e22);
-    w_e22.u := UInt64(Int64(w_e22.u) + Int64(k_e22) * Int64($10000000000000));
+    w_e22.u := UInt64(Int64(w_e22.u) + Round(k_e22) * Int64($10000000000000));
     if exact <> 0 then begin
       vtz_e22 := Int32(BsfQWord(v_e22.u));
       wtz_e22 := Int32(BsfQWord(w_e22.u));
@@ -5259,7 +5259,7 @@ begin
   if ((w_e22.u shl 36) = 0) and (v_e22.f = qh_e22) and (ql_e22 <> 0.0) then begin
     if ql_e22 > 0.0 then Inc(v_e22.u) else Dec(v_e22.u);
   end;
-  v_e22.u := UInt64(Int64(v_e22.u) + Int64(k_e22) * Int64($10000000000000));
+  v_e22.u := UInt64(Int64(v_e22.u) + Round(k_e22) * Int64($10000000000000));
   Result := Single(v_e22.f);
 end;
 
