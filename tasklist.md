@@ -456,7 +456,7 @@ Benchmark baseline (2026-04-11, FPC 3.2.2 -O2, x86_64 Linux):
 
 ---
 
-## Open bugs (detected 2026-04-11, `--pct 1` sampling)
+## Closed bugs (detected 2026-04-11, `--pct 1` sampling)
 
 ### Bug A — `pcr_compoundf`: returns +Inf for tiny subnormal x with large y
 
@@ -472,18 +472,13 @@ x=$0000035A                               y=$555558B1
 **Expected result:** `compound(x, y) = (1+x)^y ≈ 1.0`
 because `x*y ≈ 6e-43 * 1.47e13 ≈ 8.8e-30`, so `exp(y * log(1+x)) ≈ exp(8.8e-30) ≈ 1.0`.
 
-**Root cause (suspected):** The Pascal `pcr_compoundf` implementation takes a wrong code path
-for very small subnormal `x` values. Instead of recognising that `(1+x)^y ≈ 1`, it overflows
-somewhere in the intermediate computation and returns +Inf.
-The C source (`core-math/src/binary32/compound/compoundf.c`, ~1110 lines) has a dedicated
-subnormal handling path (search for `// subnormal numbers`); it is likely that the Pascal port
-is missing a guard or has an incorrect comparison for this range.
-
 **How to debug:**
 - Add `--diag 10` to the TestHarness32 bivariate output (already supported as of commit `25d897a`)
   and focus on tiny subnormal x (bits 0x0000_0001 to roughly 0x007F_FFFF) with large positive y.
 - Compare `pcr_compoundf` step-by-step with C for input `x=$000001AD, y=$55555703`.
 - Grep for `subnormal` in `compoundf.c` and verify the corresponding Pascal guard conditions.
+
+This bug has been fixed.
 
 ---
 
