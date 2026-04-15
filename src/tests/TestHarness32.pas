@@ -20,6 +20,7 @@ var
   TotalPass, TotalFail: Int32;
   Stride: Cardinal;
   DiagMax: Int32;  // max mismatches to print (0 = none)
+  StartTick: UInt64;
 
 procedure ReportResult(const FuncName: string; Tested, Mismatches: Int64; MaxError: Double);
 begin
@@ -193,7 +194,7 @@ var
   pct: Int32;
 begin
   Result := 1; // default: 100% => stride 1
-  DiagMax := 0;
+  DiagMax := 3;
   i := 1;
   while i <= ParamCount do
   begin
@@ -222,6 +223,7 @@ begin
   SetExceptionMask([exInvalidOp, exDenormalized, exZeroDivide,
                     exOverflow, exUnderflow, exPrecision]);
 
+  StartTick := GetTickCount64;
   Stride := ParsePct;
 
   TotalPass := 0;
@@ -281,6 +283,7 @@ begin
   TestSinCos;
 
   WriteLn;
+  WriteLn(Format('Elapsed time: %.3f s', [(GetTickCount64 - StartTick) / 1000.0]));
   WriteLn(Format('=== TOTAL: %d PASS, %d FAIL ===', [TotalPass, TotalFail]));
   if TotalFail = 0 then
     WriteLn('OVERALL: PASS')
