@@ -4881,35 +4881,43 @@ begin
 end;
 
 // ── fast_two_sum ──────────────────────────────────────────────────────────────
+// All four primitives below write their var outputs LAST (after all value-param
+// reads) so that callers may safely alias value params with var params.
+
 procedure cf_fast_two_sum(var s, t: Double; a, b: Double); inline;
-var e_fts: Double;
+var s_tmp: Double;
 begin
-  s := a + b;
-  e_fts := s - a;
-  t := b - e_fts;
+  s_tmp := a + b;
+  t     := b - (s_tmp - a);
+  s     := s_tmp;
 end;
 
 // ── a_mul: hi+lo = a*b exactly ───────────────────────────────────────────────
 procedure cf_a_mul(var hi, lo: Double; a, b: Double); inline;
+var t_am: Double;
 begin
-  hi := a * b;
-  lo := pcr_fma(a, b, -hi);
+  t_am := a * b;
+  lo   := pcr_fma(a, b, -t_am);
+  hi   := t_am;
 end;
 
 // ── s_mul: (hi+lo) = a*(bh+bl) ────────────────────────────────────────────────
 procedure cf_s_mul(var hi, lo: Double; a, bh, bl: Double); inline;
+var bl_sm: Double;
 begin
+  bl_sm := bl;             // save bl before cf_a_mul may overwrite lo
   cf_a_mul(hi, lo, a, bh);
-  lo := pcr_fma(a, bl, lo);
+  lo := pcr_fma(a, bl_sm, lo);
 end;
 
 // ── d_mul: (hi+lo) = (ah+al)*(bh+bl) ─────────────────────────────────────────
 procedure cf_d_mul(var hi, lo: Double; ah, al, bh, bl: Double); inline;
-var s_dm, t_dm: Double;
+var s_dm, t_dm, ah_dm: Double;
 begin
-  cf_a_mul(hi, s_dm, ah, bh);
+  ah_dm := ah;             // save ah before cf_a_mul may overwrite hi
+  cf_a_mul(hi, s_dm, ah_dm, bh);
   t_dm := pcr_fma(al, bh, s_dm);
-  lo := pcr_fma(ah, bl, t_dm);
+  lo   := pcr_fma(ah_dm, bl, t_dm);
 end;
 
 // ── p1: approximates log2(1+z) for |z|<=1/64 ─────────────────────────────────
