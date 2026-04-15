@@ -125,6 +125,8 @@ begin
   PrintRow(Format('%s(%g,%g)', [FuncName, x, y]), FPCResult, pfC(x, y), pfP(x, y));
 end;
 
+var
+  i,j: Int32;
 begin
   {$IFDEF AVX2}
   WriteLn('Compiled with AVX2.');
@@ -217,7 +219,12 @@ begin
   PrintBivar('powf',      Power(TEST_X, TEST_X),          @cr_powf,      @pcr_powf,      TEST_X, TEST_X);
   // compoundf(x,n) = (1+x)^n; no dedicated FPC built-in
   PrintBivar('compoundf', Power(1+TEST_X, TEST_X),        @cr_compoundf, @pcr_compoundf, TEST_X, TEST_X);
-
+  
+  for i:=1 to 10 do
+    for j:=-5 to 4 do
+    begin
+      PrintBivar('compoundf', Power(1+i, j/10),        @cr_compoundf, @pcr_compoundf, i, j/10);
+    end;
   WriteLn;
 
   // -----------------------------------------------------------------------
