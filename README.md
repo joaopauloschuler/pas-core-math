@@ -136,7 +136,7 @@ Any mismatch is reported as a failure with the input value and both outputs.
 
 FPC's built-in math functions operate on `Double` internally even for `Single` inputs. pas-core-math targets `Single` precision throughout, which, in part, explains why it is substantially faster.
 
-**On average, pas-core-math is ~2.4× faster than FPC builtins**.
+**On average, pas-core-math is ~2.4× faster than FPC builtins in Windows. In Linux, pas-core-math is 6-20x times faster than FPC builtins**.
 
 ## Correctness Guarantee
 
