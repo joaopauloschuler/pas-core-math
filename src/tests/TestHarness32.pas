@@ -77,7 +77,8 @@ begin
       if diagShown < DiagMax then
       begin
         rc.f := cr; rp.f := pr;
-        WriteLn(Format('  [%s] input=$%8.8x  C=$%8.8x  P=$%8.8x', [name, u, rc.u, rp.u]));
+        WriteLn(Format('  [%s] input=$%8.8x(%.9g)  C=$%8.8x(%.9g)  P=$%8.8x(%.9g)',
+                       [name, u, v.f, rc.u, cr, rp.u, pr]));
         Inc(diagShown);
         error := abs(cr - pr);
         if error > max_error then max_error := error;
@@ -122,8 +123,8 @@ begin
       if diagShown < DiagMax then
       begin
         rc.f := cr; rp.f := pr;
-        WriteLn(Format('  [%s] x=$%8.8x y=$%8.8x  C=$%8.8x  P=$%8.8x',
-                       [name, ux, uy, rc.u, rp.u]));
+        WriteLn(Format('  [%s] x=$%8.8x(%.9g) y=$%8.8x(%.9g)  C=$%8.8x(%.9g)  P=$%8.8x(%.9g)',
+                       [name, ux, vx.f, uy, vy.f, rc.u, cr, rp.u, pr]));
         Inc(diagShown);
         error := abs(cr - pr);
         if error > max_error then max_error := error;
