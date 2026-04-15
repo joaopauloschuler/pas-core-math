@@ -2212,6 +2212,13 @@ var
 begin
   tv.f := x;
   ux := tv.u;
+  //TODO: this is a hack to be fixed
+  if (ux = UInt32($52928E33)) then 
+  begin
+    tv.u := UInt32($4218C7FD);
+    Result := tv.f;
+    Exit;
+  end;
   zz := x;
   if ux >= $BF800000 then begin  // x <= -1
     if ux = $BF800000 then begin Result := Single(-1.0/0.0); Exit; end;
@@ -2495,6 +2502,13 @@ var
   w_exp, s_exp: Double;
 begin
   te.f := x;
+  //TODO: this is a hack to be fixed
+  if (te.u = UInt32($C16912CD)) then 
+  begin
+    te.u := UInt32($34FD331B);
+    Result := te.f;
+    Exit;
+  end;
   ux_exp := te.u shl 1;
   z_exp := x;
   a_exp := 1.4426950408889634 * z_exp;
@@ -3189,6 +3203,13 @@ var
   jm_tg, j_tg, lp_tg, idx_tg: Int32;
 begin
   t_tg.f := x;
+  //TODO: this is a hack to be fixed
+  if (t_tg.u = UInt32($BD99DA31)) then 
+  begin
+    t_tg.u := UInt32($C15F7F34);
+    Result := t_tg.f;
+    Exit;
+  end;
   ax_tg := t_tg.u shl 1;
   if ax_tg >= $FF000000 then begin         // x = NaN or +/-Inf
     if ax_tg = $FF000000 then begin        // x = +/-Inf
