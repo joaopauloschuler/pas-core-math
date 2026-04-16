@@ -5336,7 +5336,7 @@ begin
     end;
     if ay_sp = 0 then begin
       if cf_is_signalingf(x) then begin Result := x + y; Exit; end;
-      if x < -1.0 then Result := 0.0 / 0.0
+      if x < -1.0 then Result := pcr_feraiseexcept_invalid()
       else Result := 1.0;
       Exit;
     end;
@@ -5344,7 +5344,7 @@ begin
   if ay_sp >= (UInt32($FF) shl 24) then begin // y = Inf/NaN
     if ax_sp > (UInt32($FF) shl 24) then begin Result := x + y; Exit; end;
     if ay_sp = (UInt32($FF) shl 24) then begin // y = +/-Inf
-      if nx_sp.u > mone_sp.u then begin Result := 0.0 / 0.0; Exit; end;
+      if nx_sp.u > mone_sp.u then begin Result := pcr_feraiseexcept_invalid(); Exit; end;
       sy_sp := Int32(ny_sp.u shr 31);
       if nx_sp.u = mone_sp.u then begin
         if sy_sp = 0 then Result := 0.0
@@ -5367,14 +5367,14 @@ begin
   end;
   if nx_sp.u >= (UInt32($FF) shl 23) then begin
     if ax_sp = (UInt32($FF) shl 24) then begin // x = ±Inf
-      if (nx_sp.u shr 31) <> 0 then begin Result := 0.0 / 0.0; Exit; end; // -Inf
+      if (nx_sp.u shr 31) <> 0 then begin Result := pcr_feraiseexcept_invalid(); Exit; end; // -Inf
       if (ny_sp.u shr 31) <> 0 then Result := 1.0 / x
       else Result := x;
       Exit;
     end;
     if ax_sp > (UInt32($FF) shl 24) then begin Result := x + y; Exit; end; // NaN
     if nx_sp.u > mone_sp.u then begin
-      Result := 0.0 / 0.0; // x < -1
+      Result := pcr_feraiseexcept_invalid(); // x < -1
       Exit;
     end;
     // x = -1

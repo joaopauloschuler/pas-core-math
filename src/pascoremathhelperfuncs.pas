@@ -49,8 +49,8 @@ function pcr_nanf(const tagp: PAnsiChar): Single; inline;
 function pcr_nan(const tagp: PAnsiChar): Double; inline;
 
 // Raise floating-point exceptions
-procedure pcr_feraiseexcept_invalid; inline;
-procedure pcr_feraiseexcept_divbyzero; inline;
+function pcr_feraiseexcept_invalid():Single; inline;
+function pcr_feraiseexcept_divbyzero():Single; inline;
 
 implementation
 
@@ -316,22 +316,22 @@ begin
   Result := NaN;
 end;
 
-procedure pcr_feraiseexcept_invalid;
+function pcr_feraiseexcept_invalid(): Single;
 var
   x: Single;
 begin
   // Raise FE_INVALID by computing 0/0
   x := 0.0;
-  x := x / x;
+  Result := x / x;
 end;
 
-procedure pcr_feraiseexcept_divbyzero; 
+function pcr_feraiseexcept_divbyzero(): Single;
 var
   x: Single;
 begin
   // Raise FE_DIVBYZERO by computing 1/0
   x := 0.0;
-  x := 1.0 / x;
+  Result := 1.0 / x;
 end;
 
 end.
