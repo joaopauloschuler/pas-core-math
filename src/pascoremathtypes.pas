@@ -62,16 +62,13 @@ end;
 // Portable fallback: four 32-bit partial products
 // done by nanobit in the Lazarus forum: https://forum.lazarus.freepascal.org/index.php/topic,73881.0.html
 var
-  MulLo: UInt64;   // intermediates for double limb product calculation
-  Temp1: UInt64;
-  Temp2: UInt64;
+  MulLo, Temp1, Temp2: UInt64;
 begin
-  MulLo := Lo( a ) * Lo( b );
-  Temp1 := ( a shr 32 ) * Lo( b );
-  Temp2 := Lo( a ) * ( b shr 32 ) + Lo( Temp1 ) + ( MulLo shr 32 );
-  // these must be the last actions, as Low=Val1 or Low=Val2 is possible
-  Result.lo := Lo( MulLo ) + ( Temp2 shl 32 );
-  Result.hi := ( a shr 32 ) * ( b shr 32 ) + ( Temp1 shr 32 ) + ( Temp2 shr 32 );
+  MulLo := uint64(uint32(a)) * uint64(uint32(b));
+  Temp1 := (a shr 32) * uint64(uint32(b)) + (MulLo shr 32);
+  Temp2 := uint64(uint32(a)) * (b shr 32) + uint64(uint32(Temp1));
+  Result.lo := (Temp2 shl 32) or (MulLo and $FFFFFFFF);
+  Result.hi := (a shr 32) * (b shr 32) + (Temp1 shr 32) + (Temp2 shr 32);
 end;
 {$ENDIF}
 
