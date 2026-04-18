@@ -69,6 +69,96 @@ begin
 end;
 {$ENDIF}
 
+// =============================================================================
+// Correctly rounded FMA3 emulation
+// Coded by MathMan in the forum: https://forum.lazarus.freepascal.org/index.php/topic,73881.30.html
+//
+// The implementation is based on https://hal.science/hal-04575249/document
+// ============================================================================= 
+type
+  DW = record
+    h: Double;
+    l: Double;
+  end;
+
+function split( x: Double ):DW;
+const
+  K: Double = 134217729.0;
+var
+  splittedx: DW;
+  gamma: Double;
+begin
+  gamma := K * x;
+  splittedx.h := ( gamma+( x-gamma ) );
+  splittedx.l := x - splittedx.h;
+  Result := splittedx;
+end;
+
+function DekkerProd( a,b: Double ):DW;
+var
+  splitteda: DW;
+  splittedb: DW;
+  product: DW;
+begin
+  splitteda := split( a );
+  splittedb := split( b );
+  product.h := a * b;
+  product.l := ((( -product.h+splitteda.h*splittedb.h )+( splitteda.h*splittedb.l ))
+            + splitteda.l*splittedb.h ) + splitteda.l*splittedb.l;
+  Result := product;
+end;
+
+function TwoSum( a,b: Double ):DW;
+var
+  z: DW;
+  aprime: Double;
+begin
+  z.h := a + b;
+  aprime := z.h - b;
+  z.l := ( a-aprime ) + ( b-( z.h-aprime ) );
+
+  Result := z;
+end;
+
+function IsNot1or3timesPowerOf2( x: Double ):Boolean;
+const
+  P: Double = 2251799813685249.0;
+  Q: Double = 2251799813685248.0;
+var
+  Delta: Double;
+begin
+  Delta := ( P*x ) - ( Q*x );
+  Result := ( Delta<>x );
+end;
+
+function pcr_fma_pascal( a,b,c: Double ):Double; inline;
+var
+  x, s, v: DW;
+begin
+  x := DekkerProd( a,b );
+  s := TwoSum( x.h,c );
+  v := TwoSum( x.l,s.l );
+  if( ( IsNot1or3timesPowerOf2( v.h ) ) or ( v.l=0 ) ) then
+  begin
+    Result := s.h + v.h;
+  end
+  else
+  begin
+    if( ( UInt8( v.l<0 ) xor UInt8( v.h<0 ) )<>0 ) then
+    begin
+      Result := s.h + ( 0.875*v.h );
+    end
+    else
+    begin
+      Result := s.h + ( 1.125*v.h );
+    end;
+  end;
+end;
+
+// =============================================================================
+// END OF Correctly rounded FMA3 emulation
+// =============================================================================
+
 function pcr_fma(x, y, z: Double): Double;
 {$IFDEF AVX2}
 // Pure-asm: System V AMD64 ABI passes x→xmm0, y→xmm1, z→xmm2; result in xmm0.
@@ -80,7 +170,8 @@ end;
 {$ELSE}
 begin
   // 80-bit fallback (double-rounding — not true FMA; may lose 1 ULP in rare cases).
-  Result := Double(Extended(x) * Extended(y) + Extended(z));
+  // Result := Double(Extended(x) * Extended(y) + Extended(z));
+  Result := pcr_fma_pascal(x, y, z);
 end;
 {$ENDIF}
 
