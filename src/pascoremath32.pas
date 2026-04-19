@@ -3688,7 +3688,6 @@ const
   cd_a2: array[0..6] of Double = (
     1.0, 2.840181854668896, 3.03226090832491, 1.5083284691366383,
     0.35061013533424623, 0.03311601651598859, 0.0008307046818566012);
-  m_a2: array[0..1] of Double = (0.0, 1.0);
   { pi=0x1.921fb54442d18p+1, pi2=0x1.921fb54442d18p+0, pi2l=0x1.1a62633145c07p-54 }
   off_a2: array[0..7] of Double = (
     0.0, 1.5707963267948966, 3.141592653589793, 1.5707963267948966,
@@ -3736,7 +3735,7 @@ var
   ux, uy, ax_a2, ay_a2: UInt32;
   yinf_a2, xinf_a2, gt_a2: UInt32;
   i_a2: UInt32;
-  zx_a2, zy_a2, z_a2, r_a2: Double;
+  z_a2, r_a2: Double;
   d_a2: Int32;
   z2_a2, z4_a2, z8_a2: Double;
   cn0_a2, cn2_a2, cn4_a2, cn6_a2: Double;
@@ -3785,10 +3784,11 @@ begin
   end;
   if ay_a2 > ax_a2 then gt_a2 := 1 else gt_a2 := 0;
   i_a2 := (uy shr 31)*4 + (ux shr 31)*2 + gt_a2;
-  zx_a2 := x; zy_a2 := y;
-  { z = x/y if |y|>|x|, z = y/x otherwise }
-  z_a2 := (m_a2[gt_a2]*zx_a2 + m_a2[1-gt_a2]*zy_a2) /
-          (m_a2[gt_a2]*zy_a2 + m_a2[1-gt_a2]*zx_a2);
+  { z = y/x if |x|>=|y|, z = -(x/y) if |y|>|x| }
+  if gt_a2 = 0 then
+    z_a2 := Double(y) / Double(x)
+  else
+    z_a2 := -(Double(x) / Double(y));
   d_a2 := Int32(ax_a2) - Int32(ay_a2);
   if (d_a2 < 226492416) and (d_a2 > -226492416) then begin  { 27<<23 }
     z2_a2 := z_a2 * z_a2;
@@ -3811,25 +3811,25 @@ begin
     r_a2 := cn0_a2 / cd0_a2;
   end else
     r_a2 := 1.0;
-  z_a2 := z_a2 * sgn_a2[gt_a2];
-  r_a2 := z_a2 * r_a2 + off_a2[i_a2];
-  res_a2.f := r_a2;
+  res_a2.f := z_a2 * r_a2 + off_a2[i_a2];
   if ((res_a2.u + 8) and $0FFFFFFF) <= 16 then begin
     { check tiny y/x }
     if (ay_a2 < ax_a2) and ((ax_a2 - ay_a2) shr 23 >= 25) then begin
       Result := pcr_atan2f_tiny(y, x); Exit;
     end;
     if gt_a2 = 0 then begin
-      zh_a2 := zy_a2 / zx_a2;
-      zl_a2 := pcr_fma(zh_a2, -zx_a2, zy_a2) / zx_a2;
+      zh_a2 := Double(y) / Double(x);
+      zl_a2 := pcr_fma(zh_a2, -Double(x), Double(y)) / Double(x);
     end else begin
-      zh_a2 := zx_a2 / zy_a2;
-      zl_a2 := pcr_fma(zh_a2, -zy_a2, zx_a2) / zy_a2;
+      zh_a2 := Double(x) / Double(y);
+      zl_a2 := pcr_fma(zh_a2, -Double(y), Double(x)) / Double(y);
     end;
     z2h_a2 := muldd(zh_a2, zl_a2, zh_a2, zl_a2, z2l_a2);
     ph_a2 := polydd(z2h_a2, z2l_a2, 32, c_a2, pl_a2);
-    zh_a2 := zh_a2 * sgn_a2[gt_a2];
-    zl_a2 := zl_a2 * sgn_a2[gt_a2];
+    if gt_a2 <> 0 then begin
+      zh_a2 := -zh_a2;
+      zl_a2 := -zl_a2;
+    end;
     ph_a2 := muldd(zh_a2, zl_a2, ph_a2, pl_a2, pl_a2);
     sh_a2 := ph_a2 + off_a2[i_a2];
     sl_a2 := ((off_a2[i_a2] - sh_a2) + ph_a2) + pl_a2 + offl_a2[i_a2];
@@ -3847,9 +3847,9 @@ begin
       else
         tm_a2 := tm_a2 * 0.75;
     end;
-    r_a2 := th_a2 + tm_a2;
+    res_a2.f := th_a2 + tm_a2;
   end;
-  Result := Single(r_a2);
+  Result := Single(res_a2.f);
 end;
 
 { ── pcr_atan2pif ──────────────────────────────────────────────────────────── }
