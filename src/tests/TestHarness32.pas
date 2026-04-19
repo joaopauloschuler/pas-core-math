@@ -21,6 +21,7 @@ var
   Stride: Cardinal;
   DiagMax: Int32;  // max mismatches to print (0 = none)
   StartTick: UInt64;
+  Filter: string = '';
 
 procedure ReportResult(const FuncName: string; Tested, Mismatches: Int64; MaxError: Double);
 begin
@@ -63,6 +64,7 @@ var
   diagShown: Int32;
   error, max_error: Single;
 begin
+  if (Filter <> '') and (LowerCase(name) <> Filter) then Exit;
   mismatches := 0;
   tested := 0;
   diagShown := 0;
@@ -107,6 +109,7 @@ var
   diagShown: Int32;
   error, max_error: Single;
 begin
+  if (Filter <> '') and (LowerCase(name) <> Filter) then Exit;
   mismatches := 0;
   diagShown := 0;
   max_error := 0;
@@ -147,6 +150,7 @@ var
   mismatches, tested: Int64;
   error, max_error: Single;
 begin
+  if (Filter <> '') and (Filter <> 'sincosf') then Exit;
   mismatches := 0;
   tested := 0;
   max_error := 0;
@@ -209,7 +213,9 @@ begin
       Result := 100 div pct;
     end
     else if (ParamStr(i) = '--diag') and (i < ParamCount) then
-      DiagMax := StrToIntDef(ParamStr(i + 1), 3);
+      DiagMax := StrToIntDef(ParamStr(i + 1), 3)
+    else if (ParamStr(i) = '--func') and (i < ParamCount) then
+      Filter := LowerCase(ParamStr(i + 1));
     Inc(i);
   end;
 end;
@@ -232,6 +238,8 @@ begin
   WriteLn('=== TestHarness: comparing Pascal (pcr_*) vs C (cr_*) ===');
   if Stride > 1 then
     WriteLn(Format('(sampling mode: stride=%d, ~%d%% of inputs)', [Stride, 100 div Stride]));
+  if Filter <> '' then
+    WriteLn(Format('(filter: %s)', [Filter]));
   WriteLn;
 
   // Univariate exhaustive (36 functions)
@@ -284,6 +292,11 @@ begin
 
   WriteLn;
   WriteLn(Format('Elapsed time: %.3f s', [(GetTickCount64 - StartTick) / 1000.0]));
+  if (Filter <> '') and (TotalPass + TotalFail = 0) then
+  begin
+    WriteLn(Format('No function matched filter %s', [Filter]));
+    Halt(1);
+  end;
   WriteLn(Format('=== TOTAL: %d PASS, %d FAIL ===', [TotalPass, TotalFail]));
   if TotalFail = 0 then
     WriteLn('OVERALL: PASS')
