@@ -3126,7 +3126,7 @@ end;
 
 
 // ── lgammaf helpers ───────────────────────────────────────────────────────────
-function lgamma_as_sinpi(x0: Double): Double;
+function lgamma_as_sinpi(x0: Double): Double; inline;
 const
   c_sp: array[0..7] of Double = (
     4.0, -3.7392088021786822, 1.2780132969493234, -0.22899788751887007,
@@ -3140,7 +3140,7 @@ begin
     + x8_sp*((c_sp[4] + x2_sp*c_sp[5]) + x4_sp*(c_sp[6] + x2_sp*c_sp[7])));
 end;
 
-function lgamma_as_ln(x: Double): Double;
+function lgamma_as_ln(x: Double): Double; inline;
 const
   c_aln: array[0..7] of Double = (
     0.9999999999999756, -0.4999999999895039, 0.33333333159684553, -0.2499998558809608,
@@ -3166,7 +3166,7 @@ begin
   t_aln.u := (t_aln.u and $000FFFFFFFFFFFFF) or $3FF0000000000000;
   z_aln := ix_aln[i_aln] * t_aln.f - 1.0;
   z2_aln := z_aln * z_aln; z4_aln := z2_aln * z2_aln;
-  Result := Double(e_aln) * 0.6931471805599453 + il_aln[i_aln]
+  Result := Double(e_aln) * Double(0.6931471805599453) + il_aln[i_aln]
     + z_aln * ((c_aln[0] + z_aln*c_aln[1]) + z2_aln*(c_aln[2] + z_aln*c_aln[3])
                + z4_aln*((c_aln[4] + z_aln*c_aln[5]) + z2_aln*(c_aln[6] + z_aln*c_aln[7])));
 end;
@@ -3419,15 +3419,18 @@ var
   h_lg, h2_lg, h4_lg: Double;
   r_lg: Single;
   tl_lg: UInt64;
-  a_lg, b_lg, mi_lg: Int32;
+  a_lg, b_lg, mi_lg, fi_lg: Int32;
 begin
   ax_lg := Abs(x);
   t_lg.f := ax_lg;
   // Safe floorf: float32 values with |x| >= 2^23 are already exact integers
   if ax_lg >= 8388608.0 then
     fx_lg := x
-  else
-    fx_lg := Single(Floor(Double(x)));
+  else begin
+    fi_lg := Int32(Trunc(x));       // vcvttss2si: truncate toward zero (SSE)
+    if x < Single(fi_lg) then Dec(fi_lg);   // adjust for negative non-integers
+    fx_lg := Single(fi_lg);
+  end;
   // NaN or Inf (t_lg.u = bits of |x|)
   if t_lg.u >= $7F800000 then begin
     if t_lg.u = $7F800000 then begin Result := x * x; Exit; end;  // +/-Inf → +Inf
@@ -3454,19 +3457,19 @@ begin
           *  (((s_lg-rd_sm[4])*(s_lg-rd_sm[5]))*((s_lg-rd_sm[6])*(s_lg-rd_sm[7]))))
           - lgamma_as_ln(z_lg);
   end else begin
-    if ax_lg > 3.373096466064453 then begin   // ax > 0x1.afc1ap+1
-      if x >= 4.085003425410169e+36 then begin  // overflow threshold
+    if t_lg.u > $4057E0D0 then begin   // ax > 0x1.afc1ap+1 = 3.373096466064453
+      if x >= Single(4.085003425410169e+36) then begin  // overflow threshold
         Result := pcr_fmaf(x, 83.30038452148438, 1.0812689350146765e+31); Exit;
       end;
       lz_lg := lgamma_as_ln(z_lg);
-      f_lg := (z_lg - 0.5) * (lz_lg - 1.0) + 0.4189385332046727;
+      f_lg := (z_lg - 0.5) * (lz_lg - 1.0) + Double(0.4189385332046727);
       if ax_lg < 1048576.0 then begin     // ax < 2^20: add Stirling correction
         iz_lg := 1.0 / z_lg; iz2_lg := iz_lg * iz_lg;
         if ax_lg > 1198.0 then begin
           f_lg := f_lg + iz_lg * (1.0/12.0);
         end else if ax_lg > 73.90081787109375 then begin  // 0x1.279a7p+6
           f_lg := f_lg + iz_lg * (stir2[0] + iz2_lg * stir2[1]);
-        end else if ax_lg > 10.666666984558105 then begin  // 0x1.555556p+3
+        end else if t_lg.u > $412AAAAB then begin  // ax > 0x1.555556p+3 = 10.666666984558105
           iz4_lg := iz2_lg * iz2_lg;
           f_lg := f_lg + iz_lg * ((stir4[0] + iz2_lg*stir4[1])
                                  + iz4_lg*(stir4[2] + iz2_lg*stir4[3]));
@@ -3478,7 +3481,7 @@ begin
         end;
       end;
       if x < 0.0 then begin              // reflection for negative x
-        f_lg := 1.1447298858494002 - f_lg - lz_lg;
+        f_lg := Double(1.1447298858494002) - f_lg - lz_lg;
         lp_lg := lgamma_as_ln(lgamma_as_sinpi(Double(x) - Double(fx_lg)));
         f_lg := f_lg - lp_lg;
       end;
@@ -3492,24 +3495,24 @@ begin
         // Near gamma-zeros: use local Taylor expansion for accuracy
         if (t_lg.u < $40301B93) and (t_lg.u > $402F95C2) then begin
           // near x ≈ -2.7477
-          h_lg := (s_lg + 2.7476826467274127) - 9.055340329338315e-17;
+          h_lg := (s_lg + Double(2.7476826467274127)) - Double(9.055340329338315e-17);
           h2_lg := h_lg * h_lg; h4_lg := h2_lg * h2_lg;
           f_lg := h_lg * ((c_nz1[0] + h_lg*c_nz1[1]) + h2_lg*(c_nz1[2] + h_lg*c_nz1[3])
             + h4_lg*((c_nz1[4] + h_lg*c_nz1[5]) + h2_lg*(c_nz1[6] + h_lg*c_nz1[7])));
         end else if (t_lg.u > $401CECCB) and (t_lg.u < $401D95CA) then begin
           // near x ≈ -2.457
-          h_lg := (s_lg + 2.4570247382208006) + 3.7075610815513266e-17;
+          h_lg := (s_lg + Double(2.4570247382208006)) + Double(3.7075610815513266e-17);
           h2_lg := h_lg * h_lg; h4_lg := h2_lg * h2_lg;
           f_lg := h_lg * ((c_nz2[0] + h_lg*c_nz2[1]) + h2_lg*(c_nz2[2] + h_lg*c_nz2[3])
             + h4_lg*((c_nz2[4] + h_lg*c_nz2[5]) + h2_lg*(c_nz2[6])));
         end else if (t_lg.u > $40492009) and (t_lg.u < $404940EF) then begin
           // near x ≈ -3.143
-          h_lg := (s_lg + 3.14358088834998) + 2.1818179852331714e-16;
+          h_lg := (s_lg + Double(3.14358088834998)) + Double(2.1818179852331714e-16);
           h2_lg := h_lg * h_lg; h4_lg := h2_lg * h2_lg;
           f_lg := h_lg * ((c_nz3[0] + h_lg*c_nz3[1]) + h2_lg*(c_nz3[2] + h_lg*c_nz3[3])
             + h4_lg*((c_nz3[4] + h_lg*c_nz3[5]) + h2_lg*(c_nz3[6])));
         end else begin
-          f_lg := 1.1447298858494002 - f_lg;
+          f_lg := Double(1.1447298858494002) - f_lg;
           lp_lg := lgamma_as_ln(lgamma_as_sinpi(Double(x) - Double(fx_lg)) * z_lg);
           f_lg := f_lg - lp_lg;
         end;
