@@ -3738,8 +3738,7 @@ var
   z_a2, r_a2: Double;
   d_a2: Int32;
   z2_a2, z4_a2, z8_a2: Double;
-  cn0_a2, cn2_a2, cn4_a2, cn6_a2: Double;
-  cd0_a2, cd2_a2, cd4_a2, cd6_a2: Double;
+  cn0_a2, cd0_a2: Double;
   res_a2: Tb64u64;
   zh_a2, zl_a2, z2l_a2, z2h_a2: Double;
   pl_a2, ph_a2, sh_a2, sl_a2: Double;
@@ -3794,20 +3793,14 @@ begin
     z2_a2 := z_a2 * z_a2;
     z4_a2 := z2_a2 * z2_a2;
     z8_a2 := z4_a2 * z4_a2;
-    cn0_a2 := cn_a2[0] + z2_a2*cn_a2[1];
-    cn2_a2 := cn_a2[2] + z2_a2*cn_a2[3];
-    cn4_a2 := cn_a2[4] + z2_a2*cn_a2[5];
-    cn6_a2 := cn_a2[6];
-    cn0_a2 := cn0_a2 + z4_a2*cn2_a2;
-    cn4_a2 := cn4_a2 + z4_a2*cn6_a2;
-    cn0_a2 := cn0_a2 + z8_a2*cn4_a2;
-    cd0_a2 := cd_a2[0] + z2_a2*cd_a2[1];
-    cd2_a2 := cd_a2[2] + z2_a2*cd_a2[3];
-    cd4_a2 := cd_a2[4] + z2_a2*cd_a2[5];
-    cd6_a2 := cd_a2[6];
-    cd0_a2 := cd0_a2 + z4_a2*cd2_a2;
-    cd4_a2 := cd4_a2 + z4_a2*cd6_a2;
-    cd0_a2 := cd0_a2 + z8_a2*cd4_a2;
+    cn0_a2 := (cn_a2[0] + z2_a2*cn_a2[1]) + 
+      z4_a2*(cn_a2[2] + z2_a2*cn_a2[3]) + 
+      z8_a2*((cn_a2[4] + z2_a2*cn_a2[5]) + 
+      z4_a2*cn_a2[6]);
+    cd0_a2 := (cd_a2[0] + z2_a2*cd_a2[1]) + 
+      z4_a2*(cd_a2[2] + z2_a2*cd_a2[3]) + 
+      z8_a2*((cd_a2[4] + z2_a2*cd_a2[5]) + 
+      z4_a2*cd_a2[6]);
     r_a2 := cn0_a2 / cd0_a2;
   end else
     r_a2 := 1.0;
