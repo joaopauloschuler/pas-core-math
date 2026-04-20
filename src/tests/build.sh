@@ -81,8 +81,8 @@ fpc $FPC_FLAGS "$SCRIPT_DIR/FixedTest32.pas"
 echo "FixedTest32 compiled -> $BIN_DIR/FixedTest32"
 
 # ---- Clean compiled Pascal artifacts ----
-find "$SRC_DIR" -maxdepth 1 \( -name '*.ppu' -o -name '*.o' -o -name '*.compiled' \) -delete
-find "$BIN_DIR" -maxdepth 1 \( -name '*.ppu' -o -name '*.o' -o -name '*.compiled' \) -delete
+find "$SRC_DIR" -maxdepth 1 \( -name '*.ppu' -o -name '*.o' -o -name '*.compiled' -o -name '*.s' \) -delete
+find "$BIN_DIR" -maxdepth 1 \( -name '*.ppu' -o -name '*.o' -o -name '*.compiled' -o -name '*.s' \) -delete
 
 echo
 echo "Build complete."
