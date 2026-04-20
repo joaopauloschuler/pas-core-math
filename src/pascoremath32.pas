@@ -2472,6 +2472,16 @@ const
     Double(0.69314718055994529), Double(0.24022650695910072), Double(0.055504108664026088),
     Double(0.0096181291075005358), Double(0.001333362331326638), Double(0.00015403602972146417));
   b_exp: array[0..3] of Double = (Double(1), Double(0.69314718052023927), Double(0.2402288551437867), Double(0.055504596827996931));
+  c_exp_0: Double = 0.69314718055994529;
+  c_exp_1: Double = 0.24022650695910072;
+  c_exp_2: Double = 0.055504108664026088;
+  c_exp_3: Double = 0.0096181291075005358;
+  c_exp_4: Double = 0.001333362331326638;
+  c_exp_5: Double = 0.00015403602972146417;
+  b_exp_0: Double = 1;
+  b_exp_1: Double = 0.69314718052023927;
+  b_exp_2: Double = 0.2402288551437867;
+  b_exp_3: Double = 0.055504596827996931;
   tb_exp: array[0..63] of UInt64 = (
     UInt64($3FF0000000000000), UInt64($3FF02C9A3E778061), UInt64($3FF059B0D3158574), UInt64($3FF0874518759BC8),
     UInt64($3FF0B5586CF9890F), UInt64($3FF0E3EC32D3D1A2), UInt64($3FF11301D0125B51), UInt64($3FF1429AAEA92DE0),
@@ -2555,7 +2565,7 @@ begin
   h_exp := a_exp + ia_exp;
   sv.u := tb_exp[u_exp.u and $3F] + ((u_exp.u shr 6) shl 52);
   h2_exp := h_exp * h_exp;
-  r_exp := ((b_exp[0] + h_exp*b_exp[1]) + h2_exp*(b_exp[2] + h_exp*b_exp[3])) * sv.f;
+  r_exp := ((b_exp_0 + h_exp*b_exp_1) + h2_exp*(b_exp_2 + h_exp*b_exp_3)) * sv.f;
   ub_exp := Single(r_exp);
   lb_exp := Single(r_exp - r_exp*k18_exp);
   if ub_exp <> lb_exp then begin
@@ -2563,7 +2573,7 @@ begin
     s_exp := sv.f;
     h2_exp := h_exp * h_exp;
     w_exp := s_exp * h_exp;
-    r_exp := s_exp + w_exp*((c_exp[0] + h_exp*c_exp[1]) + h2_exp*((c_exp[2] + h_exp*c_exp[3]) + h2_exp*(c_exp[4] + h_exp*c_exp[5])));
+    r_exp := s_exp + w_exp*((c_exp_0 + h_exp*c_exp_1) + h2_exp*((c_exp_2 + h_exp*c_exp_3) + h2_exp*(c_exp_4 + h_exp*c_exp_5)));
     ub_exp := Single(r_exp);
   end;
   Result := ub_exp;
