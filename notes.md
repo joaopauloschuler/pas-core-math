@@ -45,3 +45,31 @@ transitions:
 - The `divsd` in the small/medium rational paths may be a bottleneck
 - Can the hot path (large positive x) be further reduced in latency?
 
+
+## expf
+
+### Changes made
+- Wrapped Double literals in c_exp and b_exp with Double(...) to avoid x87 transitions.
+- Replaced Double literals in expf function body with constants (k1_exp..k20_exp) to avoid x87 transitions.
+- Added constants for remaining literals (k14_exp..k20_exp).
+- Fixed duplicate c_exp line and missing tb_exp declaration.
+- Fixed missing closing parenthesis for c_exp array.
+
+### Benchmark before changes
+Baseline: 153.8 Mops/s (C), 50.3 Mops/s (Pascal) (from lgammaf notes, not expf). Need to run benchmark.
+
+### Benchmark after changes
+To be measured.
+
+## expf
+
+After modifications:
+- Wrapped Double literals with Double() to avoid x87 transitions.
+- Replaced pcr_fmax call with conditional expression.
+
+Benchmark results (average of two runs):
+- C: ~352 Mops/s
+- Pascal: ~155 Mops/s
+- Ratio: ~2.27
+
+Previous benchmark (before modifications) not available.
