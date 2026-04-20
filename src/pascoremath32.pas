@@ -2546,6 +2546,7 @@ begin
         Result := Single(k6_exp + (z_exp + k14_exp)*k15_exp)
       else
         Result := Single(k16_exp); Exit;
+    end;
     if ((te.u shr 31) = 0) and (te.u > $42B17217) then begin  // x > 0x1.62e42ep+6
       Result := Single(k17_exp * k17_exp); Exit;
     end;
