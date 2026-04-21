@@ -5595,24 +5595,52 @@ const
 // ---- rbig: range-reduction for large arguments (shared sinf/cosf) ---------
 // Maps x = 2^(e-127) * m  into  result in [-0.5, 0.5] scaled by pi/2,
 // and sets *q to the octant index.
-function sincos_rbig(u: UInt32; q: PInteger): Double; inline;
+// Uses a single asm block with four 'mul' instructions for the 128-bit
+// products, avoiding four separate Mulu64u64 function calls. This matches
+// the structure of C's rbig function (one function call, 4 muls inside).
+function sincos_rbig(u: UInt32; q: PInteger): Double;
 var
   e_exp, k, s, i_val, sgn: Int32;
   m, p3h, p3l, p2l, p1l: UInt64;
-  p0, p1, p2, p3: TUInt128;
   a_val: Int64;
   sm: Int64;
+  ipi0, ipi1, ipi2, ipi3: UInt64;
 begin
   e_exp := Int32((u shr 23) and $FF);
-  m := UInt64((u and UInt64($007FFFFF)) or UInt64($800000));  // ~0u>>9 = $007FFFFF, 1<<23 = $800000
-  p0 := Mulu64u64(m, sincos_ipi[0]);
-  p1 := Mulu64u64(m, sincos_ipi[1]); p1 := p1 + p0.hi;
-  p2 := Mulu64u64(m, sincos_ipi[2]); p2 := p2 + p1.hi;
-  p3 := Mulu64u64(m, sincos_ipi[3]); p3 := p3 + p2.hi;
-  p3h := p3.hi;
-  p3l := p3.lo;
-  p2l := p2.lo;
-  p1l := p1.lo;
+  m := UInt64((u and $007FFFFF) or $800000);
+  ipi0 := sincos_ipi[0];
+  ipi1 := sincos_ipi[1];
+  ipi2 := sincos_ipi[2];
+  ipi3 := sincos_ipi[3];
+  // Four chained 128-bit products in a single asm block (Intel syntax).
+  // p0 = m * ipi0; chain carry: p1 = m * ipi1 + p0.hi, etc.
+  // Only p1l, p2l, p3l, p3h are needed after this block.
+  asm
+    mov  rax, m
+    mul  ipi0
+    mov  p1l, rdx       // temporarily hold p0.hi in p1l
+
+    mov  rax, m
+    mul  ipi1
+    add  rax, p1l
+    adc  rdx, 0
+    mov  p1l, rax       // p1l = p1.lo
+    mov  p2l, rdx       // temporarily hold p1.hi in p2l
+
+    mov  rax, m
+    mul  ipi2
+    add  rax, p2l
+    adc  rdx, 0
+    mov  p2l, rax       // p2l = p2.lo
+    mov  p3l, rdx       // temporarily hold p2.hi in p3l
+
+    mov  rax, m
+    mul  ipi3
+    add  rax, p3l
+    adc  rdx, 0
+    mov  p3l, rax       // p3l = p3.lo
+    mov  p3h, rdx       // p3h = p3.hi
+  end;
   k := e_exp - 124;
   s := k - 23;
   if s < 64 then begin
@@ -5625,47 +5653,49 @@ begin
     i_val := Int32((p3l shl (s - 64)) or (p2l shr (128 - s)));
     a_val := Int64((p2l shl (s - 64)) or (p1l shr (128 - s)));
   end;
-  sgn := SarLongInt(Int32(u), 31);   // 0 if positive, -1 if negative
-  sm  := SarInt64(a_val, 63);        // sign extension of a
+  sgn := SarLongInt(Int32(u), 31);
+  sm  := SarInt64(a_val, 63);
   i_val := i_val - Int32(sm);
-  Result := Double(a_val xor Int64(sgn)) * 5.421010862427522e-20;  // *2^-64
+  Result := Double(a_val xor Int64(sgn)) * 5.421010862427522e-20;
   i_val := (i_val xor sgn) - sgn;
   q^ := i_val;
 end;
 
 // ---- rltl0: range-reduction for medium arguments (double input) -----------
+// Uses arithmetic rounding trick: idh + C_BIG rounds to nearest-even integer
+// (IEEE 754 default), avoiding pcr_roundeven (asm, not inlinable in FPC).
 function sincos_rltl0(x: Double; q: PInteger): Double; inline;
 const
   C_IDH: Double = 5.092958178940651;    // 0x1.45f306dc9c883p+2
   C_BIG: Double = 6755399441055744.0;   // 0x1.8p52
 var
-  idh, id_d: Double;
+  idh: Double;
   Q_r: Tb64u64;
 begin
-  idh  := C_IDH * x;
-  id_d := pcr_roundeven(idh);
-  Q_r.f := C_BIG + id_d;
-  q^ := Int32(UInt32(Q_r.u));
-  Result := idh - id_d;
+  idh   := C_IDH * x;
+  Q_r.f := idh + C_BIG;
+  q^    := Int32(UInt32(Q_r.u));
+  Result := idh - (Q_r.f - C_BIG);
 end;
 
 // ---- rltl: range-reduction for medium arguments (float input) -------------
+// Uses arithmetic rounding trick: idh + C_BIG rounds to nearest-even integer
+// (IEEE 754 default), avoiding pcr_roundeven (asm, not inlinable in FPC).
 function sincos_rltl(z: Single; q: PInteger): Double; inline;
 const
   C_IDL: Double = -3.1558305786379073e-09;  // -0x1.b1bbead603d8bp-29
   C_IDH: Double =  5.092958182096481;        // 0x1.45f306ep+2
   C_BIG: Double =  6755399441055744.0;       // 0x1.8p52
 var
-  x, idl, idh, id_d: Double;
+  x, idl, idh: Double;
   Q_r: Tb64u64;
 begin
-  x    := Double(z);
-  idl  := C_IDL * x;
-  idh  := C_IDH * x;
-  id_d := pcr_roundeven(idh);
-  Q_r.f := C_BIG + id_d;
-  q^ := Int32(UInt32(Q_r.u));
-  Result := (idh - id_d) + idl;
+  x     := Double(z);
+  idl   := C_IDL * x;
+  idh   := C_IDH * x;
+  Q_r.f := idh + C_BIG;
+  q^    := Int32(UInt32(Q_r.u));
+  Result := (idh - (Q_r.f - C_BIG)) + idl;
 end;
 
 // ---- sinf helpers ----------------------------------------------------------
@@ -5986,24 +6016,47 @@ const
   tanf_cd_1: Double = -1.1389954387488281;
   tanf_cd_2: Double = 0.1421268437745497;
   tanf_cd_3: Double = -0.0031314039049681057;
+// Same asm-mul optimization as sincos_rbig; only difference: k = e_exp - 127.
 function tanf_rbig(u: UInt32; q: PInteger): Double;
 var
   e_exp, k, s_shift, i_val, sgn: Int32;
   m_val, p3h, p3l, p2l, p1l: UInt64;
-  p0, p1, p2, p3: TUInt128;
   a_val: Int64;
   sm: Int64;
+  ipi0, ipi1, ipi2, ipi3: UInt64;
 begin
   e_exp := Int32((u shr 23) and $FF);
   m_val := UInt64((u and $007FFFFF) or $800000);
-  p0 := Mulu64u64(m_val, sincos_ipi[0]);
-  p1 := Mulu64u64(m_val, sincos_ipi[1]); p1 := p1 + p0.hi;
-  p2 := Mulu64u64(m_val, sincos_ipi[2]); p2 := p2 + p1.hi;
-  p3 := Mulu64u64(m_val, sincos_ipi[3]); p3 := p3 + p2.hi;
-  p3h := p3.hi;
-  p3l := p3.lo;
-  p2l := p2.lo;
-  p1l := p1.lo;
+  ipi0 := sincos_ipi[0];
+  ipi1 := sincos_ipi[1];
+  ipi2 := sincos_ipi[2];
+  ipi3 := sincos_ipi[3];
+  asm
+    mov  rax, m_val
+    mul  ipi0
+    mov  p1l, rdx
+
+    mov  rax, m_val
+    mul  ipi1
+    add  rax, p1l
+    adc  rdx, 0
+    mov  p1l, rax
+    mov  p2l, rdx
+
+    mov  rax, m_val
+    mul  ipi2
+    add  rax, p2l
+    adc  rdx, 0
+    mov  p2l, rax
+    mov  p3l, rdx
+
+    mov  rax, m_val
+    mul  ipi3
+    add  rax, p3l
+    adc  rdx, 0
+    mov  p3l, rax
+    mov  p3h, rdx
+  end;
   k       := e_exp - 127;   // tanf uses e-127; sincos_rbig uses e-124
   s_shift := k - 23;
   if s_shift < 64 then begin
@@ -6019,28 +6072,29 @@ begin
   sgn   := SarLongInt(Int32(u), 31);
   sm    := SarInt64(a_val, 63);
   i_val := i_val - Int32(sm);
-  Result := Double(a_val xor Int64(sgn)) * 5.421010862427522e-20;  // *2^-64
+  Result := Double(a_val xor Int64(sgn)) * 5.421010862427522e-20;
   i_val := (i_val xor sgn) - sgn;
   q^ := i_val;
 end;
 
 // tanf rltl: multiplies by 2/pi (different from sincos_rltl which uses 16/pi)
+// Uses arithmetic rounding trick: idh + C_BIG rounds to nearest-even integer
+// (IEEE 754 default), avoiding pcr_roundeven (asm, not inlinable in FPC).
 function tanf_rltl(z: Single; q: PInteger): Double; inline;
 const
   C_IDL: Double = -3.944788223297384e-10;  // -0x1.b1bbead603d8bp-32
   C_IDH: Double =  0.6366197727620602;      // 0x1.45f306ep-1
   C_BIG: Double =  6755399441055744.0;      // 0x1.8p52
 var
-  x, idl, idh, id_d: Double;
+  x, idl, idh: Double;
   Q_r: Tb64u64;
 begin
-  x    := Double(z);
-  idl  := C_IDL * x;
-  idh  := C_IDH * x;
-  id_d := pcr_roundeven(idh);
-  Q_r.f := C_BIG + id_d;
-  q^   := Int32(UInt32(Q_r.u));
-  Result := (idh - id_d) + idl;
+  x     := Double(z);
+  idl   := C_IDL * x;
+  idh   := C_IDH * x;
+  Q_r.f := idh + C_BIG;
+  q^    := Int32(UInt32(Q_r.u));
+  Result := (idh - (Q_r.f - C_BIG)) + idl;
 end;
 
 // ---- sincosf helpers -------------------------------------------------------
