@@ -489,12 +489,12 @@ begin
   isc := isc or (UInt64(sgn) shl 63);
   cvt2.u := isc;
   z := cvt1.f;
-  r0 := -0.024975246527242426 / z;  // -0x1.9931c6c2d19d1p-6 / z
+  r0 := Double(-0.024975246527242426) / z;  // -0x1.9931c6c2d19d1p-6 / z
   z2 := z * z; z4 := z2 * z2;
   f := ((c[0] + z*c[1]) + z2*(c[2] + z*c[3])) + z4*((c[4] + z*c[5]) + z2*(c[6] + z*c[7])) + r0;
   r := f * cvt2.f;
   ub := Single(r);
-  lb := Single(r - cvt2.f * 1.4182e-9);
+  lb := Single(r - cvt2.f * Double(1.4182e-9));
   if ub = lb then
   begin
     cvt2.f := r;
@@ -1364,8 +1364,8 @@ begin
       begin
         // underflow path
         xd := x;
-        h := 1.401298464324817e-45 + (xd + 149.0) * 7.006492321624085e-46; // 0x1p-149 + (z+149)*0x1p-150
-        h := pcr_fmax(h, 3.503246160812043e-46); // 0x1p-151
+        h := Double(1.401298464324817e-45) + (xd + 149.0) * Double(7.006492321624085e-46); // 0x1p-149 + (z+149)*0x1p-150
+        h := pcr_fmax(h, Double(3.503246160812043e-46)); // 0x1p-151
         Result := Single(h); Exit;
       end;
       // x >= 128 -> overflow
@@ -1382,7 +1382,7 @@ begin
   sv.u := sv.u + (UInt64(u.u shr 6) shl 52);
   r := sv.f * ((b[0] + h * b[1]) + h2 * (b[2] + h * b[3]));
   ub := Single(r);
-  lb := Single(r - r * 1.4438228390645236e-10); // r * eps where eps = 0x1.3d8p-33
+  lb := Single(r - r * Double(1.4438228390645236e-10)); // r * eps where eps = 0x1.3d8p-33
   if ub <> lb then
   begin
     if ux <= $79E7526E then
@@ -1802,7 +1802,7 @@ begin
   begin
     if ux < $72ADF1C6 then // |x| < 0x1.adf1c6p-13
     begin
-      Result := Single(1.0 + zd*(2.302585092994046 + zd*(2.650949055239199 + zd*2.034678592293476)));
+      Result := Single(1.0 + zd*(Double(2.302585092994046) + zd*(Double(2.650949055239199) + zd*Double(2.034678592293476))));
       Exit;
     end;
     if ux >= UInt32($FF shl 24) then // inf or nan
@@ -1813,8 +1813,8 @@ begin
     end;
     if t.u > $C23369F4 then // x < -0x1.66d3e8p+5
     begin
-      h := 1.401298464324817e-45 + (zd + 44.8534693539332) * 2.3275063689815626e-45;
-      h := pcr_fmax(h, 3.503246160812043e-46);
+      h := Double(1.401298464324817e-45) + (zd + Double(44.8534693539332)) * Double(2.3275063689815626e-45);
+      h := pcr_fmax(h, Double(3.503246160812043e-46));
       Result := Single(h); Exit;
     end;
     if t.u < $80000000 then // x > 0x1.344134p+5
@@ -1856,7 +1856,7 @@ begin
   h2 := h * h;
   r := ((b_exp10[0] + h*b_exp10[1]) + h2*(b_exp10[2] + h*b_exp10[3])) * sv.f;
   ub := Single(r);
-  lb := Single(r - r * 1.45e-10);
+  lb := Single(r - r * Double(1.45e-10));
   if ub <> lb then
   begin
     h := (iln102h * zd - ia * 0.03125) + iln102l * zd;
@@ -2447,12 +2447,12 @@ begin
       if ux_s = $74250BFE then begin
         Result := pcr_copysignf(1.0, x)*Single(0.00055894249817356467) + pcr_copysignf(1.0, x)*Single(1.4551915228366852e-11); Exit;
       end;
-      Result := Single((x*0.1666666716337204)*(x*x) + x); Exit;
+      Result := Single((x*Double(0.1666666716337204))*(x*x) + x); Exit;
     end;
     z2_s := zs*zs; z4_s := z2_s*z2_s;
     Result := Single(zs + (z2_s*zs)*((cp_sinh[0] + z2_s*cp_sinh[1]) + z4_s*(cp_sinh[2] + z2_s*cp_sinh[3]))); Exit;
   end;
-  a_s := 46.166241308446828 * zs;
+  a_s := Double(46.166241308446828) * zs;
   {$IFDEF AVX2}
   asm
     movsd xmm0, a_s
@@ -2475,9 +2475,9 @@ begin
   rm_s := sm_s.f*(te_s - h_s*to_s);
   r_s := rp_s - rm_s;
   ub_s := Single(r_s);
-  lb_s := Single(r_s - 1.52e-10*r_s);
+  lb_s := Single(r_s - Double(1.52e-10)*r_s);
   if ub_s <> lb_s then begin
-    h_s := (46.16624128818512*zs - ia_s) + 2.026170940661134e-08*zs;
+    h_s := (Double(46.16624128818512)*zs - ia_s) + Double(2.026170940661134e-08)*zs;
     h2_s := h_s*h_s;
     te_s := ch_sinh[0] + h2_s*ch_sinh[2] + (h2_s*h2_s)*(ch_sinh[4] + h2_s*ch_sinh[6]);
     to_s := ch_sinh[1] + h2_s*(ch_sinh[3] + h2_s*ch_sinh[5]);
@@ -3292,7 +3292,7 @@ begin
   end;
   z_tg := x;
   if ax_tg < $6D000000 then begin          // |x| < 2^-18
-    d_tg := (0.9890559953279725 - 0.9074790760808863 * z_tg) * z_tg - 0.5772156649015329;
+    d_tg := (Double(0.9890559953279725) - Double(0.9074790760808863) * z_tg) * z_tg - Double(0.5772156649015329);
     f_tg := 1.0 / z_tg + d_tg;
     rt_tg.f := f_tg;
     if ((rt_tg.u + 2) and $0FFFFFFF) < 4 then
