@@ -2386,7 +2386,7 @@ begin
     c0_e := c0_e + z8_e*c4_e;
     Result := Single(ss * c0_e); Exit;
   end;
-  zz_e := (zz_e - 0.03125) - 0.0625 * Floor(16.0 * Double(ax_f));
+  zz_e := (zz_e - Double(0.03125)) - Double(0.0625) * Double(i_erf);
   row_e := i_erf - 7;
   z2_e := zz_e*zz_e; z4_e := z2_e*z2_e;
   c0_e := C_erf[row_e,0] + zz_e*C_erf[row_e,1];
@@ -4039,7 +4039,7 @@ begin
   r_a2p := cn_a2p[0];
   z2_a2p := z_a2p * z_a2p;
   z_a2p := z_a2p * sgn_a2p[gt_a2p];
-  if z2_a2p > 5.551115123125783e-17 then begin  { 0x1p-54 }
+  if z2_a2p > Double(5.551115123125783e-17) then begin  { 0x1p-54 }
     z4_a2p := z2_a2p * z2_a2p;
     z8_a2p := z4_a2p * z4_a2p;
     cn0_p := r_a2p    + z2_a2p*cn_a2p[1];
@@ -4650,12 +4650,13 @@ begin
     Exit;
   end;
   { Near 1: return 1 + z }
-  if pcr_fabs(z_pf) < 1.4901161193847656e-08 then begin  { 0x1p-26 }
+  if pcr_fabs(z_pf) < Double(1.4901161193847656e-08) then begin  { 0x1p-26 }
     Result := 1.0 + z_pf; Exit;
   end;
-  ia_pf := Floor(z_pf);
+  il_pf := Int64(Trunc(z_pf));
+  if Double(il_pf) > z_pf then Dec(il_pf);
+  ia_pf := Double(il_pf);
   h_pf := pcr_fma(l_pf, y_pf, zt_pf - ia_pf);
-  il_pf := Int64(Trunc(ia_pf));
   jl_pf := il_pf and $F;
   el_pf := SarInt64(il_pf - jl_pf, 4);
   s_pf := tb_pf[jl_pf];
