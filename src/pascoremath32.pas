@@ -5630,6 +5630,13 @@ const
     UInt64($FC2757D1F534DDC0),
     UInt64($A2F9836E4E441529)
   );
+  // Individual constants for direct use in asm (avoid stack-spill of ipi array)
+  sincos_ipi_0: UInt64 = UInt64($FE5163ABDEBBC562);
+  sincos_ipi_1: UInt64 = UInt64($DB6295993C439041);
+  sincos_ipi_2: UInt64 = UInt64($FC2757D1F534DDC0);
+  sincos_ipi_3: UInt64 = UInt64($A2F9836E4E441529);
+  // 2^-64: scaling factor used in rbig result conversion
+  sincos_scale: Double = 5.421010862427522e-20;
 
 // ---- rbig: range-reduction for large arguments (shared sinf/cosf) ---------
 // Maps x = 2^(e-127) * m  into  result in [-0.5, 0.5] scaled by pi/2,
@@ -5643,38 +5650,34 @@ var
   m, p3h, p3l, p2l, p1l: UInt64;
   a_val: Int64;
   sm: Int64;
-  ipi0, ipi1, ipi2, ipi3: UInt64;
 begin
   e_exp := Int32((u shr 23) and $FF);
   m := UInt64((u and $007FFFFF) or $800000);
-  ipi0 := sincos_ipi[0];
-  ipi1 := sincos_ipi[1];
-  ipi2 := sincos_ipi[2];
-  ipi3 := sincos_ipi[3];
   // Four chained 128-bit products in a single asm block (Intel syntax).
+  // Uses sincos_ipi_N typed constants directly to avoid pre-loading to stack.
   // p0 = m * ipi0; chain carry: p1 = m * ipi1 + p0.hi, etc.
   // Only p1l, p2l, p3l, p3h are needed after this block.
   asm
     mov  rax, m
-    mul  ipi0
+    mul  sincos_ipi_0
     mov  p1l, rdx       // temporarily hold p0.hi in p1l
 
     mov  rax, m
-    mul  ipi1
+    mul  sincos_ipi_1
     add  rax, p1l
     adc  rdx, 0
     mov  p1l, rax       // p1l = p1.lo
     mov  p2l, rdx       // temporarily hold p1.hi in p2l
 
     mov  rax, m
-    mul  ipi2
+    mul  sincos_ipi_2
     add  rax, p2l
     adc  rdx, 0
     mov  p2l, rax       // p2l = p2.lo
     mov  p3l, rdx       // temporarily hold p2.hi in p3l
 
     mov  rax, m
-    mul  ipi3
+    mul  sincos_ipi_3
     add  rax, p3l
     adc  rdx, 0
     mov  p3l, rax       // p3l = p3.lo
@@ -5695,7 +5698,7 @@ begin
   sgn := SarLongInt(Int32(u), 31);
   sm  := SarInt64(a_val, 63);
   i_val := i_val - Int32(sm);
-  Result := Double(a_val xor Int64(sgn)) * 5.421010862427522e-20;
+  Result := Double(a_val xor Int64(sgn)) * sincos_scale;
   i_val := (i_val xor sgn) - sgn;
   q^ := i_val;
 end;
@@ -6062,35 +6065,30 @@ var
   m_val, p3h, p3l, p2l, p1l: UInt64;
   a_val: Int64;
   sm: Int64;
-  ipi0, ipi1, ipi2, ipi3: UInt64;
 begin
   e_exp := Int32((u shr 23) and $FF);
   m_val := UInt64((u and $007FFFFF) or $800000);
-  ipi0 := sincos_ipi[0];
-  ipi1 := sincos_ipi[1];
-  ipi2 := sincos_ipi[2];
-  ipi3 := sincos_ipi[3];
   asm
     mov  rax, m_val
-    mul  ipi0
+    mul  sincos_ipi_0
     mov  p1l, rdx
 
     mov  rax, m_val
-    mul  ipi1
+    mul  sincos_ipi_1
     add  rax, p1l
     adc  rdx, 0
     mov  p1l, rax
     mov  p2l, rdx
 
     mov  rax, m_val
-    mul  ipi2
+    mul  sincos_ipi_2
     add  rax, p2l
     adc  rdx, 0
     mov  p2l, rax
     mov  p3l, rdx
 
     mov  rax, m_val
-    mul  ipi3
+    mul  sincos_ipi_3
     add  rax, p3l
     adc  rdx, 0
     mov  p3l, rax
@@ -6111,7 +6109,7 @@ begin
   sgn   := SarLongInt(Int32(u), 31);
   sm    := SarInt64(a_val, 63);
   i_val := i_val - Int32(sm);
-  Result := Double(a_val xor Int64(sgn)) * 5.421010862427522e-20;
+  Result := Double(a_val xor Int64(sgn)) * sincos_scale;
   i_val := (i_val xor sgn) - sgn;
   q^ := i_val;
 end;
