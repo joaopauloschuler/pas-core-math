@@ -5506,6 +5506,14 @@ const
      7.958785981094399e-08,   // 0x1.55d3c6fc9ac1fp-24
     -5.4777514393633976e-11   // -0x1.e1d3ff281b40dp-35
   );
+  sincos_a_0: Double = 0.19634954084936204;
+  sincos_a_1: Double = -0.0012616486279372187;
+  sincos_a_2: Double = 2.432025854080733e-06;
+  sincos_a_3: Double = -2.2318367225754577e-09;
+  sincos_b_0: Double = 0.019276571095877645;
+  sincos_b_1: Double = -6.193103220211784e-05;
+  sincos_b_2: Double = 7.958785981094399e-08;
+  sincos_b_3: Double = -5.4777514393633976e-11;
   // sinf tb[] = sin(i*pi/16), i=0..31  (one full period)
   sinf_tb: array[0..31] of Double = (
      0.0,                     // sin(0)
@@ -5740,8 +5748,8 @@ begin
   z_r := sincos_rbig(t32.u, @ia);
   z2  := z_r * z_r;
   z4  := z2 * z2;
-  aa  := (sincos_a[0] + z2 * sincos_a[1]) + z4 * (sincos_a[2] + z2 * sincos_a[3]);
-  bb  := (sincos_b[0] + z2 * sincos_b[1]) + z4 * (sincos_b[2] + z2 * sincos_b[3]);
+  aa  := (sincos_a_0 + z2 * sincos_a_1) + z4 * (sincos_a_2 + z2 * sincos_a_3);
+  bb  := (sincos_b_0 + z2 * sincos_b_1) + z4 * (sincos_b_2 + z2 * sincos_b_3);
   s0  := sinf_tb[ia and 31];
   c0  := sinf_tb[(ia + 8) and 31];
   r_val := s0 + z_r * (aa * c0 - bb * (z_r * s0));
@@ -5819,8 +5827,8 @@ begin
   z_r := sincos_rbig(t32.u, @ia);
   z2  := z_r * z_r;
   z4  := z2 * z2;
-  aa  := (sincos_a[0] + z2 * sincos_a[1]) + z4 * (sincos_a[2] + z2 * sincos_a[3]);
-  bb  := (sincos_b[0] + z2 * sincos_b[1]) + z4 * (sincos_b[2] + z2 * sincos_b[3]);
+  aa  := (sincos_a_0 + z2 * sincos_a_1) + z4 * (sincos_a_2 + z2 * sincos_a_3);
+  bb  := (sincos_b_0 + z2 * sincos_b_1) + z4 * (sincos_b_2 + z2 * sincos_b_3);
   s0  := cosf_tb[(ia + 8) and 31];   // = -sin(ia*pi/16)
   c0  := cosf_tb[ia and 31];          // = cos(ia*pi/16)
   r_val := c0 + z_r * (aa * s0 - bb * (z_r * c0));
@@ -5864,7 +5872,7 @@ begin
       end;
       // 2^-25 <= |x| < 2^-12: use cubic approximation
       // -0x1.555556p-3f = -0.1666666716337204 (f32: $BE2AAAAB)
-      Result := (-0.1666666716337204 * x) * (x * x) + x;
+      Result := Double(-0.1666666716337204) * x * (x * x) + x;
       Exit;
     end;
     Result := sinf_big(x);
@@ -5887,8 +5895,8 @@ begin
   end;
   z2   := z_d * z_d;
   z4   := z2 * z2;
-  aa   := (sincos_a[0] + z2 * sincos_a[1]) + z4 * (sincos_a[2] + z2 * sincos_a[3]);
-  bb   := (sincos_b[0] + z2 * sincos_b[1]) + z4 * (sincos_b[2] + z2 * sincos_b[3]);
+  aa   := (sincos_a_0 + z2 * sincos_a_1) + z4 * (sincos_a_2 + z2 * sincos_a_3);
+  bb   := (sincos_b_0 + z2 * sincos_b_1) + z4 * (sincos_b_2 + z2 * sincos_b_3);
   s0   := sinf_tb[ia and 31];
   c0   := sinf_tb[(ia + 8) and 31];
   r_val := s0 + aa * (z_d * c0) - bb * (z2 * s0);
@@ -5914,15 +5922,15 @@ begin
       if ax < $66000000 then begin
         // |x| < 2^-25
         if ax = 0 then begin
-          Result := 1.0;
+          Result := Double(1.0);
           Exit;
         end;
         // cos(x) = 1 - 2^-25 for tiny nonzero x (correctly rounded)
-        Result := 1.0 - 2.9802322387695312e-08;   // 1 - 0x1p-25f
+        Result := Double(1.0) - Double(2.9802322387695312e-08);
         Exit;
       end;
       // 2^-25 <= |x| < 2^-12: use quadratic approximation
-      Result := -0.5 * x * x + 1.0;
+      Result := Double(-0.5) * x * x + Double(1.0);
       Exit;
     end;
     Result := cosf_big(x);
@@ -5941,8 +5949,8 @@ begin
   end;
   z2   := z_d * z_d;
   z4   := z2 * z2;
-  aa   := (sincos_a[0] + z2 * sincos_a[1]) + z4 * (sincos_a[2] + z2 * sincos_a[3]);
-  bb   := (sincos_b[0] + z2 * sincos_b[1]) + z4 * (sincos_b[2] + z2 * sincos_b[3]);
+  aa   := (sincos_a_0 + z2 * sincos_a_1) + z4 * (sincos_a_2 + z2 * sincos_a_3);
+  bb   := (sincos_b_0 + z2 * sincos_b_1) + z4 * (sincos_b_2 + z2 * sincos_b_3);
   c0   := cosf_tb[ia and 31];
   s0   := cosf_tb[(ia + 8) and 31];   // = -sin(ia*pi/16)
   r_val := c0 + aa * (z_d * s0) - bb * (z2 * c0);
@@ -6130,8 +6138,8 @@ begin
   z_r := sincos_rbig(t32.u, @ia);
   z2  := z_r * z_r;
   z4  := z2 * z2;
-  aa  := (sincos_a[0] + z2 * sincos_a[1]) + z4 * (sincos_a[2] + z2 * sincos_a[3]);
-  bb  := (sincos_b[0] + z2 * sincos_b[1]) + z4 * (sincos_b[2] + z2 * sincos_b[3]);
+  aa  := (sincos_a_0 + z2 * sincos_a_1) + z4 * (sincos_a_2 + z2 * sincos_a_3);
+  bb  := (sincos_b_0 + z2 * sincos_b_1) + z4 * (sincos_b_2 + z2 * sincos_b_3);
   bb  := bb * z_r;
   s0  := sinf_tb[ia and 31];
   c0  := sinf_tb[(ia + 8) and 31];
@@ -6171,8 +6179,8 @@ begin
         Exit;
       end;
       // 2^-25 <= |x| < 2^-12
-      s := Single((-0.1666666716337204 * Double(x)) * Double(x * x) + Double(x));
-      c := Single((-0.5 * Double(x)) * Double(x) + 1.0);
+      s := Single((Double(-0.1666666716337204) * Double(x)) * Double(x * x) + Double(x));
+      c := Single((Double(-0.5) * Double(x)) * Double(x) + Double(1.0));
       Exit;
     end;
     if ax = UInt32($812D97C8) then begin
@@ -6193,8 +6201,8 @@ begin
   end;
   z2 := z_d * z_d;
   z4 := z2 * z2;
-  aa := (sincos_a[0] + z2 * sincos_a[1]) + z4 * (sincos_a[2] + z2 * sincos_a[3]);
-  bb := (sincos_b[0] + z2 * sincos_b[1]) + z4 * (sincos_b[2] + z2 * sincos_b[3]);
+  aa := (sincos_a_0 + z2 * sincos_a_1) + z4 * (sincos_a_2 + z2 * sincos_a_3);
+  bb := (sincos_b_0 + z2 * sincos_b_1) + z4 * (sincos_b_2 + z2 * sincos_b_3);
   aa := aa * z_d;
   bb := bb * z2;
   s0 := sinf_tb[ia and 31];
