@@ -890,7 +890,7 @@ begin
   el := Double(e) - lix_arr[j];
   f := (el + z * bcoef[0]) + z2 * (bcoef[1] + z * bcoef[2]);
   lb_s := Single(f);
-  ub_s := Single(f + 3.256559466535691e-10);
+  ub_s := Single(f + Double(3.256559466535691e-10));
   if lb_s = ub_s then begin Result := lb_s; Exit; end;
   c0 := ccoef[0] + z * ccoef[1];
   c0 := c0 + z2 * ((ccoef[2] + z * ccoef[3]) + z2 * (ccoef[4] + z * ccoef[5]));
@@ -2778,11 +2778,11 @@ begin
                     rr := 2.3025850929940459;
                   end else begin
                     if ux10 = $2C994B7B then begin Result := Single(1.003213657979618e-11) - Single(8.0779356694631609e-28); Exit; end;
-                    rr := 2.3025850929940459 + z10 * 2.6509490552391992;
+                    rr := Double(2.3025850929940459) + z10 * Double(2.6509490552391992);
                   end;
                 end else begin
                   if ux10 = $B6FA215B then begin Result := Single(-1.7164389646495692e-05) + Single(3.3881317890172014e-21); Exit; end;
-                  rr := 2.3025850929940459 + z10*(2.6509490552896504 + z10*2.0346785922934552);
+                  rr := Double(2.3025850929940459) + z10*(Double(2.6509490552896504) + z10*Double(2.0346785922934552));
                 end;
               end else begin
                 rr := (cp4_e10[0] + z10*cp4_e10[1]) + z10*z10*(cp4_e10[2] + z10*cp4_e10[3]);
@@ -2817,10 +2817,11 @@ begin
         if k10 = 11 then begin Result := 10000000.0-1.0; Exit; end;
       end;
     end;
-    a10 := 53.150849461555481 * z10;
-    ia10 := Floor(a10);
-    h10 := (a10 - ia10) + 5.6642316608893863e-08 * z10;
-    i10 := Trunc(ia10);
+    a10 := Double(53.150849461555481) * z10;
+    i10 := Int64(Trunc(a10));
+    if Double(i10) > a10 then Dec(i10);
+    ia10 := Double(i10);
+    h10 := (a10 - ia10) + Double(5.6642316608893863e-08) * z10;
     j10 := i10 and $F;
     e10 := i10 - j10;
     e10 := e10 shr 4;
@@ -3739,7 +3740,7 @@ end;
 
 function pcr_atan2f_tiny(y, x: Single): Single; inline;
 const
-  c_third = -0.3333333333333333;  { -0x1.5555555555555p-2 }
+  c_third: Double = -0.3333333333333333;  { -0x1.5555555555555p-2 }
 var
   dy, dx, z_t, e_t, zz_t, cz_t: Double;
   t_t: Tb64u64;
@@ -3838,18 +3839,18 @@ begin
     if ax_a2 = $7F800000 then xinf_a2 := 1 else xinf_a2 := 0;
     if (yinf_a2 and xinf_a2) <> 0 then begin
       if (ux shr 31) <> 0 then
-        Result := Single(2.356194490192345 * sgn_a2[uy shr 31])   { +/-3pi/4 }
+        Result := Single(Double(2.356194490192345) * sgn_a2[uy shr 31])   { +/-3pi/4 }
       else
-        Result := Single(0.7853981633974483 * sgn_a2[uy shr 31]); { +/-pi/4 }
+        Result := Single(Double(0.7853981633974483) * sgn_a2[uy shr 31]); { +/-pi/4 }
       Exit;
     end;
     if xinf_a2 <> 0 then begin
-      if (ux shr 31) <> 0 then Result := Single(3.141592653589793 * sgn_a2[uy shr 31])
+      if (ux shr 31) <> 0 then Result := Single(Double(3.141592653589793) * sgn_a2[uy shr 31])
       else                      Result := Single(0.0 * sgn_a2[uy shr 31]);
       Exit;
     end;
     if yinf_a2 <> 0 then begin
-      Result := Single(1.5707963267948966 * sgn_a2[uy shr 31]); Exit;
+      Result := Single(Double(1.5707963267948966) * sgn_a2[uy shr 31]); Exit;
     end;
   end;
   if ay_a2 = 0 then begin
@@ -3913,7 +3914,7 @@ begin
     dh_a2 := sh_a2 - th_a2;
     tm_a2 := dh_a2 + sl_a2;
     tth_a2.f := th_a2;
-    if th_a2 + th_a2*8.673617379884035e-19 = th_a2 - th_a2*8.673617379884035e-19 then begin
+    if th_a2 + th_a2*Double(8.673617379884035e-19) = th_a2 - th_a2*Double(8.673617379884035e-19) then begin
       { 0x1p-60 = 8.673617379884035e-19 }
       tth_a2.u := tth_a2.u and $7FF0000000000000;
       tth_a2.u := tth_a2.u - $0180000000000000;  { subtract 24<<52 }
