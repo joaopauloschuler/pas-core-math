@@ -6212,7 +6212,7 @@ end;
 
 // Large-argument case for sincosf (|x| >= threshold)
 // Uses sincos_rbig (k=e-124 — correct for sincosf)
-procedure sincosf_big(x: Single; var sout, cout: Single);
+procedure sincosf_big(x: Single; var sout, cout: Single); inline;
 var
   t32: Tb32u32;
   ax: UInt32;
