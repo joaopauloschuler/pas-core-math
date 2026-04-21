@@ -1215,10 +1215,17 @@ const
   b: array[0..2] of Double = (
     1.0000000014444432, -0.5000150201101822, 0.3332912677830366
   );
+  b0: Double = 1.0000000014444432;
+  b1: Double = -0.5000150201101822;
+  b2: Double = 0.3332912677830366;
   c: array[0..6] of Double = (
     -0.5, 0.3333333333337377, -0.25000000000064687, 0.1999999917184808,
     -0.16666665689564816, 0.14291141156288886, -0.12505426680916787
   );
+  logf_ln2_a:  Double = 0.6931471805599453;    // 0x1.62e42fefa39efp-1
+  logf_ub_eps: Double = 2.2572521629626863e-10; // 0x1.f06p-33
+  logf_e_corr: Double = 1.8641886737243033e-15; // 0x1.0ca86c3898dp-49
+  logf_ln2_b:  Double = 0.6931471805599472;    // 0x1.62e42fefa3ap-1
 var
   t: Tb32u32;
   tz: Tb64u64;
@@ -1253,9 +1260,9 @@ begin
   tz.u := (UInt64(m) shl 29) or (UInt64($3FF) shl 52);
   z := tz.f * tr[j] - 1.0;
   z2 := z * z;
-  r := ((e * 0.6931471805599453 + tl[j]) + z * b[0]) + z2 * (b[1] + z * b[2]);
+  r := ((Double(e) * logf_ln2_a + tl[j]) + z * b0) + z2 * (b1 + z * b2);
   ub := Single(r);
-  lb := Single(r + 2.2572521629626863e-10); // 0x1.f06p-33
+  lb := Single(r + logf_ub_eps);
   if ub <> lb then
   begin
     f := z2 * ((c[0] + z*c[1]) + z2*((c[2] + z*c[3]) + z2*(c[4] + z*c[5] + z2*c[6])));
@@ -1263,10 +1270,10 @@ begin
     begin
       Result := Single(z + f); Exit;
     end;
-    f := f - 1.8641886737243033e-15 * e; // 0x1.0ca86c3898dp-49
+    f := f - logf_e_corr * Double(e);
     f := f + z;
     f := f + tl[j] - tl[0];
-    el := e * 0.6931471805599472; // 0x1.62e42fefa3ap-1
+    el := Double(e) * logf_ln2_b;
     r := el + f;
     ub := Single(r);
     tz.f := r;
@@ -2187,6 +2194,9 @@ const
     -0.99999999999994849);
   b_l2p1: array[0..2] of Double = (
     1.4426950429726688, -0.72136918934353911, 0.48083766343529977);
+  b_l2p1_0: Double = 1.4426950429726688;
+  b_l2p1_1: Double = -0.72136918934353911;
+  b_l2p1_2: Double = 0.48083766343529977;
   c_l2p1: array[0..5] of Double = (
     1.4426950408889683, -0.72134752044437966, 0.48089834631236422,
     -0.36067376567497511, 0.28856066993666346, -0.24038686635219694);
@@ -2195,6 +2205,18 @@ const
     0.48089834696963674, -0.36067376023288011,
     0.2885389476641852, -0.2404491020710918,
     0.2062755131304331, -0.18051311004316711);
+  g_l2p1_0: Double = 1.9259629797116934e-08;
+  g_l2p1_1: Double = -0.72134752044448125;
+  g_l2p1_2: Double = 0.48089834696963674;
+  g_l2p1_3: Double = -0.36067376023288011;
+  g_l2p1_4: Double = 0.2885389476641852;
+  g_l2p1_5: Double = -0.2404491020710918;
+  g_l2p1_6: Double = 0.2062755131304331;
+  g_l2p1_7: Double = -0.18051311004316711;
+  log2p1f_log2e_hi: Double = 1.4426950408889634;  // log2(e), high part
+  log2p1f_log2e_lo: Double = 1.4426950216293335;  // log2(e), low part
+  log2p1f_ub_eps:   Double = 3.2565594665356912e-10;
+  log2p1f_lix0:     Double = 5.1514348342607263e-14; // lix_l2p1[0]
 var
   tv: Tb32u32;
   tp: Tb64u64;
@@ -2234,12 +2256,12 @@ begin
   if ax < $3CC00000 then begin  // |x| < 0.0234375
     if ax <= $0058B90B then begin  // |x| <= 0x1p-126*ln(2) approx
       if ax = 0 then begin Result := x; Exit; end;
-      Result := Single(zz * 1.4426950408889634); Exit;
+      Result := Single(zz * log2p1f_log2e_hi); Exit;
     end else begin
       z2_v := zz*zz; z4_v := z2_v*z2_v;
-      f_v := zz*((g_l2p1[0] + zz*g_l2p1[1]) + z2_v*(g_l2p1[2] + zz*g_l2p1[3]) +
-                 z4_v*((g_l2p1[4] + zz*g_l2p1[5]) + z2_v*(g_l2p1[6] + zz*g_l2p1[7])));
-      f_v := f_v + zz * 1.4426950216293335;
+      f_v := zz*((g_l2p1_0 + zz*g_l2p1_1) + z2_v*(g_l2p1_2 + zz*g_l2p1_3) +
+                 z4_v*((g_l2p1_4 + zz*g_l2p1_5) + z2_v*(g_l2p1_6 + zz*g_l2p1_7)));
+      f_v := f_v + zz * log2p1f_log2e_lo;
       Result := Single(f_v); Exit;
     end;
   end;
@@ -2252,9 +2274,9 @@ begin
   dd := xd.f * ix_l2p1[j32] - 1.0;
   d2 := dd * dd;
   el_v := Double(e_exp) - lix_l2p1[j32];
-  f_v := (el_v + dd*b_l2p1[0]) + d2*(b_l2p1[1] + dd*b_l2p1[2]);
+  f_v := (el_v + dd*b_l2p1_0) + d2*(b_l2p1_1 + dd*b_l2p1_2);
   lb_v := f_v;
-  ub_v := Single(f_v + 3.2565594665356912e-10);
+  ub_v := Single(f_v + log2p1f_ub_eps);
   if Single(lb_v) = ub_v then begin Result := Single(lb_v); Exit; end;
   // check two hard cases
   if ux = $4EBD09E3 then begin Result := Single(30.562536239624023) + Single(4.76837158203125e-07); Exit; end;
@@ -2263,7 +2285,7 @@ begin
   c2_v := c_l2p1[2] + dd*c_l2p1[3];
   c4_v := c_l2p1[4] + dd*c_l2p1[5];
   c0_v := c0_v + d2*(c2_v + d2*c4_v);
-  f_v := Double(e_exp) + (5.1514348342607263e-14 - lix_l2p1[j32]) + dd*c0_v;
+  f_v := Double(e_exp) + (log2p1f_lix0 - lix_l2p1[j32]) + dd*c0_v;
   Result := Single(f_v);
 end;
 
