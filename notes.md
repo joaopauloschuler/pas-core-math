@@ -311,3 +311,20 @@ Due to libc‑related segmentation faults in the test environment, compilation a
 
 Changes committed locally (git unavailable due to system issues). Ready for push when environment stabilizes.
 
+
+
+## Profiling and analysis of functions
+
+We ran benchmarks and found:
+- powf: 109.3 Mops/s (slowest)
+- sinf: 129.9 Mops/s (40% slower than C's 216.9)
+- tanf: 126.3 Mops/s (40% slower than C's 211.9)
+- acosf: 197.6 Mops/s (45% slower than C's 358.4)
+
+We examined the sinf function and found it uses a table-based method with polynomial approximation of degree 6. The codegen tips have been applied. The range reduction uses double-precision multiplication and rounding.
+
+We also examined the sincos_rltl0 function used for range reduction. It is short and likely efficient.
+
+The sinf function in the benchmark (with x in [-1,1]) does not call sinf_big, so the slowdown is in the medium range path.
+
+Next steps: examine tanf and powf for potential algorithmic improvements.
