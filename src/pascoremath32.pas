@@ -6348,7 +6348,7 @@ const
 var
   t32: Tb32u32;
   e_exp, i_q, jj: Int32;
-  z, z2, z4, n_v, n2, d_v, d2, s0, s1, r1: Double;
+  z, z2, z4, n_v, n2, d_v, d2, r1: Double;
   tr: Tb64u64;
   tail: UInt64;
   ax, sgn: UInt32;
@@ -6363,7 +6363,7 @@ begin
         Exit;
       end;
       x2 := x * x;
-      Result := pcr_fmaf(x, 0.3333333432674408 * x2, x);  // 0x1.555556p-2f
+      Result := pcr_fmaf(x, Single(0.3333333432674408) * x2, x);  // 0x1.555556p-2f
       Exit;
     end;
     z := tanf_rltl(x, @i_q);
@@ -6387,13 +6387,10 @@ begin
   d2  := tanf_cd_2 + z2 * tanf_cd_3;
   d_v := d_v + z4 * d2;
   n_v := n_v * z;
-  // s[] = {0,1}: s0 = i_q&1, s1 = 1-(i_q&1)
-  if (i_q and 1) = 0 then begin
-    s0 := 0.0;  s1 := 1.0;
-  end else begin
-    s0 := 1.0;  s1 := 0.0;
-  end;
-  r1 := (n_v * s1 - d_v * s0) / (n_v * s0 + d_v * s1);
+  if (i_q and 1) = 0 then
+    r1 := n_v / d_v
+  else
+    r1 := -(d_v / n_v);
   tr.f := r1;
   tail := (tr.u + 7) and UInt64($1FFFFFFF);   // ~0ull>>35
   if tail <= 14 then begin
