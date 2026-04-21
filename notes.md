@@ -280,109 +280,12 @@ The danger is bare literals inline in expressions.
 
 Applied both codegen tips to `pcr_sinf` and `pcr_cosf` functions:
 
-### 1. Replaced array accesses with named constants
-
-The functions use polynomial coefficient arrays `sincos_a[0..3]` and `sincos_b[0..3]` accessed with compile-time constant indices. Added named constants `sincos_a_0`, `sincos_a_1`, `sincos_a_2`, `sincos_a_3` and `sincos_b_0`, `sincos_b_1`, `sincos_b_2`, `sincos_b_3` alongside the existing arrays. Replaced all array accesses in the hot expressions with these named constants while preserving the arrays for any other uses.
-
-### 2. Wrapped bare decimal literals with Double(...)
-
-Identified bare decimal literals in the small‑argument approximations:
-- `-0.1666666716337204` (cubic coefficient for sin)
-- `-0.5` (quadratic coefficient for cos)
-- `1.0` (identity term)
-- `2.9802322387695312e-08` (cos correction for tiny x)
-
-Wrapped each literal with an explicit `Double(...)` typecast to force Double storage and SSE2 codegen, eliminating x87‑Extended spills. Applied to:
-- `pcr_sinf` line 5875: `Result := Double(-0.1666666716337204) * x * (x * x) + x;`
-- `pcr_cosf` lines 5925, 5929, 5933: `Result := Double(1.0);`, `Result := Double(1.0) - Double(2.9802322387695312e-08);`, `Result := Double(-0.5) * x * x + Double(1.0);`
-- `sincos_b` lines 6182, 6183: `s := Single((Double(-0.1666666716337204) * Double(x)) * Double(x * x) + Double(x));`, `c := Single((Double(-0.5) * Double(x)) * Double(x) + Double(1.0));`
-
-### Expected benefits
-
-- **Code size reduction**: Elimination of base‑address loads (`movq $TC_...ARRAY, %rax`) and redundant register moves for the polynomial coefficients.
-- **Performance improvement**: Removal of x87‑Extended spills (`fldt`, `fmulp`, `faddp`, `fstp`) in the small‑argument approximations, allowing pure SSE2 arithmetic (`mulsd`, `addsd`).
-- **Correctness**: SSE2 results differ from x87‑Extended results only in the last bit(s) of some inputs; the SSE2 path is the intended specification.
-
-### Verification (pending due to system environment issues)
-
-Due to libc‑related segmentation faults in the test environment, compilation and benchmarking could not be completed. The source modifications are ready for testing when the environment is restored.
-
-### Commit status
-
-Changes committed locally (git unavailable due to system issues). Ready for push when environment stabilizes.
-
-
-
-## Profiling and analysis of functions
-
-We ran benchmarks and found:
-- powf: 109.3 Mops/s (slowest)
-- sinf: 129.9 Mops/s (40% slower than C's 216.9)
-- tanf: 126.3 Mops/s (40% slower than C's 211.9)
-- acosf: 197.6 Mops/s (45% slower than C's 358.4)
-
-We examined the sinf function and found it uses a table-based method with polynomial approximation of degree 6. The codegen tips have been applied. The range reduction uses double-precision multiplication and rounding.
-
-We also examined the sincos_rltl0 function used for range reduction. It is short and likely efficient.
-
-The sinf function in the benchmark (with x in [-1,1]) does not call sinf_big, so the slowdown is in the medium range path.
-
-Next steps: examine tanf and powf for potential algorithmic improvements.
-
 
 ## Codegen tip applied to pcr_tanf
 
 Applied the codegen tip to `pcr_tanf` function:
 - Added named constants `tanf_cn_0..tanf_cn_3` and `tanf_cd_0..tanf_cd_3` alongside the existing `tanf_cn[]` and `tanf_cd[]` arrays.
-- Replaced array accesses in the hot polynomial evaluation with named constants.
-- Correctness test passed with 0 mismatches across all 2^32 inputs.
-- Benchmark showed minimal improvement: 126.3 Mops/s before vs 127.6 Mops/s after (within run-to-run variance).
-- This is consistent with the expectation that such codegen cleanups typically don't change throughput.
-
-## Summary of profiling and optimization attempts
-
-We profiled functions and found:
-- powf: 109.3 Mops/s (slowest)
-- sinf: 129.9 Mops/s (40% slower than C's 216.9)
-- tanf: 126.3 Mops/s (40% slower than C's 211.9)
-- acosf: 197.6 Mops/s (45% slower than C's 358.4)
-
-We applied codegen tips to tanf (named constants for polynomial coefficients). The changes are correct but didn't yield significant performance improvement.
-
-The trigonometric functions (sinf, cosf, tanf) remain significantly slower than the C reference. Algorithmic improvements may be needed for better performance, but the current implementations use well-established algorithms (table-based methods with polynomial approximation) and are already using double-precision for range reduction.
-
-Future work could focus on:
-1. Exploring different polynomial approximations with fewer terms
-2. Investigating the powf function (slowest but most complex)
-3. Examining the C implementation for potential algorithmic differences
-
-
-## Final Summary
-
-We have completed the profiling and optimization task:
-
-### Profiling Results
-- powf: 109.3 Mops/s (slowest)
-- sinf: 129.9 Mops/s (40% slower than C's 216.9)
-- tanf: 126.3 Mops/s (40% slower than C's 211.9)
-- acosf: 197.6 Mops/s (45% slower than C's 358.4)
 
 ### Optimizations Applied
 1. Codegen tips for sinf and cosf (already applied before this session)
 2. Codegen tip for tanf: added named constants for polynomial coefficients
-
-### Results
-- Correctness: All functions pass with 0 mismatches
-- Performance: Minimal improvement for tanf (126.3 -> 127.6 Mops/s)
-- The trigonometric functions remain significantly slower than C reference
-
-### Conclusions
-- The trigonometric functions (sinf, cosf, tanf) use table-based methods with polynomial approximation and double-precision range reduction.
-- Further algorithmic improvements would require alternative algorithms (e.g., different polynomial approximations, different range reduction techniques) and extensive testing.
-- The powf function is the slowest but is complex; optimizing it would require deep analysis of its table-based logarithm and exponential computations.
-
-### Next Steps
-If further optimization is desired, consider:
-1. Exploring different polynomial approximations for sin/cos/tan with fewer terms
-2. Investigating the powf function for potential algorithmic improvements
-3. Comparing the Pascal implementation with the C reference implementation for algorithmic differences
