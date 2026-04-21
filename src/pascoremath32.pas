@@ -4253,6 +4253,10 @@ end;
 function pcr_powf_accurate2(x0, y0: Single; is_exact_val: Int32): Single;
 const
   o_a2: array[0..1] of Double = (1.0, 2.0);
+  c1p54_a2: Double = 5.551115123125783e-17;   { 0x1p-54 }
+  c1p53_a2: Double = 1.1102230246251565e-16;  { 0x1p-53 }
+  c1p52_a2: Double = 2.220446049250313e-16;   { 0x1p-52 }
+  c1p91_a2: Double = 4.0389678347315804e-28;  { 0x1p-91 }
   { ch[][2] flat: 13 pairs }
   ch_a2: array[0..25] of Double = (
     2.8853900817779268,   4.071054748191002e-17,    { 0x1.71547652b82fep+1, 0x1.777d0ffda2b89p-55 }
@@ -4346,45 +4350,45 @@ begin
   { Adjust for borderline rounding }
   if ((ll_a2.u shr 23) and UInt64($1FFFFFFF)) = UInt64($1FFFFFFF) then begin
     if eh_a2 < 1 then begin
-      if el_a2 >= 5.551115123125783e-17 then begin    { 0x1p-54 }
-        el_a2 := el_a2 - 1.1102230246251565e-16;     { 0x1p-53 }
-        eh_a2 := eh_a2 + 1.1102230246251565e-16;
-      end else if el_a2 <= -5.551115123125783e-17 then begin
-        el_a2 := el_a2 + 1.1102230246251565e-16;
-        eh_a2 := eh_a2 - 1.1102230246251565e-16;
+      if el_a2 >= c1p54_a2 then begin    { 0x1p-54 }
+        el_a2 := el_a2 - c1p53_a2;     { 0x1p-53 }
+        eh_a2 := eh_a2 + c1p53_a2;
+      end else if el_a2 <= -c1p54_a2 then begin
+        el_a2 := el_a2 + c1p53_a2;
+        eh_a2 := eh_a2 - c1p53_a2;
       end;
     end else begin
-      if el_a2 >= 1.1102230246251565e-16 then begin   { 0x1p-53 }
-        el_a2 := el_a2 - 2.220446049250313e-16;      { 0x1p-52 }
-        eh_a2 := eh_a2 + 2.220446049250313e-16;
-      end else if el_a2 <= -1.1102230246251565e-16 then begin
-        el_a2 := el_a2 + 2.220446049250313e-16;
-        eh_a2 := eh_a2 - 2.220446049250313e-16;
+      if el_a2 >= c1p53_a2 then begin   { 0x1p-53 }
+        el_a2 := el_a2 - c1p52_a2;     { 0x1p-52 }
+        eh_a2 := eh_a2 + c1p52_a2;
+      end else if el_a2 <= -c1p53_a2 then begin
+        el_a2 := el_a2 + c1p52_a2;
+        eh_a2 := eh_a2 - c1p52_a2;
       end;
     end;
   end else if ((ll_a2.u shr 23) and UInt64($1FFFFFFF)) = 0 then begin
     if el_a2 > 0 then begin
       if eh_a2 < 1 then begin
-        if el_a2 >= 1.1102230246251565e-16 then begin  { 0x1p-53 }
-          el_a2 := el_a2 - 1.1102230246251565e-16;
-          eh_a2 := eh_a2 + 1.1102230246251565e-16;
+        if el_a2 >= c1p53_a2 then begin  { 0x1p-53 }
+          el_a2 := el_a2 - c1p53_a2;
+          eh_a2 := eh_a2 + c1p53_a2;
         end;
       end else begin
-        if el_a2 >= 2.220446049250313e-16 then begin   { 0x1p-52 }
-          el_a2 := el_a2 - 2.220446049250313e-16;
-          eh_a2 := eh_a2 + 2.220446049250313e-16;
+        if el_a2 >= c1p52_a2 then begin  { 0x1p-52 }
+          el_a2 := el_a2 - c1p52_a2;
+          eh_a2 := eh_a2 + c1p52_a2;
         end;
       end;
     end else begin
       if eh_a2 < 1 then begin
-        if el_a2 <= -1.1102230246251565e-16 then begin
-          el_a2 := el_a2 + 1.1102230246251565e-16;
-          eh_a2 := eh_a2 - 1.1102230246251565e-16;
+        if el_a2 <= -c1p53_a2 then begin
+          el_a2 := el_a2 + c1p53_a2;
+          eh_a2 := eh_a2 - c1p53_a2;
         end;
       end else begin
-        if el_a2 <= -2.220446049250313e-16 then begin
-          el_a2 := el_a2 + 2.220446049250313e-16;
-          eh_a2 := eh_a2 - 2.220446049250313e-16;
+        if el_a2 <= -c1p52_a2 then begin
+          el_a2 := el_a2 + c1p52_a2;
+          eh_a2 := eh_a2 - c1p52_a2;
         end;
       end;
     end;
@@ -4392,7 +4396,7 @@ begin
   ll_a2.f := el_a2;
   lh_a2.f := eh_a2;
   if (lh_a2.u and $FFFFFFF) = 0 then begin
-    if pcr_fabs(ll_a2.f) > 4.0389678347315804e-28 then begin  { 0x1p-91 }
+    if pcr_fabs(ll_a2.f) > c1p91_a2 then begin  { 0x1p-91 }
       if el_a2 < 0 then begin
         lh_a2.u := lh_a2.u - 1;
         eh_a2 := lh_a2.f;
@@ -5124,9 +5128,9 @@ begin
   i_e1 := Int32(v_e1.u shr 46) - $10010;
   r_e1 := r_e1 - CF_EXP2T[i_e1];
   v_e1.f := CF_EXP2U[i_e1][0] * cf_q1(r_e1);
-  err_e1.f := 5.062616992290714e-13; // 0x1.1dp-41
+  err_e1.f := Double(5.062616992290714e-13); // 0x1.1dp-41
   v_e1.u := UInt64(Int64(v_e1.u) + Round(k_e1) * Int64($10000000000000));
-  if v_e1.f < 1.175494350822881e-38 then begin // 0x1.00000000008e2p-126
+  if v_e1.f < Double(1.175494350822881e-38) then begin // 0x1.00000000008e2p-126
     Result := -1.0;
     Exit;
   end;
@@ -5303,13 +5307,13 @@ begin
   k_e22 := pcr_roundeven(h);
   {$ENDIF}
   // if h+l is tiny, 2^(h+l) rounds to 1
-  if (k_e22 = 0.0) and (pcr_fabs(h) <= 4.299566335638736e-08) then begin
-    Result := Single(1.0 + h * 0.5);
+  if (k_e22 = 0.0) and (pcr_fabs(h) <= Double(4.299566335638736e-08)) then begin
+    Result := Single(Double(1.0) + h * Double(0.5));
     Exit;
   end;
   r_e22 := h - k_e22;
   cf_fast_two_sum(h, l, r_e22, l);
-  v_e22.f := 3.015625 + h;
+  v_e22.f := Double(3.015625) + h;
   i_e22 := Int32(v_e22.u shr 46) - $10010;
   h := h - CF_EXP2T[i_e22];
   cf_fast_two_sum(h, l, h, l);
@@ -5357,7 +5361,7 @@ var v_la: Tb64u64;
     r_la, zh_la, zl_la, ph_la, pl_la, t_la: Double;
 begin
   if 1.0 >= x then begin
-    if pcr_fabs(x) >= 1.1102230246251565e-16 then // 2^-53
+    if pcr_fabs(x) >= Double(1.1102230246251565e-16) then // 2^-53
       cf_fast_two_sum(h, l, 1.0, x)
     else begin
       h := 1.0;
