@@ -3269,11 +3269,16 @@ begin
       end;
     Result := Single(f_tg); Exit;
   end;
-  // Safe single-precision floor: |x|>=2^23 means x is already exact integer
+  // Safe single-precision floor: |x|>=2^23 means x is already exact integer.
+  // For smaller values we inline floor via Trunc+adjust to avoid a Math.Floor
+  // function call on the hot path (Trunc compiles to CVTTSD2SI, inline).
   if (t_tg.u and $7FFFFFFF) >= $4B800000 then
     fx_tg := x
-  else
-    fx_tg := Single(Floor(Double(x)));
+  else begin
+    k_tg := Int32(Trunc(Double(x)));           // truncate toward zero
+    if Single(k_tg) > x then Dec(k_tg);        // adjust for negative non-integers
+    fx_tg := Single(k_tg);
+  end;
   if x >= 35.04010009765625 then begin     // overflow: 0x1.18522p+5
     Result := Single(1.7014118346046923e+38) * Single(1.7014118346046923e+38); Exit;
   end;
