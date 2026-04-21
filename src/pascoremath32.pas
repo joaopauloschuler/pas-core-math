@@ -559,7 +559,7 @@ begin
   end else if s > 30 then  // |x| < 2^-14
   begin
     z := x; z2 := z * z;
-    Result := z * (3.141592653589793 + z2 * (-5.16771278004997));
+    Result := z * (Double(3.141592653589793) + z2 * Double(-5.16771278004997));
     Exit;
   end;
   si := 25 - s;
@@ -1156,7 +1156,7 @@ begin
   rm := sm.f * (te - h * to_);
   r := rp + rm;
   ub_s := Single(r);
-  lb_s := Single(r - 1.45e-10 * r);
+  lb_s := Single(r - Double(1.45e-10) * r);
   if ub_s <> lb_s then
   begin
     iln2h := 46.16624128818512;  // 0x1.7154765p+5
@@ -1493,7 +1493,7 @@ begin
   z2 := zd * zd;
   rh := (ln2 * e + lix[j]) + zd * ((c[0] + zd*c[1]) + z2*(c[2] + zd*c[3]));
   ub := Single(rh);
-  lb := Single(rh - 2.1555e-11); // eps
+  lb := Single(rh - Double(2.1555e-11)); // eps
   if ub <> lb then
   begin
     z4 := z2 * z2;
@@ -1575,7 +1575,7 @@ begin
                 end
                 else
                 begin
-                  r := 0.6931471805599454 + zd * 0.24022650695910072; // c[0]+z*c[1]
+                  r := Double(0.6931471805599454) + zd * Double(0.24022650695910072); // c[0]+z*c[1]
                 end;
               end
               else
@@ -1745,7 +1745,7 @@ begin
   sv.u := td[u.u and $1F].u + (UInt64(u.u shr 5) shl 52);
   r := (c0d + h2 * c2d) * sv.f - 1.0;
   ub := Single(r);
-  lb := Single(r - sv.f * 1.433306806575274e-10); // sv.f * 0x1.3b3p-33
+  lb := Single(r - sv.f * Double(1.433306806575274e-10)); // sv.f * 0x1.3b3p-33
   if ub <> lb then
   begin
     if ux > $C18AA123 then // x < -17.32
@@ -1980,7 +1980,7 @@ begin
   z2 := z * z;
   r := ((e * ln10 + tl10[j]) + z * b10[0]) + z2 * (b10[1] + z * b10[2]);
   ub := Single(r);
-  lb := Single(r + 9.802997302799099e-11); // 0x1.af23fp-34
+  lb := Single(r + Double(9.802997302799099e-11)); // 0x1.af23fp-34
   if ub <> lb then
   begin
     f := z * ((c10[0] + z*c10[1]) + z2*((c10[2] + z*c10[3]) + z2*(c10[4] + z*c10[5] + z2*c10[6])));
@@ -3098,7 +3098,7 @@ begin
       c4_a := cp_asinh[4] + z_a*cp_asinh[5];
       c0_a := c0_a + z2_a*(c2_a + z2_a*c4_a);
       Lh_a := 0.693145751953125 * Double(e_a);
-      Ll_a := 1.4286068203094173e-06 * Double(e_a);
+      Ll_a := Double(1.4286068203094173e-06) * Double(e_a);
       r_a.f := (z_a * c0_a + (Ll_a + lix_asinh_acosh[j_a])) + Lh_a;
       if (r_a.u and $0FFFFFFF) = 0 then begin
         hh_a := (z_a * c0_a + (Ll_a + lix_asinh_acosh[j_a])) + (Lh_a - r_a.f);
@@ -3173,7 +3173,7 @@ begin
       c4_ac := cp_acosh[4] + zz_ac*cp_acosh[5];
       c0_ac := c0_ac + z2_ac*(c2_ac + z2_ac*c4_ac);
       Lh_ac := 0.693145751953125 * Double(e_ac);
-      Ll_ac := 1.4286068203094173e-06 * Double(e_ac);
+      Ll_ac := Double(1.4286068203094173e-06) * Double(e_ac);
       r_ac.f := (zz_ac * c0_ac + (Ll_ac + lix_asinh_acosh[j_ac])) + Lh_ac;
       if (r_ac.u and $0FFFFFFF) = 0 then begin
         hh_ac := (zz_ac * c0_ac + (Ll_ac + lix_asinh_acosh[j_ac])) + (Lh_ac - r_ac.f);
@@ -3710,7 +3710,7 @@ begin
   ay   := pcr_fminf(ax, ay);
   xd := at_h; yd := ay;
   x2 := xd * xd; y2 := yd * yd; r2 := x2 + y2;
-  if yd < xd * 0.00024414061044808477 then begin  { 0x1.fffffep-13 }
+  if yd < xd * Double(0.00024414061044808477) then begin  { 0x1.fffffep-13 }
     c_h := pcr_fmaf(Single(0.0001220703125), ay, at_h);  { fmaf(0x1p-13f, ay, at) }
     Result := c_h; Exit;
   end;
