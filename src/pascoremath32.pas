@@ -255,12 +255,12 @@ begin
   z := x;
   if e < 127 - 13 then  // |x| < 2^-13
   begin
-    sx := z * 0.3183098861837907;  // 0x1.45f306dc9c883p-2
+    sx := z * Double(0.3183098861837907);  // 0x1.45f306dc9c883p-2
     if e < 127 - 25 then  // |x| < 2^-25
     begin
       Result := sx; Exit;
     end;
-    Result := sx - (0.3333333333333333 * sx) * (z * z); Exit;
+    Result := sx - (Double(0.3333333333333333) * sx) * (z * z); Exit;
   end;
   ax := t.u and $7FFFFFFF;
   if ax = $3FA267DD then
@@ -414,8 +414,8 @@ begin
     z := xs; z2 := z*z; z4 := z2*z2; z8 := z4*z4; z16 := z8*z8;
     r := z * ((((b[0] + z2*b[1]) + z4*(b[2] + z2*b[3])) + z8*((b[4] + z2*b[5]) + z4*(b[6] + z2*b[7]))) +
               z16*(((b[8] + z2*b[9]) + z4*(b[10] + z2*b[11])) + z8*((b[12] + z2*b[13]) + z4*(b[14] + z2*b[15]))));
-    ub_s := Single(1.5707963270725467 - r);
-    lb_s := Single(1.5707963265172467 - r);
+    ub_s := Single(Double(1.5707963270725467) - r);
+    lb_s := Single(Double(1.5707963265172467) - r);
     if ub_s = lb_s then begin Result := ub_s; Exit; end;
   end;
   // accurate path
@@ -433,7 +433,7 @@ begin
     if (t.u shr 31) = 0 then
       r := s_val * pcr_poly12(z, c2)
     else
-      r := 3.141592653589793 + s_val * pcr_poly12(z, c2);
+      r := Double(3.141592653589793) + s_val * pcr_poly12(z, c2);
   end;
   Result := r;
 end;
@@ -681,7 +681,7 @@ begin
     r := z * ((((b[0] + z2*b[1]) + z4*(b[2] + z2*b[3])) + z8*((b[4] + z2*b[5]) + z4*(b[6] + z2*b[7]))) +
               z16*(((b[8] + z2*b[9]) + z4*(b[10] + z2*b[11])) + z8*((b[12] + z2*b[13]) + z4*(b[14] + z2*b[15]))));
     ub_s := Single(r);
-    lb_s := Single(r - z * 9.015999891115456e-10);
+    lb_s := Single(r - z * Double(9.015999891115456e-10));
     if ub_s = lb_s then begin Result := ub_s; Exit; end;
   end;
   if ax < (UInt32($7E) shl 24) then
@@ -2705,14 +2705,14 @@ begin
   rd_a := (tl_atanh[jd_a] + zd_a*b_atanh[0]) + zd2_a*(b_atanh[1] + zd_a*b_atanh[2]);
   r_a := sgn_a*(rd_a - rn_a);
   ub_a := Single(r_a);
-  lb_a := Single(r_a + sgn_a*0.226e-9);
+  lb_a := Single(r_a + sgn_a*Double(0.226e-9));
   if ub_a <> lb_a then begin
     zn4_a := zn2_a*zn2_a; zd4_a := zd2_a*zd2_a;
     fn_a := zn_a*(((c_atanh_acc[0] + zn_a*c_atanh_acc[1]) + zn2_a*(c_atanh_acc[2] + zn_a*c_atanh_acc[3])) +
                   zn4_a*((c_atanh_acc[4] + zn_a*c_atanh_acc[5]) + zn2_a*c_atanh_acc[6]));
-    fn_a := fn_a + 9.3209433686215166e-16 * Double(nz_a);
+    fn_a := fn_a + Double(9.3209433686215166e-16) * Double(nz_a);
     fn_a := fn_a + tl_atanh[jn_a];
-    en_a := Double(nz_a) * 0.34657359027997359;
+    en_a := Double(nz_a) * Double(0.34657359027997359);
     fd_a := zd_a*(((c_atanh_acc[0] + zd_a*c_atanh_acc[1]) + zd2_a*(c_atanh_acc[2] + zd_a*c_atanh_acc[3])) +
                   zd4_a*((c_atanh_acc[4] + zd_a*c_atanh_acc[5]) + zd2_a*c_atanh_acc[6]));
     fd_a := fd_a + tl_atanh[jd_a];
