@@ -328,3 +328,30 @@ We also examined the sincos_rltl0 function used for range reduction. It is short
 The sinf function in the benchmark (with x in [-1,1]) does not call sinf_big, so the slowdown is in the medium range path.
 
 Next steps: examine tanf and powf for potential algorithmic improvements.
+
+
+## Codegen tip applied to pcr_tanf
+
+Applied the codegen tip to `pcr_tanf` function:
+- Added named constants `tanf_cn_0..tanf_cn_3` and `tanf_cd_0..tanf_cd_3` alongside the existing `tanf_cn[]` and `tanf_cd[]` arrays.
+- Replaced array accesses in the hot polynomial evaluation with named constants.
+- Correctness test passed with 0 mismatches across all 2^32 inputs.
+- Benchmark showed minimal improvement: 126.3 Mops/s before vs 127.6 Mops/s after (within run-to-run variance).
+- This is consistent with the expectation that such codegen cleanups typically don't change throughput.
+
+## Summary of profiling and optimization attempts
+
+We profiled functions and found:
+- powf: 109.3 Mops/s (slowest)
+- sinf: 129.9 Mops/s (40% slower than C's 216.9)
+- tanf: 126.3 Mops/s (40% slower than C's 211.9)
+- acosf: 197.6 Mops/s (45% slower than C's 358.4)
+
+We applied codegen tips to tanf (named constants for polynomial coefficients). The changes are correct but didn't yield significant performance improvement.
+
+The trigonometric functions (sinf, cosf, tanf) remain significantly slower than the C reference. Algorithmic improvements may be needed for better performance, but the current implementations use well-established algorithms (table-based methods with polynomial approximation) and are already using double-precision for range reduction.
+
+Future work could focus on:
+1. Exploring different polynomial approximations with fewer terms
+2. Investigating the powf function (slowest but most complex)
+3. Examining the C implementation for potential algorithmic differences

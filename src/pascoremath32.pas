@@ -5978,6 +5978,14 @@ const
    -0.0031314039049681057    // -0x1.9a707ab98d1c1p-9
   );
 
+  tanf_cn_0: Double = 1.5707963267948966;
+  tanf_cn_1: Double = -0.49720165641032027;
+  tanf_cn_2: Double = 0.02683402276915988;
+  tanf_cn_3: Double = -0.00017660096093977045;
+  tanf_cd_0: Double = 1.0;
+  tanf_cd_1: Double = -1.1389954387488281;
+  tanf_cd_2: Double = 0.1421268437745497;
+  tanf_cd_3: Double = -0.0031314039049681057;
 function tanf_rbig(u: UInt32; q: PInteger): Double;
 var
   e_exp, k, s_shift, i_val, sgn: Int32;
@@ -6281,11 +6289,11 @@ begin
   end;
   z2  := z * z;
   z4  := z2 * z2;
-  n_v := tanf_cn[0] + z2 * tanf_cn[1];
-  n2  := tanf_cn[2] + z2 * tanf_cn[3];
+  n_v := tanf_cn_0 + z2 * tanf_cn_1;
+  n2  := tanf_cn_2 + z2 * tanf_cn_3;
   n_v := n_v + z4 * n2;
-  d_v := tanf_cd[0] + z2 * tanf_cd[1];
-  d2  := tanf_cd[2] + z2 * tanf_cd[3];
+  d_v := tanf_cd_0 + z2 * tanf_cd_1;
+  d2  := tanf_cd_2 + z2 * tanf_cd_3;
   d_v := d_v + z4 * d2;
   n_v := n_v * z;
   // s[] = {0,1}: s0 = i_q&1, s1 = 1-(i_q&1)
