@@ -6,6 +6,8 @@
 *.exe
 # Test binaries
 src/test_*
+src/tests/Benchmark32
+src/tests/TestHarness32
 # Output programs
 *.out
 # Compiled binaries

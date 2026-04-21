@@ -255,12 +255,12 @@ begin
   z := x;
   if e < 127 - 13 then  // |x| < 2^-13
   begin
-    sx := z * 0.3183098861837907;  // 0x1.45f306dc9c883p-2
+    sx := z * Double(0.3183098861837907);  // 0x1.45f306dc9c883p-2
     if e < 127 - 25 then  // |x| < 2^-25
     begin
       Result := sx; Exit;
     end;
-    Result := sx - (0.3333333333333333 * sx) * (z * z); Exit;
+    Result := sx - (Double(0.3333333333333333) * sx) * (z * z); Exit;
   end;
   ax := t.u and $7FFFFFFF;
   if ax = $3FA267DD then
@@ -414,8 +414,8 @@ begin
     z := xs; z2 := z*z; z4 := z2*z2; z8 := z4*z4; z16 := z8*z8;
     r := z * ((((b[0] + z2*b[1]) + z4*(b[2] + z2*b[3])) + z8*((b[4] + z2*b[5]) + z4*(b[6] + z2*b[7]))) +
               z16*(((b[8] + z2*b[9]) + z4*(b[10] + z2*b[11])) + z8*((b[12] + z2*b[13]) + z4*(b[14] + z2*b[15]))));
-    ub_s := Single(1.5707963270725467 - r);
-    lb_s := Single(1.5707963265172467 - r);
+    ub_s := Single(Double(1.5707963270725467) - r);
+    lb_s := Single(Double(1.5707963265172467) - r);
     if ub_s = lb_s then begin Result := ub_s; Exit; end;
   end;
   // accurate path
@@ -433,7 +433,7 @@ begin
     if (t.u shr 31) = 0 then
       r := s_val * pcr_poly12(z, c2)
     else
-      r := 3.141592653589793 + s_val * pcr_poly12(z, c2);
+      r := Double(3.141592653589793) + s_val * pcr_poly12(z, c2);
   end;
   Result := r;
 end;
@@ -489,12 +489,12 @@ begin
   isc := isc or (UInt64(sgn) shl 63);
   cvt2.u := isc;
   z := cvt1.f;
-  r0 := -0.024975246527242426 / z;  // -0x1.9931c6c2d19d1p-6 / z
+  r0 := Double(-0.024975246527242426) / z;  // -0x1.9931c6c2d19d1p-6 / z
   z2 := z * z; z4 := z2 * z2;
   f := ((c[0] + z*c[1]) + z2*(c[2] + z*c[3])) + z4*((c[4] + z*c[5]) + z2*(c[6] + z*c[7])) + r0;
   r := f * cvt2.f;
   ub := Single(r);
-  lb := Single(r - cvt2.f * 1.4182e-9);
+  lb := Single(r - cvt2.f * Double(1.4182e-9));
   if ub = lb then
   begin
     cvt2.f := r;
@@ -559,7 +559,7 @@ begin
   end else if s > 30 then  // |x| < 2^-14
   begin
     z := x; z2 := z * z;
-    Result := z * (3.141592653589793 + z2 * (-5.16771278004997));
+    Result := z * (Double(3.141592653589793) + z2 * Double(-5.16771278004997));
     Exit;
   end;
   si := 25 - s;
@@ -681,7 +681,7 @@ begin
     r := z * ((((b[0] + z2*b[1]) + z4*(b[2] + z2*b[3])) + z8*((b[4] + z2*b[5]) + z4*(b[6] + z2*b[7]))) +
               z16*(((b[8] + z2*b[9]) + z4*(b[10] + z2*b[11])) + z8*((b[12] + z2*b[13]) + z4*(b[14] + z2*b[15]))));
     ub_s := Single(r);
-    lb_s := Single(r - z * 9.015999891115456e-10);
+    lb_s := Single(r - z * Double(9.015999891115456e-10));
     if ub_s = lb_s then begin Result := ub_s; Exit; end;
   end;
   if ax < (UInt32($7E) shl 24) then
@@ -890,7 +890,7 @@ begin
   el := Double(e) - lix_arr[j];
   f := (el + z * bcoef[0]) + z2 * (bcoef[1] + z * bcoef[2]);
   lb_s := Single(f);
-  ub_s := Single(f + 3.256559466535691e-10);
+  ub_s := Single(f + Double(3.256559466535691e-10));
   if lb_s = ub_s then begin Result := lb_s; Exit; end;
   c0 := ccoef[0] + z * ccoef[1];
   c0 := c0 + z2 * ((ccoef[2] + z * ccoef[3]) + z2 * (ccoef[4] + z * ccoef[5]));
@@ -1156,7 +1156,7 @@ begin
   rm := sm.f * (te - h * to_);
   r := rp + rm;
   ub_s := Single(r);
-  lb_s := Single(r - 1.45e-10 * r);
+  lb_s := Single(r - Double(1.45e-10) * r);
   if ub_s <> lb_s then
   begin
     iln2h := 46.16624128818512;  // 0x1.7154765p+5
@@ -1215,10 +1215,17 @@ const
   b: array[0..2] of Double = (
     1.0000000014444432, -0.5000150201101822, 0.3332912677830366
   );
+  b0: Double = 1.0000000014444432;
+  b1: Double = -0.5000150201101822;
+  b2: Double = 0.3332912677830366;
   c: array[0..6] of Double = (
     -0.5, 0.3333333333337377, -0.25000000000064687, 0.1999999917184808,
     -0.16666665689564816, 0.14291141156288886, -0.12505426680916787
   );
+  logf_ln2_a:  Double = 0.6931471805599453;    // 0x1.62e42fefa39efp-1
+  logf_ub_eps: Double = 2.2572521629626863e-10; // 0x1.f06p-33
+  logf_e_corr: Double = 1.8641886737243033e-15; // 0x1.0ca86c3898dp-49
+  logf_ln2_b:  Double = 0.6931471805599472;    // 0x1.62e42fefa3ap-1
 var
   t: Tb32u32;
   tz: Tb64u64;
@@ -1253,9 +1260,9 @@ begin
   tz.u := (UInt64(m) shl 29) or (UInt64($3FF) shl 52);
   z := tz.f * tr[j] - 1.0;
   z2 := z * z;
-  r := ((e * 0.6931471805599453 + tl[j]) + z * b[0]) + z2 * (b[1] + z * b[2]);
+  r := ((Double(e) * logf_ln2_a + tl[j]) + z * b0) + z2 * (b1 + z * b2);
   ub := Single(r);
-  lb := Single(r + 2.2572521629626863e-10); // 0x1.f06p-33
+  lb := Single(r + logf_ub_eps);
   if ub <> lb then
   begin
     f := z2 * ((c[0] + z*c[1]) + z2*((c[2] + z*c[3]) + z2*(c[4] + z*c[5] + z2*c[6])));
@@ -1263,10 +1270,10 @@ begin
     begin
       Result := Single(z + f); Exit;
     end;
-    f := f - 1.8641886737243033e-15 * e; // 0x1.0ca86c3898dp-49
+    f := f - logf_e_corr * Double(e);
     f := f + z;
     f := f + tl[j] - tl[0];
-    el := e * 0.6931471805599472; // 0x1.62e42fefa3ap-1
+    el := Double(e) * logf_ln2_b;
     r := el + f;
     ub := Single(r);
     tz.f := r;
@@ -1357,8 +1364,8 @@ begin
       begin
         // underflow path
         xd := x;
-        h := 1.401298464324817e-45 + (xd + 149.0) * 7.006492321624085e-46; // 0x1p-149 + (z+149)*0x1p-150
-        h := pcr_fmax(h, 3.503246160812043e-46); // 0x1p-151
+        h := Double(1.401298464324817e-45) + (xd + 149.0) * Double(7.006492321624085e-46); // 0x1p-149 + (z+149)*0x1p-150
+        h := pcr_fmax(h, Double(3.503246160812043e-46)); // 0x1p-151
         Result := Single(h); Exit;
       end;
       // x >= 128 -> overflow
@@ -1375,7 +1382,7 @@ begin
   sv.u := sv.u + (UInt64(u.u shr 6) shl 52);
   r := sv.f * ((b[0] + h * b[1]) + h2 * (b[2] + h * b[3]));
   ub := Single(r);
-  lb := Single(r - r * 1.4438228390645236e-10); // r * eps where eps = 0x1.3d8p-33
+  lb := Single(r - r * Double(1.4438228390645236e-10)); // r * eps where eps = 0x1.3d8p-33
   if ub <> lb then
   begin
     if ux <= $79E7526E then
@@ -1486,7 +1493,7 @@ begin
   z2 := zd * zd;
   rh := (ln2 * e + lix[j]) + zd * ((c[0] + zd*c[1]) + z2*(c[2] + zd*c[3]));
   ub := Single(rh);
-  lb := Single(rh - 2.1555e-11); // eps
+  lb := Single(rh - Double(2.1555e-11)); // eps
   if ub <> lb then
   begin
     z4 := z2 * z2;
@@ -1568,7 +1575,7 @@ begin
                 end
                 else
                 begin
-                  r := 0.6931471805599454 + zd * 0.24022650695910072; // c[0]+z*c[1]
+                  r := Double(0.6931471805599454) + zd * Double(0.24022650695910072); // c[0]+z*c[1]
                 end;
               end
               else
@@ -1738,7 +1745,7 @@ begin
   sv.u := td[u.u and $1F].u + (UInt64(u.u shr 5) shl 52);
   r := (c0d + h2 * c2d) * sv.f - 1.0;
   ub := Single(r);
-  lb := Single(r - sv.f * 1.433306806575274e-10); // sv.f * 0x1.3b3p-33
+  lb := Single(r - sv.f * Double(1.433306806575274e-10)); // sv.f * 0x1.3b3p-33
   if ub <> lb then
   begin
     if ux > $C18AA123 then // x < -17.32
@@ -1795,7 +1802,7 @@ begin
   begin
     if ux < $72ADF1C6 then // |x| < 0x1.adf1c6p-13
     begin
-      Result := Single(1.0 + zd*(2.302585092994046 + zd*(2.650949055239199 + zd*2.034678592293476)));
+      Result := Single(1.0 + zd*(Double(2.302585092994046) + zd*(Double(2.650949055239199) + zd*Double(2.034678592293476))));
       Exit;
     end;
     if ux >= UInt32($FF shl 24) then // inf or nan
@@ -1806,8 +1813,8 @@ begin
     end;
     if t.u > $C23369F4 then // x < -0x1.66d3e8p+5
     begin
-      h := 1.401298464324817e-45 + (zd + 44.8534693539332) * 2.3275063689815626e-45;
-      h := pcr_fmax(h, 3.503246160812043e-46);
+      h := Double(1.401298464324817e-45) + (zd + Double(44.8534693539332)) * Double(2.3275063689815626e-45);
+      h := pcr_fmax(h, Double(3.503246160812043e-46));
       Result := Single(h); Exit;
     end;
     if t.u < $80000000 then // x > 0x1.344134p+5
@@ -1849,7 +1856,7 @@ begin
   h2 := h * h;
   r := ((b_exp10[0] + h*b_exp10[1]) + h2*(b_exp10[2] + h*b_exp10[3])) * sv.f;
   ub := Single(r);
-  lb := Single(r - r * 1.45e-10);
+  lb := Single(r - r * Double(1.45e-10));
   if ub <> lb then
   begin
     h := (iln102h * zd - ia * 0.03125) + iln102l * zd;
@@ -1973,7 +1980,7 @@ begin
   z2 := z * z;
   r := ((e * ln10 + tl10[j]) + z * b10[0]) + z2 * (b10[1] + z * b10[2]);
   ub := Single(r);
-  lb := Single(r + 9.802997302799099e-11); // 0x1.af23fp-34
+  lb := Single(r + Double(9.802997302799099e-11)); // 0x1.af23fp-34
   if ub <> lb then
   begin
     f := z * ((c10[0] + z*c10[1]) + z2*((c10[2] + z*c10[3]) + z2*(c10[4] + z*c10[5] + z2*c10[6])));
@@ -2187,6 +2194,9 @@ const
     -0.99999999999994849);
   b_l2p1: array[0..2] of Double = (
     1.4426950429726688, -0.72136918934353911, 0.48083766343529977);
+  b_l2p1_0: Double = 1.4426950429726688;
+  b_l2p1_1: Double = -0.72136918934353911;
+  b_l2p1_2: Double = 0.48083766343529977;
   c_l2p1: array[0..5] of Double = (
     1.4426950408889683, -0.72134752044437966, 0.48089834631236422,
     -0.36067376567497511, 0.28856066993666346, -0.24038686635219694);
@@ -2195,6 +2205,18 @@ const
     0.48089834696963674, -0.36067376023288011,
     0.2885389476641852, -0.2404491020710918,
     0.2062755131304331, -0.18051311004316711);
+  g_l2p1_0: Double = 1.9259629797116934e-08;
+  g_l2p1_1: Double = -0.72134752044448125;
+  g_l2p1_2: Double = 0.48089834696963674;
+  g_l2p1_3: Double = -0.36067376023288011;
+  g_l2p1_4: Double = 0.2885389476641852;
+  g_l2p1_5: Double = -0.2404491020710918;
+  g_l2p1_6: Double = 0.2062755131304331;
+  g_l2p1_7: Double = -0.18051311004316711;
+  log2p1f_log2e_hi: Double = 1.4426950408889634;  // log2(e), high part
+  log2p1f_log2e_lo: Double = 1.4426950216293335;  // log2(e), low part
+  log2p1f_ub_eps:   Double = 3.2565594665356912e-10;
+  log2p1f_lix0:     Double = 5.1514348342607263e-14; // lix_l2p1[0]
 var
   tv: Tb32u32;
   tp: Tb64u64;
@@ -2234,12 +2256,12 @@ begin
   if ax < $3CC00000 then begin  // |x| < 0.0234375
     if ax <= $0058B90B then begin  // |x| <= 0x1p-126*ln(2) approx
       if ax = 0 then begin Result := x; Exit; end;
-      Result := Single(zz * 1.4426950408889634); Exit;
+      Result := Single(zz * log2p1f_log2e_hi); Exit;
     end else begin
       z2_v := zz*zz; z4_v := z2_v*z2_v;
-      f_v := zz*((g_l2p1[0] + zz*g_l2p1[1]) + z2_v*(g_l2p1[2] + zz*g_l2p1[3]) +
-                 z4_v*((g_l2p1[4] + zz*g_l2p1[5]) + z2_v*(g_l2p1[6] + zz*g_l2p1[7])));
-      f_v := f_v + zz * 1.4426950216293335;
+      f_v := zz*((g_l2p1_0 + zz*g_l2p1_1) + z2_v*(g_l2p1_2 + zz*g_l2p1_3) +
+                 z4_v*((g_l2p1_4 + zz*g_l2p1_5) + z2_v*(g_l2p1_6 + zz*g_l2p1_7)));
+      f_v := f_v + zz * log2p1f_log2e_lo;
       Result := Single(f_v); Exit;
     end;
   end;
@@ -2252,9 +2274,9 @@ begin
   dd := xd.f * ix_l2p1[j32] - 1.0;
   d2 := dd * dd;
   el_v := Double(e_exp) - lix_l2p1[j32];
-  f_v := (el_v + dd*b_l2p1[0]) + d2*(b_l2p1[1] + dd*b_l2p1[2]);
+  f_v := (el_v + dd*b_l2p1_0) + d2*(b_l2p1_1 + dd*b_l2p1_2);
   lb_v := f_v;
-  ub_v := Single(f_v + 3.2565594665356912e-10);
+  ub_v := Single(f_v + log2p1f_ub_eps);
   if Single(lb_v) = ub_v then begin Result := Single(lb_v); Exit; end;
   // check two hard cases
   if ux = $4EBD09E3 then begin Result := Single(30.562536239624023) + Single(4.76837158203125e-07); Exit; end;
@@ -2263,7 +2285,7 @@ begin
   c2_v := c_l2p1[2] + dd*c_l2p1[3];
   c4_v := c_l2p1[4] + dd*c_l2p1[5];
   c0_v := c0_v + d2*(c2_v + d2*c4_v);
-  f_v := Double(e_exp) + (5.1514348342607263e-14 - lix_l2p1[j32]) + dd*c0_v;
+  f_v := Double(e_exp) + (log2p1f_lix0 - lix_l2p1[j32]) + dd*c0_v;
   Result := Single(f_v);
 end;
 
@@ -2364,7 +2386,7 @@ begin
     c0_e := c0_e + z8_e*c4_e;
     Result := Single(ss * c0_e); Exit;
   end;
-  zz_e := (zz_e - 0.03125) - 0.0625 * Floor(16.0 * Double(ax_f));
+  zz_e := (zz_e - Double(0.03125)) - Double(0.0625) * Double(i_erf);
   row_e := i_erf - 7;
   z2_e := zz_e*zz_e; z4_e := z2_e*z2_e;
   c0_e := C_erf[row_e,0] + zz_e*C_erf[row_e,1];
@@ -2425,12 +2447,12 @@ begin
       if ux_s = $74250BFE then begin
         Result := pcr_copysignf(1.0, x)*Single(0.00055894249817356467) + pcr_copysignf(1.0, x)*Single(1.4551915228366852e-11); Exit;
       end;
-      Result := Single((x*0.1666666716337204)*(x*x) + x); Exit;
+      Result := Single((x*Double(0.1666666716337204))*(x*x) + x); Exit;
     end;
     z2_s := zs*zs; z4_s := z2_s*z2_s;
     Result := Single(zs + (z2_s*zs)*((cp_sinh[0] + z2_s*cp_sinh[1]) + z4_s*(cp_sinh[2] + z2_s*cp_sinh[3]))); Exit;
   end;
-  a_s := 46.166241308446828 * zs;
+  a_s := Double(46.166241308446828) * zs;
   {$IFDEF AVX2}
   asm
     movsd xmm0, a_s
@@ -2453,9 +2475,9 @@ begin
   rm_s := sm_s.f*(te_s - h_s*to_s);
   r_s := rp_s - rm_s;
   ub_s := Single(r_s);
-  lb_s := Single(r_s - 1.52e-10*r_s);
+  lb_s := Single(r_s - Double(1.52e-10)*r_s);
   if ub_s <> lb_s then begin
-    h_s := (46.16624128818512*zs - ia_s) + 2.026170940661134e-08*zs;
+    h_s := (Double(46.16624128818512)*zs - ia_s) + Double(2.026170940661134e-08)*zs;
     h2_s := h_s*h_s;
     te_s := ch_sinh[0] + h2_s*ch_sinh[2] + (h2_s*h2_s)*(ch_sinh[4] + h2_s*ch_sinh[6]);
     to_s := ch_sinh[1] + h2_s*(ch_sinh[3] + h2_s*ch_sinh[5]);
@@ -2469,9 +2491,19 @@ end;
 function pcr_expf(x: Single): Single;
 const
   c_exp: array[0..5] of Double = (
-    0.69314718055994529, 0.24022650695910072, 0.055504108664026088,
-    0.0096181291075005358, 0.001333362331326638, 0.00015403602972146417);
-  b_exp: array[0..3] of Double = (1, 0.69314718052023927, 0.2402288551437867, 0.055504596827996931);
+    Double(0.69314718055994529), Double(0.24022650695910072), Double(0.055504108664026088),
+    Double(0.0096181291075005358), Double(0.001333362331326638), Double(0.00015403602972146417));
+  b_exp: array[0..3] of Double = (Double(1), Double(0.69314718052023927), Double(0.2402288551437867), Double(0.055504596827996931));
+  c_exp_0: Double = 0.69314718055994529;
+  c_exp_1: Double = 0.24022650695910072;
+  c_exp_2: Double = 0.055504108664026088;
+  c_exp_3: Double = 0.0096181291075005358;
+  c_exp_4: Double = 0.001333362331326638;
+  c_exp_5: Double = 0.00015403602972146417;
+  b_exp_0: Double = 1;
+  b_exp_1: Double = 0.69314718052023927;
+  b_exp_2: Double = 0.2402288551437867;
+  b_exp_3: Double = 0.055504596827996931;
   tb_exp: array[0..63] of UInt64 = (
     UInt64($3FF0000000000000), UInt64($3FF02C9A3E778061), UInt64($3FF059B0D3158574), UInt64($3FF0874518759BC8),
     UInt64($3FF0B5586CF9890F), UInt64($3FF0E3EC32D3D1A2), UInt64($3FF11301D0125B51), UInt64($3FF1429AAEA92DE0),
@@ -2489,6 +2521,26 @@ const
     UInt64($3FFC199BDD85529C), UInt64($3FFC67F12E57D14B), UInt64($3FFCB720DCEF9069), UInt64($3FFD072D4A07897C),
     UInt64($3FFD5818DCFBA487), UInt64($3FFDA9E603DB3285), UInt64($3FFDFC97337B9B5F), UInt64($3FFE502EE78B3FF6),
     UInt64($3FFEA4AFA2A490DA), UInt64($3FFEFA1BEE615A27), UInt64($3FFF50765B6E4540), UInt64($3FFFA7C1819E90D8));
+  k1_exp: Double = 1.4426950408889634;
+  k2_exp: Double = 105553116266496;
+  k3_exp: Double = -103.972077077983;
+  k4_exp: Double = -88.3762626647959;
+  k5_exp: Double = 0.6931471805599453;
+  k6_exp: Double = 1.4012984643248171e-45;
+  k7_exp: Double = 3.4028236692093846e38;
+  k8_exp: Double = 1.1920928955078125e-07;
+  k9_exp: Double = 0.16666666666666666;
+  k10_exp: Double = 0.5;
+  k11_exp: Double = 1.0;
+  k12_exp: Double = 0.5;
+  k13_exp: Double = 0.0;
+  k14_exp: Double = 103.27892990343184;
+  k15_exp: Double = 1.0108231726433641e-45;
+  k16_exp: Double = 3.5032461608120427e-46;
+  k17_exp: Double = 3.4028234663852886e+38;
+  k18_exp: Double = 1.45e-10;
+  k19_exp: Double = 1.442695040255785;
+  k20_exp: Double = 6.3317841895660438e-10;
 var
   te: Tb32u32;
   ux_exp: UInt32;
@@ -2511,36 +2563,39 @@ begin
   end;
   ux_exp := te.u shl 1;
   z_exp := x;
-  a_exp := 1.4426950408889634 * z_exp;
-  u_exp.f := a_exp + 105553116266496;
+  a_exp := k1_exp * z_exp;
+  u_exp.f := a_exp + k2_exp;
   if (ux_exp > $8562E42E) or (ux_exp < $6F93813E) then begin
     if ux_exp < $6F93813E then begin  // |x| < 0x1.93813ep-16
-      Result := Single(1.0 + z_exp*(1.0 + z_exp*0.5)); Exit;
+      Result := Single(k11_exp + z_exp*(k11_exp + z_exp*k10_exp)); Exit;
     end;
     if ux_exp >= ($FF shl 24) then begin
       if ux_exp > ($FF shl 24) then begin Result := x + x; Exit; end;  // nan
-      if (te.u shr 31) <> 0 then Result := 0.0 else Result := x; Exit;  // +-inf
+      if (te.u shr 31) <> 0 then Result := k13_exp else Result := x; Exit;  // +-inf
     end;
     if te.u > $C2CE8EC0 then begin  // x < -0x1.9d1d8p+6
-      Result := Single(pcr_fmax(1.4012984643248171e-45 + (z_exp + 103.27892990343184)*1.0108231726433641e-45, 3.5032461608120427e-46)); Exit;
+      if k6_exp + (z_exp + k14_exp)*k15_exp > k16_exp then
+        Result := Single(k6_exp + (z_exp + k14_exp)*k15_exp)
+      else
+        Result := Single(k16_exp); Exit;
     end;
     if ((te.u shr 31) = 0) and (te.u > $42B17217) then begin  // x > 0x1.62e42ep+6
-      Result := Single(3.4028234663852886e+38 * 3.4028234663852886e+38); Exit;
+      Result := Single(k17_exp * k17_exp); Exit;
     end;
   end;
-  ia_exp := 105553116266496 - u_exp.f;
+  ia_exp := k2_exp - u_exp.f;
   h_exp := a_exp + ia_exp;
   sv.u := tb_exp[u_exp.u and $3F] + ((u_exp.u shr 6) shl 52);
   h2_exp := h_exp * h_exp;
-  r_exp := ((b_exp[0] + h_exp*b_exp[1]) + h2_exp*(b_exp[2] + h_exp*b_exp[3])) * sv.f;
+  r_exp := ((b_exp_0 + h_exp*b_exp_1) + h2_exp*(b_exp_2 + h_exp*b_exp_3)) * sv.f;
   ub_exp := Single(r_exp);
-  lb_exp := Single(r_exp - r_exp*1.45e-10);
+  lb_exp := Single(r_exp - r_exp*k18_exp);
   if ub_exp <> lb_exp then begin
-    h_exp := (1.442695040255785*z_exp + ia_exp) + 6.3317841895660438e-10*z_exp;
+    h_exp := (k19_exp*z_exp + ia_exp) + k20_exp*z_exp;
     s_exp := sv.f;
     h2_exp := h_exp * h_exp;
     w_exp := s_exp * h_exp;
-    r_exp := s_exp + w_exp*((c_exp[0] + h_exp*c_exp[1]) + h2_exp*((c_exp[2] + h_exp*c_exp[3]) + h2_exp*(c_exp[4] + h_exp*c_exp[5])));
+    r_exp := s_exp + w_exp*((c_exp_0 + h_exp*c_exp_1) + h2_exp*((c_exp_2 + h_exp*c_exp_3) + h2_exp*(c_exp_4 + h_exp*c_exp_5)));
     ub_exp := Single(r_exp);
   end;
   Result := ub_exp;
@@ -2650,14 +2705,14 @@ begin
   rd_a := (tl_atanh[jd_a] + zd_a*b_atanh[0]) + zd2_a*(b_atanh[1] + zd_a*b_atanh[2]);
   r_a := sgn_a*(rd_a - rn_a);
   ub_a := Single(r_a);
-  lb_a := Single(r_a + sgn_a*0.226e-9);
+  lb_a := Single(r_a + sgn_a*Double(0.226e-9));
   if ub_a <> lb_a then begin
     zn4_a := zn2_a*zn2_a; zd4_a := zd2_a*zd2_a;
     fn_a := zn_a*(((c_atanh_acc[0] + zn_a*c_atanh_acc[1]) + zn2_a*(c_atanh_acc[2] + zn_a*c_atanh_acc[3])) +
                   zn4_a*((c_atanh_acc[4] + zn_a*c_atanh_acc[5]) + zn2_a*c_atanh_acc[6]));
-    fn_a := fn_a + 9.3209433686215166e-16 * Double(nz_a);
+    fn_a := fn_a + Double(9.3209433686215166e-16) * Double(nz_a);
     fn_a := fn_a + tl_atanh[jn_a];
-    en_a := Double(nz_a) * 0.34657359027997359;
+    en_a := Double(nz_a) * Double(0.34657359027997359);
     fd_a := zd_a*(((c_atanh_acc[0] + zd_a*c_atanh_acc[1]) + zd2_a*(c_atanh_acc[2] + zd_a*c_atanh_acc[3])) +
                   zd4_a*((c_atanh_acc[4] + zd_a*c_atanh_acc[5]) + zd2_a*c_atanh_acc[6]));
     fd_a := fd_a + tl_atanh[jd_a];
@@ -2723,11 +2778,11 @@ begin
                     rr := 2.3025850929940459;
                   end else begin
                     if ux10 = $2C994B7B then begin Result := Single(1.003213657979618e-11) - Single(8.0779356694631609e-28); Exit; end;
-                    rr := 2.3025850929940459 + z10 * 2.6509490552391992;
+                    rr := Double(2.3025850929940459) + z10 * Double(2.6509490552391992);
                   end;
                 end else begin
                   if ux10 = $B6FA215B then begin Result := Single(-1.7164389646495692e-05) + Single(3.3881317890172014e-21); Exit; end;
-                  rr := 2.3025850929940459 + z10*(2.6509490552896504 + z10*2.0346785922934552);
+                  rr := Double(2.3025850929940459) + z10*(Double(2.6509490552896504) + z10*Double(2.0346785922934552));
                 end;
               end else begin
                 rr := (cp4_e10[0] + z10*cp4_e10[1]) + z10*z10*(cp4_e10[2] + z10*cp4_e10[3]);
@@ -2762,10 +2817,11 @@ begin
         if k10 = 11 then begin Result := 10000000.0-1.0; Exit; end;
       end;
     end;
-    a10 := 53.150849461555481 * z10;
-    ia10 := Floor(a10);
-    h10 := (a10 - ia10) + 5.6642316608893863e-08 * z10;
-    i10 := Trunc(ia10);
+    a10 := Double(53.150849461555481) * z10;
+    i10 := Int64(Trunc(a10));
+    if Double(i10) > a10 then Dec(i10);
+    ia10 := Double(i10);
+    h10 := (a10 - ia10) + Double(5.6642316608893863e-08) * z10;
     j10 := i10 and $F;
     e10 := i10 - j10;
     e10 := e10 shr 4;
@@ -2821,9 +2877,21 @@ const
     0.27480705007439105, 0.27839631709550916, 0.28195613352428522, 0.28548697269100148,
     0.28898939362644532, 0.29246373889003263, 0.29591053413566176, 0.29933018510220022);
   b_l10: array[0..3] of Double = (0.43429448180522795, -0.21714724073915409, 0.14477135206183736, -0.1085812344983514);
+  b_l10_0: Double = 0.43429448180522795;
+  b_l10_1: Double = -0.21714724073915409;
+  b_l10_2: Double = 0.14477135206183736;
+  b_l10_3: Double = -0.1085812344983514;
   c_l10: array[0..8] of Double = (
     0.43429448190325182, -0.21714724095162236, 0.14476482730107551, -0.10857362051434018, 0.086858896436697877,
     -0.072382301461477352, 0.062041939634640365, -0.054407774191098719, 0.048375922777279659);
+  c_l10_1: Double = -0.21714724095162236;
+  l10_log10_2:  Double = 0.3010299956639812;    // log10(2), high
+  l10_ub_eps:   Double = 3.0431213104975541e-13;
+  l10_tl_eps:   Double = 1.5315526624704034e-13;
+  l10_log10_e:  Double = 0.43429448176175356;   // log10(e) approx
+  l10_corr:     Double = 1.414982685385801e-10;
+  l10_e_corr:   Double = -8.5323443170571066e-14;
+  l10_log10_2b: Double = 0.30102999566406652;   // log10(2), low
   st_l10: array[0..15] of UInt32 = (
     $43928000, $41100000, $42C60000, $00000000, $4479C000, $00000000, $461C3C00, $47C34F80,
     $00000000, $497423F0, $00000000, $4B18967F, $00000000, $00000000, $00000000, $00000000);
@@ -2874,19 +2942,19 @@ begin
   end;
   vv_l := tz_l.f * tr_l10[j_l] - 1.0;
   v2_l := vv_l * vv_l;
-  f_l := (Double(e_l)*0.3010299956639812 + tl_l10[j_l]) + vv_l*((b_l10[0] + vv_l*b_l10[1]) + v2_l*(b_l10[2] + vv_l*b_l10[3]));
+  f_l := (Double(e_l)*l10_log10_2 + tl_l10[j_l]) + vv_l*((b_l10_0 + vv_l*b_l10_1) + v2_l*(b_l10_2 + vv_l*b_l10_3));
   ub_l := Single(f_l);
-  lb_l := Single(f_l + 3.0431213104975541e-13);
+  lb_l := Single(f_l + l10_ub_eps);
   if ub_l <> lb_l then begin
     if ux_l = $399A7C00 then begin Result := Single(0.00012794842768926173) + Single(3.637978807091713e-12); Exit; end;
     if ux_l = $B051E173 then begin Result := Single(-3.3160182932867599e-10) + Single(6.9388939039072284e-18); Exit; end;
     if ux_l = $BB0EA6D9 then begin Result := Single(-0.0009463561000302434) + Single(1.4551915228366852e-11); Exit; end;
     if ux_l = $BD86FFB9 then begin Result := Single(-0.029614737257361412) + Single(-4.6566128730773926e-10); Exit; end;
-    lj_v := tl_l10[j_l] + 1.5315526624704034e-13;
+    lj_v := tl_l10[j_l] + l10_tl_eps;
     ax_l := ux_l and $7FFFFFFF;
     if ax_l < $3D100000 then begin  // |x| < 0x1.2p-5
       if ax_l < $33000000 then begin  // |x| < 0x1p-25
-        ub_l := Single(zl*0.43429448176175356 + zl*(1.414982685385801e-10 + zl*c_l10[1]));
+        ub_l := Single(zl*l10_log10_e + zl*(l10_corr + zl*c_l10_1));
         Result := ub_l; Exit;
       end;
       e_l := 0;
@@ -2896,9 +2964,9 @@ begin
     end;
     v4_l := v2_l * v2_l;
     f_l := vv_l*(((c_l10[0] + vv_l*c_l10[1]) + v2_l*(c_l10[2] + vv_l*c_l10[3])) + v4_l*((c_l10[4] + vv_l*c_l10[5]) + v2_l*((c_l10[6] + vv_l*c_l10[7]) + v2_l*c_l10[8])));
-    f_l := f_l + Double(e_l)*-8.5323443170571066e-14;
+    f_l := f_l + Double(e_l)*l10_e_corr;
     f_l := f_l + lj_v;
-    f_l := f_l + Double(e_l)*0.30102999566406652;
+    f_l := f_l + Double(e_l)*l10_log10_2b;
     ub_l := Single(f_l);
   end;
   Result := ub_l;
@@ -3030,7 +3098,7 @@ begin
       c4_a := cp_asinh[4] + z_a*cp_asinh[5];
       c0_a := c0_a + z2_a*(c2_a + z2_a*c4_a);
       Lh_a := 0.693145751953125 * Double(e_a);
-      Ll_a := 1.4286068203094173e-06 * Double(e_a);
+      Ll_a := Double(1.4286068203094173e-06) * Double(e_a);
       r_a.f := (z_a * c0_a + (Ll_a + lix_asinh_acosh[j_a])) + Lh_a;
       if (r_a.u and $0FFFFFFF) = 0 then begin
         hh_a := (z_a * c0_a + (Ll_a + lix_asinh_acosh[j_a])) + (Lh_a - r_a.f);
@@ -3105,7 +3173,7 @@ begin
       c4_ac := cp_acosh[4] + zz_ac*cp_acosh[5];
       c0_ac := c0_ac + z2_ac*(c2_ac + z2_ac*c4_ac);
       Lh_ac := 0.693145751953125 * Double(e_ac);
-      Ll_ac := 1.4286068203094173e-06 * Double(e_ac);
+      Ll_ac := Double(1.4286068203094173e-06) * Double(e_ac);
       r_ac.f := (zz_ac * c0_ac + (Ll_ac + lix_asinh_acosh[j_ac])) + Lh_ac;
       if (r_ac.u and $0FFFFFFF) = 0 then begin
         hh_ac := (zz_ac * c0_ac + (Ll_ac + lix_asinh_acosh[j_ac])) + (Lh_ac - r_ac.f);
@@ -3157,16 +3225,18 @@ const
     0.5714285714285714, 0.5517241379310345, 0.5333333333333333, 0.5161290322580645);
 var
   t_aln: Tb64u64;
+  bits64: UInt64;
   e_aln, i_aln: Int32;
   z_aln, z2_aln, z4_aln: Double;
 begin
   t_aln.f := x;
-  e_aln := Int32(Int64(t_aln.u shr 52) - $3FF);
-  i_aln := Int32((t_aln.u shr 48) and $F);
-  t_aln.u := (t_aln.u and $000FFFFFFFFFFFFF) or $3FF0000000000000;
+  bits64 := t_aln.u;
+  e_aln := Int32(Int64(bits64 shr 52) - $3FF);
+  i_aln := Int32((bits64 shr 48) and $F);
+  t_aln.u := (bits64 and $000FFFFFFFFFFFFF) or $3FF0000000000000;
   z_aln := ix_aln[i_aln] * t_aln.f - 1.0;
   z2_aln := z_aln * z_aln; z4_aln := z2_aln * z2_aln;
-  Result := Double(e_aln) * 0.6931471805599453 + il_aln[i_aln]
+  Result := Double(e_aln) * Double(0.6931471805599453) + il_aln[i_aln]
     + z_aln * ((c_aln[0] + z_aln*c_aln[1]) + z2_aln*(c_aln[2] + z_aln*c_aln[3])
                + z4_aln*((c_aln[4] + z_aln*c_aln[5]) + z2_aln*(c_aln[6] + z_aln*c_aln[7])));
 end;
@@ -3222,7 +3292,7 @@ begin
   end;
   z_tg := x;
   if ax_tg < $6D000000 then begin          // |x| < 2^-18
-    d_tg := (0.9890559953279725 - 0.9074790760808863 * z_tg) * z_tg - 0.5772156649015329;
+    d_tg := (Double(0.9890559953279725) - Double(0.9074790760808863) * z_tg) * z_tg - Double(0.5772156649015329);
     f_tg := 1.0 / z_tg + d_tg;
     rt_tg.f := f_tg;
     if ((rt_tg.u + 2) and $0FFFFFFF) < 4 then
@@ -3234,11 +3304,16 @@ begin
       end;
     Result := Single(f_tg); Exit;
   end;
-  // Safe single-precision floor: |x|>=2^23 means x is already exact integer
+  // Safe single-precision floor: |x|>=2^23 means x is already exact integer.
+  // For smaller values we inline floor via Trunc+adjust to avoid a Math.Floor
+  // function call on the hot path (Trunc compiles to CVTTSD2SI, inline).
   if (t_tg.u and $7FFFFFFF) >= $4B800000 then
     fx_tg := x
-  else
-    fx_tg := Single(Floor(Double(x)));
+  else begin
+    k_tg := Int32(Trunc(Double(x)));           // truncate toward zero
+    if Single(k_tg) > x then Dec(k_tg);        // adjust for negative non-integers
+    fx_tg := Single(k_tg);
+  end;
   if x >= 35.04010009765625 then begin     // overflow: 0x1.18522p+5
     Result := Single(1.7014118346046923e+38) * Single(1.7014118346046923e+38); Exit;
   end;
@@ -3415,19 +3490,23 @@ var
   fx_lg: Single;
   z_lg, s_lg, f_lg: Double;
   lz_lg, iz_lg, iz2_lg, iz4_lg, iz8_lg: Double;
+  zm05_lg: Double;
   p_lg, lp_lg: Double;
   h_lg, h2_lg, h4_lg: Double;
   r_lg: Single;
   tl_lg: UInt64;
-  a_lg, b_lg, mi_lg: Int32;
+  a_lg, b_lg, mi_lg, fi_lg: Int32;
 begin
   ax_lg := Abs(x);
   t_lg.f := ax_lg;
   // Safe floorf: float32 values with |x| >= 2^23 are already exact integers
   if ax_lg >= 8388608.0 then
     fx_lg := x
-  else
-    fx_lg := Single(Floor(Double(x)));
+  else begin
+    fi_lg := Int32(Trunc(x));       // vcvttss2si: truncate toward zero (SSE)
+    if x < Single(fi_lg) then Dec(fi_lg);   // adjust for negative non-integers
+    fx_lg := Single(fi_lg);
+  end;
   // NaN or Inf (t_lg.u = bits of |x|)
   if t_lg.u >= $7F800000 then begin
     if t_lg.u = $7F800000 then begin Result := x * x; Exit; end;  // +/-Inf → +Inf
@@ -3444,9 +3523,9 @@ begin
     end;
     // positive integer > 2: fall through to main computation
   end;
-  z_lg := ax_lg;
-  s_lg := x;
   if ax_lg < 0.66015625 then begin        // |x| < 0x1.52p-1
+    z_lg := ax_lg;
+    s_lg := x;
     f_lg := (c0_sm * s_lg)
           * (((s_lg-rn_sm[0])*(s_lg-rn_sm[1]))*((s_lg-rn_sm[2])*(s_lg-rn_sm[3])))
           * (((s_lg-rn_sm[4])*(s_lg-rn_sm[5]))*((s_lg-rn_sm[6])*(s_lg-rn_sm[7])))
@@ -3454,19 +3533,21 @@ begin
           *  (((s_lg-rd_sm[4])*(s_lg-rd_sm[5]))*((s_lg-rd_sm[6])*(s_lg-rd_sm[7]))))
           - lgamma_as_ln(z_lg);
   end else begin
-    if ax_lg > 3.373096466064453 then begin   // ax > 0x1.afc1ap+1
-      if x >= 4.085003425410169e+36 then begin  // overflow threshold
+    if t_lg.u > $4057E0D0 then begin   // ax > 0x1.afc1ap+1 = 3.373096466064453
+      if x >= Single(4.085003425410169e+36) then begin  // overflow threshold
         Result := pcr_fmaf(x, 83.30038452148438, 1.0812689350146765e+31); Exit;
       end;
+      z_lg := ax_lg;
+      zm05_lg := z_lg - 0.5;
       lz_lg := lgamma_as_ln(z_lg);
-      f_lg := (z_lg - 0.5) * (lz_lg - 1.0) + 0.4189385332046727;
+      f_lg := zm05_lg * (lz_lg - 1.0) + Double(0.4189385332046727);
       if ax_lg < 1048576.0 then begin     // ax < 2^20: add Stirling correction
         iz_lg := 1.0 / z_lg; iz2_lg := iz_lg * iz_lg;
         if ax_lg > 1198.0 then begin
           f_lg := f_lg + iz_lg * (1.0/12.0);
         end else if ax_lg > 73.90081787109375 then begin  // 0x1.279a7p+6
           f_lg := f_lg + iz_lg * (stir2[0] + iz2_lg * stir2[1]);
-        end else if ax_lg > 10.666666984558105 then begin  // 0x1.555556p+3
+        end else if t_lg.u > $412AAAAB then begin  // ax > 0x1.555556p+3 = 10.666666984558105
           iz4_lg := iz2_lg * iz2_lg;
           f_lg := f_lg + iz_lg * ((stir4[0] + iz2_lg*stir4[1])
                                  + iz4_lg*(stir4[2] + iz2_lg*stir4[3]));
@@ -3478,11 +3559,12 @@ begin
         end;
       end;
       if x < 0.0 then begin              // reflection for negative x
-        f_lg := 1.1447298858494002 - f_lg - lz_lg;
+        f_lg := Double(1.1447298858494002) - f_lg - lz_lg;
         lp_lg := lgamma_as_ln(lgamma_as_sinpi(Double(x) - Double(fx_lg)));
         f_lg := f_lg - lp_lg;
       end;
     end else begin                        // medium x: 0x1.52p-1 <= ax <= 0x1.afc1ap+1
+      z_lg := ax_lg;
       f_lg := (z_lg - 1.0) * (z_lg - 2.0) * c0_md
             * (((z_lg-rn_md[0])*(z_lg-rn_md[1]))*((z_lg-rn_md[2])*(z_lg-rn_md[3])))
             * (((z_lg-rn_md[4])*(z_lg-rn_md[5]))*((z_lg-rn_md[6])))
@@ -3490,26 +3572,27 @@ begin
             *  (((z_lg-rd_md[4])*(z_lg-rd_md[5]))*((z_lg-rd_md[6])*(z_lg-rd_md[7]))));
       if x < 0.0 then begin
         // Near gamma-zeros: use local Taylor expansion for accuracy
+        s_lg := x;
         if (t_lg.u < $40301B93) and (t_lg.u > $402F95C2) then begin
           // near x ≈ -2.7477
-          h_lg := (s_lg + 2.7476826467274127) - 9.055340329338315e-17;
+          h_lg := (s_lg + Double(2.7476826467274127)) - Double(9.055340329338315e-17);
           h2_lg := h_lg * h_lg; h4_lg := h2_lg * h2_lg;
           f_lg := h_lg * ((c_nz1[0] + h_lg*c_nz1[1]) + h2_lg*(c_nz1[2] + h_lg*c_nz1[3])
             + h4_lg*((c_nz1[4] + h_lg*c_nz1[5]) + h2_lg*(c_nz1[6] + h_lg*c_nz1[7])));
         end else if (t_lg.u > $401CECCB) and (t_lg.u < $401D95CA) then begin
           // near x ≈ -2.457
-          h_lg := (s_lg + 2.4570247382208006) + 3.7075610815513266e-17;
+          h_lg := (s_lg + Double(2.4570247382208006)) + Double(3.7075610815513266e-17);
           h2_lg := h_lg * h_lg; h4_lg := h2_lg * h2_lg;
           f_lg := h_lg * ((c_nz2[0] + h_lg*c_nz2[1]) + h2_lg*(c_nz2[2] + h_lg*c_nz2[3])
             + h4_lg*((c_nz2[4] + h_lg*c_nz2[5]) + h2_lg*(c_nz2[6])));
         end else if (t_lg.u > $40492009) and (t_lg.u < $404940EF) then begin
           // near x ≈ -3.143
-          h_lg := (s_lg + 3.14358088834998) + 2.1818179852331714e-16;
+          h_lg := (s_lg + Double(3.14358088834998)) + Double(2.1818179852331714e-16);
           h2_lg := h_lg * h_lg; h4_lg := h2_lg * h2_lg;
           f_lg := h_lg * ((c_nz3[0] + h_lg*c_nz3[1]) + h2_lg*(c_nz3[2] + h_lg*c_nz3[3])
             + h4_lg*((c_nz3[4] + h_lg*c_nz3[5]) + h2_lg*(c_nz3[6])));
         end else begin
-          f_lg := 1.1447298858494002 - f_lg;
+          f_lg := Double(1.1447298858494002) - f_lg;
           lp_lg := lgamma_as_ln(lgamma_as_sinpi(Double(x) - Double(fx_lg)) * z_lg);
           f_lg := f_lg - lp_lg;
         end;
@@ -3627,7 +3710,7 @@ begin
   ay   := pcr_fminf(ax, ay);
   xd := at_h; yd := ay;
   x2 := xd * xd; y2 := yd * yd; r2 := x2 + y2;
-  if yd < xd * 0.00024414061044808477 then begin  { 0x1.fffffep-13 }
+  if yd < xd * Double(0.00024414061044808477) then begin  { 0x1.fffffep-13 }
     c_h := pcr_fmaf(Single(0.0001220703125), ay, at_h);  { fmaf(0x1p-13f, ay, at) }
     Result := c_h; Exit;
   end;
@@ -3657,7 +3740,7 @@ end;
 
 function pcr_atan2f_tiny(y, x: Single): Single; inline;
 const
-  c_third = -0.3333333333333333;  { -0x1.5555555555555p-2 }
+  c_third: Double = -0.3333333333333333;  { -0x1.5555555555555p-2 }
 var
   dy, dx, z_t, e_t, zz_t, cz_t: Double;
   t_t: Tb64u64;
@@ -3688,7 +3771,6 @@ const
   cd_a2: array[0..6] of Double = (
     1.0, 2.840181854668896, 3.03226090832491, 1.5083284691366383,
     0.35061013533424623, 0.03311601651598859, 0.0008307046818566012);
-  m_a2: array[0..1] of Double = (0.0, 1.0);
   { pi=0x1.921fb54442d18p+1, pi2=0x1.921fb54442d18p+0, pi2l=0x1.1a62633145c07p-54 }
   off_a2: array[0..7] of Double = (
     0.0, 1.5707963267948966, 3.141592653589793, 1.5707963267948966,
@@ -3736,11 +3818,10 @@ var
   ux, uy, ax_a2, ay_a2: UInt32;
   yinf_a2, xinf_a2, gt_a2: UInt32;
   i_a2: UInt32;
-  zx_a2, zy_a2, z_a2, r_a2: Double;
+  z_a2, r_a2: Double;
   d_a2: Int32;
   z2_a2, z4_a2, z8_a2: Double;
-  cn0_a2, cn2_a2, cn4_a2, cn6_a2: Double;
-  cd0_a2, cd2_a2, cd4_a2, cd6_a2: Double;
+  cn0_a2, cd0_a2: Double;
   res_a2: Tb64u64;
   zh_a2, zl_a2, z2l_a2, z2h_a2: Double;
   pl_a2, ph_a2, sh_a2, sl_a2: Double;
@@ -3758,18 +3839,18 @@ begin
     if ax_a2 = $7F800000 then xinf_a2 := 1 else xinf_a2 := 0;
     if (yinf_a2 and xinf_a2) <> 0 then begin
       if (ux shr 31) <> 0 then
-        Result := Single(2.356194490192345 * sgn_a2[uy shr 31])   { +/-3pi/4 }
+        Result := Single(Double(2.356194490192345) * sgn_a2[uy shr 31])   { +/-3pi/4 }
       else
-        Result := Single(0.7853981633974483 * sgn_a2[uy shr 31]); { +/-pi/4 }
+        Result := Single(Double(0.7853981633974483) * sgn_a2[uy shr 31]); { +/-pi/4 }
       Exit;
     end;
     if xinf_a2 <> 0 then begin
-      if (ux shr 31) <> 0 then Result := Single(3.141592653589793 * sgn_a2[uy shr 31])
+      if (ux shr 31) <> 0 then Result := Single(Double(3.141592653589793) * sgn_a2[uy shr 31])
       else                      Result := Single(0.0 * sgn_a2[uy shr 31]);
       Exit;
     end;
     if yinf_a2 <> 0 then begin
-      Result := Single(1.5707963267948966 * sgn_a2[uy shr 31]); Exit;
+      Result := Single(Double(1.5707963267948966) * sgn_a2[uy shr 31]); Exit;
     end;
   end;
   if ay_a2 = 0 then begin
@@ -3785,51 +3866,46 @@ begin
   end;
   if ay_a2 > ax_a2 then gt_a2 := 1 else gt_a2 := 0;
   i_a2 := (uy shr 31)*4 + (ux shr 31)*2 + gt_a2;
-  zx_a2 := x; zy_a2 := y;
-  { z = x/y if |y|>|x|, z = y/x otherwise }
-  z_a2 := (m_a2[gt_a2]*zx_a2 + m_a2[1-gt_a2]*zy_a2) /
-          (m_a2[gt_a2]*zy_a2 + m_a2[1-gt_a2]*zx_a2);
+  { z = y/x if |x|>=|y|, z = -(x/y) if |y|>|x| }
+  if gt_a2 = 0 then
+    z_a2 := Double(y) / Double(x)
+  else
+    z_a2 := -(Double(x) / Double(y));
   d_a2 := Int32(ax_a2) - Int32(ay_a2);
   if (d_a2 < 226492416) and (d_a2 > -226492416) then begin  { 27<<23 }
     z2_a2 := z_a2 * z_a2;
     z4_a2 := z2_a2 * z2_a2;
     z8_a2 := z4_a2 * z4_a2;
-    cn0_a2 := cn_a2[0] + z2_a2*cn_a2[1];
-    cn2_a2 := cn_a2[2] + z2_a2*cn_a2[3];
-    cn4_a2 := cn_a2[4] + z2_a2*cn_a2[5];
-    cn6_a2 := cn_a2[6];
-    cn0_a2 := cn0_a2 + z4_a2*cn2_a2;
-    cn4_a2 := cn4_a2 + z4_a2*cn6_a2;
-    cn0_a2 := cn0_a2 + z8_a2*cn4_a2;
-    cd0_a2 := cd_a2[0] + z2_a2*cd_a2[1];
-    cd2_a2 := cd_a2[2] + z2_a2*cd_a2[3];
-    cd4_a2 := cd_a2[4] + z2_a2*cd_a2[5];
-    cd6_a2 := cd_a2[6];
-    cd0_a2 := cd0_a2 + z4_a2*cd2_a2;
-    cd4_a2 := cd4_a2 + z4_a2*cd6_a2;
-    cd0_a2 := cd0_a2 + z8_a2*cd4_a2;
+    cn0_a2 := (cn_a2[0] + z2_a2*cn_a2[1]) + 
+      z4_a2*(cn_a2[2] + z2_a2*cn_a2[3]) + 
+      z8_a2*((cn_a2[4] + z2_a2*cn_a2[5]) + 
+      z4_a2*cn_a2[6]);
+    cd0_a2 := (cd_a2[0] + z2_a2*cd_a2[1]) + 
+      z4_a2*(cd_a2[2] + z2_a2*cd_a2[3]) + 
+      z8_a2*((cd_a2[4] + z2_a2*cd_a2[5]) + 
+      z4_a2*cd_a2[6]);
     r_a2 := cn0_a2 / cd0_a2;
   end else
     r_a2 := 1.0;
-  z_a2 := z_a2 * sgn_a2[gt_a2];
-  r_a2 := z_a2 * r_a2 + off_a2[i_a2];
-  res_a2.f := r_a2;
+  res_a2.f := z_a2 * r_a2 + off_a2[i_a2];
   if ((res_a2.u + 8) and $0FFFFFFF) <= 16 then begin
     { check tiny y/x }
     if (ay_a2 < ax_a2) and ((ax_a2 - ay_a2) shr 23 >= 25) then begin
       Result := pcr_atan2f_tiny(y, x); Exit;
     end;
     if gt_a2 = 0 then begin
-      zh_a2 := zy_a2 / zx_a2;
-      zl_a2 := pcr_fma(zh_a2, -zx_a2, zy_a2) / zx_a2;
+      zh_a2 := Double(y) / Double(x);
+      zl_a2 := pcr_fma(zh_a2, -Double(x), Double(y)) / Double(x);
     end else begin
-      zh_a2 := zx_a2 / zy_a2;
-      zl_a2 := pcr_fma(zh_a2, -zy_a2, zx_a2) / zy_a2;
+      zh_a2 := Double(x) / Double(y);
+      zl_a2 := pcr_fma(zh_a2, -Double(y), Double(x)) / Double(y);
     end;
     z2h_a2 := muldd(zh_a2, zl_a2, zh_a2, zl_a2, z2l_a2);
     ph_a2 := polydd(z2h_a2, z2l_a2, 32, c_a2, pl_a2);
-    zh_a2 := zh_a2 * sgn_a2[gt_a2];
-    zl_a2 := zl_a2 * sgn_a2[gt_a2];
+    if gt_a2 <> 0 then begin
+      zh_a2 := -zh_a2;
+      zl_a2 := -zl_a2;
+    end;
     ph_a2 := muldd(zh_a2, zl_a2, ph_a2, pl_a2, pl_a2);
     sh_a2 := ph_a2 + off_a2[i_a2];
     sl_a2 := ((off_a2[i_a2] - sh_a2) + ph_a2) + pl_a2 + offl_a2[i_a2];
@@ -3838,7 +3914,7 @@ begin
     dh_a2 := sh_a2 - th_a2;
     tm_a2 := dh_a2 + sl_a2;
     tth_a2.f := th_a2;
-    if th_a2 + th_a2*8.673617379884035e-19 = th_a2 - th_a2*8.673617379884035e-19 then begin
+    if th_a2 + th_a2*Double(8.673617379884035e-19) = th_a2 - th_a2*Double(8.673617379884035e-19) then begin
       { 0x1p-60 = 8.673617379884035e-19 }
       tth_a2.u := tth_a2.u and $7FF0000000000000;
       tth_a2.u := tth_a2.u - $0180000000000000;  { subtract 24<<52 }
@@ -3847,9 +3923,9 @@ begin
       else
         tm_a2 := tm_a2 * 0.75;
     end;
-    r_a2 := th_a2 + tm_a2;
+    res_a2.f := th_a2 + tm_a2;
   end;
-  Result := Single(r_a2);
+  Result := Single(res_a2.f);
 end;
 
 { ── pcr_atan2pif ──────────────────────────────────────────────────────────── }
@@ -3963,7 +4039,7 @@ begin
   r_a2p := cn_a2p[0];
   z2_a2p := z_a2p * z_a2p;
   z_a2p := z_a2p * sgn_a2p[gt_a2p];
-  if z2_a2p > 5.551115123125783e-17 then begin  { 0x1p-54 }
+  if z2_a2p > Double(5.551115123125783e-17) then begin  { 0x1p-54 }
     z4_a2p := z2_a2p * z2_a2p;
     z8_a2p := z4_a2p * z4_a2p;
     cn0_p := r_a2p    + z2_a2p*cn_a2p[1];
@@ -4177,6 +4253,10 @@ end;
 function pcr_powf_accurate2(x0, y0: Single; is_exact_val: Int32): Single;
 const
   o_a2: array[0..1] of Double = (1.0, 2.0);
+  c1p54_a2: Double = 5.551115123125783e-17;   { 0x1p-54 }
+  c1p53_a2: Double = 1.1102230246251565e-16;  { 0x1p-53 }
+  c1p52_a2: Double = 2.220446049250313e-16;   { 0x1p-52 }
+  c1p91_a2: Double = 4.0389678347315804e-28;  { 0x1p-91 }
   { ch[][2] flat: 13 pairs }
   ch_a2: array[0..25] of Double = (
     2.8853900817779268,   4.071054748191002e-17,    { 0x1.71547652b82fep+1, 0x1.777d0ffda2b89p-55 }
@@ -4270,45 +4350,45 @@ begin
   { Adjust for borderline rounding }
   if ((ll_a2.u shr 23) and UInt64($1FFFFFFF)) = UInt64($1FFFFFFF) then begin
     if eh_a2 < 1 then begin
-      if el_a2 >= 5.551115123125783e-17 then begin    { 0x1p-54 }
-        el_a2 := el_a2 - 1.1102230246251565e-16;     { 0x1p-53 }
-        eh_a2 := eh_a2 + 1.1102230246251565e-16;
-      end else if el_a2 <= -5.551115123125783e-17 then begin
-        el_a2 := el_a2 + 1.1102230246251565e-16;
-        eh_a2 := eh_a2 - 1.1102230246251565e-16;
+      if el_a2 >= c1p54_a2 then begin    { 0x1p-54 }
+        el_a2 := el_a2 - c1p53_a2;     { 0x1p-53 }
+        eh_a2 := eh_a2 + c1p53_a2;
+      end else if el_a2 <= -c1p54_a2 then begin
+        el_a2 := el_a2 + c1p53_a2;
+        eh_a2 := eh_a2 - c1p53_a2;
       end;
     end else begin
-      if el_a2 >= 1.1102230246251565e-16 then begin   { 0x1p-53 }
-        el_a2 := el_a2 - 2.220446049250313e-16;      { 0x1p-52 }
-        eh_a2 := eh_a2 + 2.220446049250313e-16;
-      end else if el_a2 <= -1.1102230246251565e-16 then begin
-        el_a2 := el_a2 + 2.220446049250313e-16;
-        eh_a2 := eh_a2 - 2.220446049250313e-16;
+      if el_a2 >= c1p53_a2 then begin   { 0x1p-53 }
+        el_a2 := el_a2 - c1p52_a2;     { 0x1p-52 }
+        eh_a2 := eh_a2 + c1p52_a2;
+      end else if el_a2 <= -c1p53_a2 then begin
+        el_a2 := el_a2 + c1p52_a2;
+        eh_a2 := eh_a2 - c1p52_a2;
       end;
     end;
   end else if ((ll_a2.u shr 23) and UInt64($1FFFFFFF)) = 0 then begin
     if el_a2 > 0 then begin
       if eh_a2 < 1 then begin
-        if el_a2 >= 1.1102230246251565e-16 then begin  { 0x1p-53 }
-          el_a2 := el_a2 - 1.1102230246251565e-16;
-          eh_a2 := eh_a2 + 1.1102230246251565e-16;
+        if el_a2 >= c1p53_a2 then begin  { 0x1p-53 }
+          el_a2 := el_a2 - c1p53_a2;
+          eh_a2 := eh_a2 + c1p53_a2;
         end;
       end else begin
-        if el_a2 >= 2.220446049250313e-16 then begin   { 0x1p-52 }
-          el_a2 := el_a2 - 2.220446049250313e-16;
-          eh_a2 := eh_a2 + 2.220446049250313e-16;
+        if el_a2 >= c1p52_a2 then begin  { 0x1p-52 }
+          el_a2 := el_a2 - c1p52_a2;
+          eh_a2 := eh_a2 + c1p52_a2;
         end;
       end;
     end else begin
       if eh_a2 < 1 then begin
-        if el_a2 <= -1.1102230246251565e-16 then begin
-          el_a2 := el_a2 + 1.1102230246251565e-16;
-          eh_a2 := eh_a2 - 1.1102230246251565e-16;
+        if el_a2 <= -c1p53_a2 then begin
+          el_a2 := el_a2 + c1p53_a2;
+          eh_a2 := eh_a2 - c1p53_a2;
         end;
       end else begin
-        if el_a2 <= -2.220446049250313e-16 then begin
-          el_a2 := el_a2 + 2.220446049250313e-16;
-          eh_a2 := eh_a2 - 2.220446049250313e-16;
+        if el_a2 <= -c1p52_a2 then begin
+          el_a2 := el_a2 + c1p52_a2;
+          eh_a2 := eh_a2 - c1p52_a2;
         end;
       end;
     end;
@@ -4316,7 +4396,7 @@ begin
   ll_a2.f := el_a2;
   lh_a2.f := eh_a2;
   if (lh_a2.u and $FFFFFFF) = 0 then begin
-    if pcr_fabs(ll_a2.f) > 4.0389678347315804e-28 then begin  { 0x1p-91 }
+    if pcr_fabs(ll_a2.f) > c1p91_a2 then begin  { 0x1p-91 }
       if el_a2 < 0 then begin
         lh_a2.u := lh_a2.u - 1;
         eh_a2 := lh_a2.f;
@@ -4574,12 +4654,13 @@ begin
     Exit;
   end;
   { Near 1: return 1 + z }
-  if pcr_fabs(z_pf) < 1.4901161193847656e-08 then begin  { 0x1p-26 }
+  if pcr_fabs(z_pf) < Double(1.4901161193847656e-08) then begin  { 0x1p-26 }
     Result := 1.0 + z_pf; Exit;
   end;
-  ia_pf := Floor(z_pf);
+  il_pf := Int64(Trunc(z_pf));
+  if Double(il_pf) > z_pf then Dec(il_pf);
+  ia_pf := Double(il_pf);
   h_pf := pcr_fma(l_pf, y_pf, zt_pf - ia_pf);
-  il_pf := Int64(Trunc(ia_pf));
   jl_pf := il_pf and $F;
   el_pf := SarInt64(il_pf - jl_pf, 4);
   s_pf := tb_pf[jl_pf];
@@ -5047,9 +5128,9 @@ begin
   i_e1 := Int32(v_e1.u shr 46) - $10010;
   r_e1 := r_e1 - CF_EXP2T[i_e1];
   v_e1.f := CF_EXP2U[i_e1][0] * cf_q1(r_e1);
-  err_e1.f := 5.062616992290714e-13; // 0x1.1dp-41
+  err_e1.f := Double(5.062616992290714e-13); // 0x1.1dp-41
   v_e1.u := UInt64(Int64(v_e1.u) + Round(k_e1) * Int64($10000000000000));
-  if v_e1.f < 1.175494350822881e-38 then begin // 0x1.00000000008e2p-126
+  if v_e1.f < Double(1.175494350822881e-38) then begin // 0x1.00000000008e2p-126
     Result := -1.0;
     Exit;
   end;
@@ -5226,13 +5307,13 @@ begin
   k_e22 := pcr_roundeven(h);
   {$ENDIF}
   // if h+l is tiny, 2^(h+l) rounds to 1
-  if (k_e22 = 0.0) and (pcr_fabs(h) <= 4.299566335638736e-08) then begin
-    Result := Single(1.0 + h * 0.5);
+  if (k_e22 = 0.0) and (pcr_fabs(h) <= Double(4.299566335638736e-08)) then begin
+    Result := Single(Double(1.0) + h * Double(0.5));
     Exit;
   end;
   r_e22 := h - k_e22;
   cf_fast_two_sum(h, l, r_e22, l);
-  v_e22.f := 3.015625 + h;
+  v_e22.f := Double(3.015625) + h;
   i_e22 := Int32(v_e22.u shr 46) - $10010;
   h := h - CF_EXP2T[i_e22];
   cf_fast_two_sum(h, l, h, l);
@@ -5280,7 +5361,7 @@ var v_la: Tb64u64;
     r_la, zh_la, zl_la, ph_la, pl_la, t_la: Double;
 begin
   if 1.0 >= x then begin
-    if pcr_fabs(x) >= 1.1102230246251565e-16 then // 2^-53
+    if pcr_fabs(x) >= Double(1.1102230246251565e-16) then // 2^-53
       cf_fast_two_sum(h, l, 1.0, x)
     else begin
       h := 1.0;
@@ -5470,6 +5551,14 @@ const
      7.958785981094399e-08,   // 0x1.55d3c6fc9ac1fp-24
     -5.4777514393633976e-11   // -0x1.e1d3ff281b40dp-35
   );
+  sincos_a_0: Double = 0.19634954084936204;
+  sincos_a_1: Double = -0.0012616486279372187;
+  sincos_a_2: Double = 2.432025854080733e-06;
+  sincos_a_3: Double = -2.2318367225754577e-09;
+  sincos_b_0: Double = 0.019276571095877645;
+  sincos_b_1: Double = -6.193103220211784e-05;
+  sincos_b_2: Double = 7.958785981094399e-08;
+  sincos_b_3: Double = -5.4777514393633976e-11;
   // sinf tb[] = sin(i*pi/16), i=0..31  (one full period)
   sinf_tb: array[0..31] of Double = (
      0.0,                     // sin(0)
@@ -5547,28 +5636,59 @@ const
     UInt64($FC2757D1F534DDC0),
     UInt64($A2F9836E4E441529)
   );
+  // Individual constants for direct use in asm (avoid stack-spill of ipi array)
+  sincos_ipi_0: UInt64 = UInt64($FE5163ABDEBBC562);
+  sincos_ipi_1: UInt64 = UInt64($DB6295993C439041);
+  sincos_ipi_2: UInt64 = UInt64($FC2757D1F534DDC0);
+  sincos_ipi_3: UInt64 = UInt64($A2F9836E4E441529);
+  // 2^-64: scaling factor used in rbig result conversion
+  sincos_scale: Double = 5.421010862427522e-20;
 
 // ---- rbig: range-reduction for large arguments (shared sinf/cosf) ---------
 // Maps x = 2^(e-127) * m  into  result in [-0.5, 0.5] scaled by pi/2,
 // and sets *q to the octant index.
-function sincos_rbig(u: UInt32; q: PInteger): Double; inline;
+// Uses a single asm block with four 'mul' instructions for the 128-bit
+// products, avoiding four separate Mulu64u64 function calls. This matches
+// the structure of C's rbig function (one function call, 4 muls inside).
+function sincos_rbig(u: UInt32; q: PInteger): Double;
 var
   e_exp, k, s, i_val, sgn: Int32;
   m, p3h, p3l, p2l, p1l: UInt64;
-  p0, p1, p2, p3: TUInt128;
   a_val: Int64;
   sm: Int64;
 begin
   e_exp := Int32((u shr 23) and $FF);
-  m := UInt64((u and UInt64($007FFFFF)) or UInt64($800000));  // ~0u>>9 = $007FFFFF, 1<<23 = $800000
-  p0 := Mulu64u64(m, sincos_ipi[0]);
-  p1 := Mulu64u64(m, sincos_ipi[1]); p1 := p1 + p0.hi;
-  p2 := Mulu64u64(m, sincos_ipi[2]); p2 := p2 + p1.hi;
-  p3 := Mulu64u64(m, sincos_ipi[3]); p3 := p3 + p2.hi;
-  p3h := p3.hi;
-  p3l := p3.lo;
-  p2l := p2.lo;
-  p1l := p1.lo;
+  m := UInt64((u and $007FFFFF) or $800000);
+  // Four chained 128-bit products in a single asm block (Intel syntax).
+  // Uses sincos_ipi_N typed constants directly to avoid pre-loading to stack.
+  // p0 = m * ipi0; chain carry: p1 = m * ipi1 + p0.hi, etc.
+  // Only p1l, p2l, p3l, p3h are needed after this block.
+  asm
+    mov  rax, m
+    mul  sincos_ipi_0
+    mov  p1l, rdx       // temporarily hold p0.hi in p1l
+
+    mov  rax, m
+    mul  sincos_ipi_1
+    add  rax, p1l
+    adc  rdx, 0
+    mov  p1l, rax       // p1l = p1.lo
+    mov  p2l, rdx       // temporarily hold p1.hi in p2l
+
+    mov  rax, m
+    mul  sincos_ipi_2
+    add  rax, p2l
+    adc  rdx, 0
+    mov  p2l, rax       // p2l = p2.lo
+    mov  p3l, rdx       // temporarily hold p2.hi in p3l
+
+    mov  rax, m
+    mul  sincos_ipi_3
+    add  rax, p3l
+    adc  rdx, 0
+    mov  p3l, rax       // p3l = p3.lo
+    mov  p3h, rdx       // p3h = p3.hi
+  end;
   k := e_exp - 124;
   s := k - 23;
   if s < 64 then begin
@@ -5581,47 +5701,49 @@ begin
     i_val := Int32((p3l shl (s - 64)) or (p2l shr (128 - s)));
     a_val := Int64((p2l shl (s - 64)) or (p1l shr (128 - s)));
   end;
-  sgn := SarLongInt(Int32(u), 31);   // 0 if positive, -1 if negative
-  sm  := SarInt64(a_val, 63);        // sign extension of a
+  sgn := SarLongInt(Int32(u), 31);
+  sm  := SarInt64(a_val, 63);
   i_val := i_val - Int32(sm);
-  Result := Double(a_val xor Int64(sgn)) * 5.421010862427522e-20;  // *2^-64
+  Result := Double(a_val xor Int64(sgn)) * sincos_scale;
   i_val := (i_val xor sgn) - sgn;
   q^ := i_val;
 end;
 
 // ---- rltl0: range-reduction for medium arguments (double input) -----------
+// Uses arithmetic rounding trick: idh + C_BIG rounds to nearest-even integer
+// (IEEE 754 default), avoiding pcr_roundeven (asm, not inlinable in FPC).
 function sincos_rltl0(x: Double; q: PInteger): Double; inline;
 const
   C_IDH: Double = 5.092958178940651;    // 0x1.45f306dc9c883p+2
   C_BIG: Double = 6755399441055744.0;   // 0x1.8p52
 var
-  idh, id_d: Double;
+  idh: Double;
   Q_r: Tb64u64;
 begin
-  idh  := C_IDH * x;
-  id_d := pcr_roundeven(idh);
-  Q_r.f := C_BIG + id_d;
-  q^ := Int32(UInt32(Q_r.u));
-  Result := idh - id_d;
+  idh   := C_IDH * x;
+  Q_r.f := idh + C_BIG;
+  q^    := Int32(UInt32(Q_r.u));
+  Result := idh - (Q_r.f - C_BIG);
 end;
 
 // ---- rltl: range-reduction for medium arguments (float input) -------------
+// Uses arithmetic rounding trick: idh + C_BIG rounds to nearest-even integer
+// (IEEE 754 default), avoiding pcr_roundeven (asm, not inlinable in FPC).
 function sincos_rltl(z: Single; q: PInteger): Double; inline;
 const
   C_IDL: Double = -3.1558305786379073e-09;  // -0x1.b1bbead603d8bp-29
   C_IDH: Double =  5.092958182096481;        // 0x1.45f306ep+2
   C_BIG: Double =  6755399441055744.0;       // 0x1.8p52
 var
-  x, idl, idh, id_d: Double;
+  x, idl, idh: Double;
   Q_r: Tb64u64;
 begin
-  x    := Double(z);
-  idl  := C_IDL * x;
-  idh  := C_IDH * x;
-  id_d := pcr_roundeven(idh);
-  Q_r.f := C_BIG + id_d;
-  q^ := Int32(UInt32(Q_r.u));
-  Result := (idh - id_d) + idl;
+  x     := Double(z);
+  idl   := C_IDL * x;
+  idh   := C_IDH * x;
+  Q_r.f := idh + C_BIG;
+  q^    := Int32(UInt32(Q_r.u));
+  Result := (idh - (Q_r.f - C_BIG)) + idl;
 end;
 
 // ---- sinf helpers ----------------------------------------------------------
@@ -5704,8 +5826,8 @@ begin
   z_r := sincos_rbig(t32.u, @ia);
   z2  := z_r * z_r;
   z4  := z2 * z2;
-  aa  := (sincos_a[0] + z2 * sincos_a[1]) + z4 * (sincos_a[2] + z2 * sincos_a[3]);
-  bb  := (sincos_b[0] + z2 * sincos_b[1]) + z4 * (sincos_b[2] + z2 * sincos_b[3]);
+  aa  := (sincos_a_0 + z2 * sincos_a_1) + z4 * (sincos_a_2 + z2 * sincos_a_3);
+  bb  := (sincos_b_0 + z2 * sincos_b_1) + z4 * (sincos_b_2 + z2 * sincos_b_3);
   s0  := sinf_tb[ia and 31];
   c0  := sinf_tb[(ia + 8) and 31];
   r_val := s0 + z_r * (aa * c0 - bb * (z_r * s0));
@@ -5783,8 +5905,8 @@ begin
   z_r := sincos_rbig(t32.u, @ia);
   z2  := z_r * z_r;
   z4  := z2 * z2;
-  aa  := (sincos_a[0] + z2 * sincos_a[1]) + z4 * (sincos_a[2] + z2 * sincos_a[3]);
-  bb  := (sincos_b[0] + z2 * sincos_b[1]) + z4 * (sincos_b[2] + z2 * sincos_b[3]);
+  aa  := (sincos_a_0 + z2 * sincos_a_1) + z4 * (sincos_a_2 + z2 * sincos_a_3);
+  bb  := (sincos_b_0 + z2 * sincos_b_1) + z4 * (sincos_b_2 + z2 * sincos_b_3);
   s0  := cosf_tb[(ia + 8) and 31];   // = -sin(ia*pi/16)
   c0  := cosf_tb[ia and 31];          // = cos(ia*pi/16)
   r_val := c0 + z_r * (aa * s0 - bb * (z_r * c0));
@@ -5828,7 +5950,7 @@ begin
       end;
       // 2^-25 <= |x| < 2^-12: use cubic approximation
       // -0x1.555556p-3f = -0.1666666716337204 (f32: $BE2AAAAB)
-      Result := (-0.1666666716337204 * x) * (x * x) + x;
+      Result := Double(-0.1666666716337204) * x * (x * x) + x;
       Exit;
     end;
     Result := sinf_big(x);
@@ -5851,8 +5973,8 @@ begin
   end;
   z2   := z_d * z_d;
   z4   := z2 * z2;
-  aa   := (sincos_a[0] + z2 * sincos_a[1]) + z4 * (sincos_a[2] + z2 * sincos_a[3]);
-  bb   := (sincos_b[0] + z2 * sincos_b[1]) + z4 * (sincos_b[2] + z2 * sincos_b[3]);
+  aa   := (sincos_a_0 + z2 * sincos_a_1) + z4 * (sincos_a_2 + z2 * sincos_a_3);
+  bb   := (sincos_b_0 + z2 * sincos_b_1) + z4 * (sincos_b_2 + z2 * sincos_b_3);
   s0   := sinf_tb[ia and 31];
   c0   := sinf_tb[(ia + 8) and 31];
   r_val := s0 + aa * (z_d * c0) - bb * (z2 * s0);
@@ -5878,15 +6000,15 @@ begin
       if ax < $66000000 then begin
         // |x| < 2^-25
         if ax = 0 then begin
-          Result := 1.0;
+          Result := Double(1.0);
           Exit;
         end;
         // cos(x) = 1 - 2^-25 for tiny nonzero x (correctly rounded)
-        Result := 1.0 - 2.9802322387695312e-08;   // 1 - 0x1p-25f
+        Result := Double(1.0) - Double(2.9802322387695312e-08);
         Exit;
       end;
       // 2^-25 <= |x| < 2^-12: use quadratic approximation
-      Result := -0.5 * x * x + 1.0;
+      Result := Double(-0.5) * x * x + Double(1.0);
       Exit;
     end;
     Result := cosf_big(x);
@@ -5905,8 +6027,8 @@ begin
   end;
   z2   := z_d * z_d;
   z4   := z2 * z2;
-  aa   := (sincos_a[0] + z2 * sincos_a[1]) + z4 * (sincos_a[2] + z2 * sincos_a[3]);
-  bb   := (sincos_b[0] + z2 * sincos_b[1]) + z4 * (sincos_b[2] + z2 * sincos_b[3]);
+  aa   := (sincos_a_0 + z2 * sincos_a_1) + z4 * (sincos_a_2 + z2 * sincos_a_3);
+  bb   := (sincos_b_0 + z2 * sincos_b_1) + z4 * (sincos_b_2 + z2 * sincos_b_3);
   c0   := cosf_tb[ia and 31];
   s0   := cosf_tb[(ia + 8) and 31];   // = -sin(ia*pi/16)
   r_val := c0 + aa * (z_d * s0) - bb * (z2 * c0);
@@ -5934,24 +6056,50 @@ const
    -0.0031314039049681057    // -0x1.9a707ab98d1c1p-9
   );
 
+  tanf_cn_0: Double = 1.5707963267948966;
+  tanf_cn_1: Double = -0.49720165641032027;
+  tanf_cn_2: Double = 0.02683402276915988;
+  tanf_cn_3: Double = -0.00017660096093977045;
+  tanf_cd_0: Double = 1.0;
+  tanf_cd_1: Double = -1.1389954387488281;
+  tanf_cd_2: Double = 0.1421268437745497;
+  tanf_cd_3: Double = -0.0031314039049681057;
+// Same asm-mul optimization as sincos_rbig; only difference: k = e_exp - 127.
 function tanf_rbig(u: UInt32; q: PInteger): Double;
 var
   e_exp, k, s_shift, i_val, sgn: Int32;
   m_val, p3h, p3l, p2l, p1l: UInt64;
-  p0, p1, p2, p3: TUInt128;
   a_val: Int64;
   sm: Int64;
 begin
   e_exp := Int32((u shr 23) and $FF);
   m_val := UInt64((u and $007FFFFF) or $800000);
-  p0 := Mulu64u64(m_val, sincos_ipi[0]);
-  p1 := Mulu64u64(m_val, sincos_ipi[1]); p1 := p1 + p0.hi;
-  p2 := Mulu64u64(m_val, sincos_ipi[2]); p2 := p2 + p1.hi;
-  p3 := Mulu64u64(m_val, sincos_ipi[3]); p3 := p3 + p2.hi;
-  p3h := p3.hi;
-  p3l := p3.lo;
-  p2l := p2.lo;
-  p1l := p1.lo;
+  asm
+    mov  rax, m_val
+    mul  sincos_ipi_0
+    mov  p1l, rdx
+
+    mov  rax, m_val
+    mul  sincos_ipi_1
+    add  rax, p1l
+    adc  rdx, 0
+    mov  p1l, rax
+    mov  p2l, rdx
+
+    mov  rax, m_val
+    mul  sincos_ipi_2
+    add  rax, p2l
+    adc  rdx, 0
+    mov  p2l, rax
+    mov  p3l, rdx
+
+    mov  rax, m_val
+    mul  sincos_ipi_3
+    add  rax, p3l
+    adc  rdx, 0
+    mov  p3l, rax
+    mov  p3h, rdx
+  end;
   k       := e_exp - 127;   // tanf uses e-127; sincos_rbig uses e-124
   s_shift := k - 23;
   if s_shift < 64 then begin
@@ -5967,28 +6115,29 @@ begin
   sgn   := SarLongInt(Int32(u), 31);
   sm    := SarInt64(a_val, 63);
   i_val := i_val - Int32(sm);
-  Result := Double(a_val xor Int64(sgn)) * 5.421010862427522e-20;  // *2^-64
+  Result := Double(a_val xor Int64(sgn)) * sincos_scale;
   i_val := (i_val xor sgn) - sgn;
   q^ := i_val;
 end;
 
 // tanf rltl: multiplies by 2/pi (different from sincos_rltl which uses 16/pi)
+// Uses arithmetic rounding trick: idh + C_BIG rounds to nearest-even integer
+// (IEEE 754 default), avoiding pcr_roundeven (asm, not inlinable in FPC).
 function tanf_rltl(z: Single; q: PInteger): Double; inline;
 const
   C_IDL: Double = -3.944788223297384e-10;  // -0x1.b1bbead603d8bp-32
   C_IDH: Double =  0.6366197727620602;      // 0x1.45f306ep-1
   C_BIG: Double =  6755399441055744.0;      // 0x1.8p52
 var
-  x, idl, idh, id_d: Double;
+  x, idl, idh: Double;
   Q_r: Tb64u64;
 begin
-  x    := Double(z);
-  idl  := C_IDL * x;
-  idh  := C_IDH * x;
-  id_d := pcr_roundeven(idh);
-  Q_r.f := C_BIG + id_d;
-  q^   := Int32(UInt32(Q_r.u));
-  Result := (idh - id_d) + idl;
+  x     := Double(z);
+  idl   := C_IDL * x;
+  idh   := C_IDH * x;
+  Q_r.f := idh + C_BIG;
+  q^    := Int32(UInt32(Q_r.u));
+  Result := (idh - (Q_r.f - C_BIG)) + idl;
 end;
 
 // ---- sincosf helpers -------------------------------------------------------
@@ -6069,7 +6218,7 @@ end;
 
 // Large-argument case for sincosf (|x| >= threshold)
 // Uses sincos_rbig (k=e-124 — correct for sincosf)
-procedure sincosf_big(x: Single; var sout, cout: Single);
+procedure sincosf_big(x: Single; var sout, cout: Single); inline;
 var
   t32: Tb32u32;
   ax: UInt32;
@@ -6094,8 +6243,8 @@ begin
   z_r := sincos_rbig(t32.u, @ia);
   z2  := z_r * z_r;
   z4  := z2 * z2;
-  aa  := (sincos_a[0] + z2 * sincos_a[1]) + z4 * (sincos_a[2] + z2 * sincos_a[3]);
-  bb  := (sincos_b[0] + z2 * sincos_b[1]) + z4 * (sincos_b[2] + z2 * sincos_b[3]);
+  aa  := (sincos_a_0 + z2 * sincos_a_1) + z4 * (sincos_a_2 + z2 * sincos_a_3);
+  bb  := (sincos_b_0 + z2 * sincos_b_1) + z4 * (sincos_b_2 + z2 * sincos_b_3);
   bb  := bb * z_r;
   s0  := sinf_tb[ia and 31];
   c0  := sinf_tb[(ia + 8) and 31];
@@ -6135,8 +6284,8 @@ begin
         Exit;
       end;
       // 2^-25 <= |x| < 2^-12
-      s := Single((-0.1666666716337204 * Double(x)) * Double(x * x) + Double(x));
-      c := Single((-0.5 * Double(x)) * Double(x) + 1.0);
+      s := Single((Double(-0.1666666716337204) * Double(x)) * Double(x * x) + Double(x));
+      c := Single((Double(-0.5) * Double(x)) * Double(x) + Double(1.0));
       Exit;
     end;
     if ax = UInt32($812D97C8) then begin
@@ -6157,8 +6306,8 @@ begin
   end;
   z2 := z_d * z_d;
   z4 := z2 * z2;
-  aa := (sincos_a[0] + z2 * sincos_a[1]) + z4 * (sincos_a[2] + z2 * sincos_a[3]);
-  bb := (sincos_b[0] + z2 * sincos_b[1]) + z4 * (sincos_b[2] + z2 * sincos_b[3]);
+  aa := (sincos_a_0 + z2 * sincos_a_1) + z4 * (sincos_a_2 + z2 * sincos_a_3);
+  bb := (sincos_b_0 + z2 * sincos_b_1) + z4 * (sincos_b_2 + z2 * sincos_b_3);
   aa := aa * z_d;
   bb := bb * z2;
   s0 := sinf_tb[ia and 31];
@@ -6205,7 +6354,7 @@ const
 var
   t32: Tb32u32;
   e_exp, i_q, jj: Int32;
-  z, z2, z4, n_v, n2, d_v, d2, s0, s1, r1: Double;
+  z, z2, z4, n_v, n2, d_v, d2, r1: Double;
   tr: Tb64u64;
   tail: UInt64;
   ax, sgn: UInt32;
@@ -6220,7 +6369,7 @@ begin
         Exit;
       end;
       x2 := x * x;
-      Result := pcr_fmaf(x, 0.3333333432674408 * x2, x);  // 0x1.555556p-2f
+      Result := pcr_fmaf(x, Single(0.3333333432674408) * x2, x);  // 0x1.555556p-2f
       Exit;
     end;
     z := tanf_rltl(x, @i_q);
@@ -6237,20 +6386,17 @@ begin
   end;
   z2  := z * z;
   z4  := z2 * z2;
-  n_v := tanf_cn[0] + z2 * tanf_cn[1];
-  n2  := tanf_cn[2] + z2 * tanf_cn[3];
+  n_v := tanf_cn_0 + z2 * tanf_cn_1;
+  n2  := tanf_cn_2 + z2 * tanf_cn_3;
   n_v := n_v + z4 * n2;
-  d_v := tanf_cd[0] + z2 * tanf_cd[1];
-  d2  := tanf_cd[2] + z2 * tanf_cd[3];
+  d_v := tanf_cd_0 + z2 * tanf_cd_1;
+  d2  := tanf_cd_2 + z2 * tanf_cd_3;
   d_v := d_v + z4 * d2;
   n_v := n_v * z;
-  // s[] = {0,1}: s0 = i_q&1, s1 = 1-(i_q&1)
-  if (i_q and 1) = 0 then begin
-    s0 := 0.0;  s1 := 1.0;
-  end else begin
-    s0 := 1.0;  s1 := 0.0;
-  end;
-  r1 := (n_v * s1 - d_v * s0) / (n_v * s0 + d_v * s1);
+  if (i_q and 1) = 0 then
+    r1 := n_v / d_v
+  else
+    r1 := -(d_v / n_v);
   tr.f := r1;
   tail := (tr.u + 7) and UInt64($1FFFFFFF);   // ~0ull>>35
   if tail <= 14 then begin

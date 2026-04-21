@@ -110,6 +110,7 @@ Measures throughput (Mops/s) for each function, comparing the C reference and pa
 
 ```bash
 LD_LIBRARY_PATH=src/ bin/Benchmark32
+LD_LIBRARY_PATH=src/ bin/Benchmark32 sinf   # run a single function (case-insensitive exact match)
 ```
 
 ### Benchmark (pas-core-math vs FPC builtins)
@@ -118,6 +119,22 @@ Compares pas-core-math against Free Pascal's built-in math functions (no C depen
 
 ```bash
 bin/BenchmarkFPC32
+bin/BenchmarkFPC32 sinf                     # run a single function (case-insensitive exact match)
+```
+
+#### Reducing benchmark variance
+
+Run-to-run numbers — especially for single-function runs — vary with CPU frequency scaling, core migration, and background noise. For more reproducible results, pin the benchmark to one core by prepending `taskset -c 1 env`:
+
+```bash
+taskset -c 1 env LD_LIBRARY_PATH=src/ bin/Benchmark32 sinf
+taskset -c 1 bin/BenchmarkFPC32 sinf
+```
+
+In our measurements, pinning alone cuts variance roughly in half (e.g., ±14% → ±5% spread over 5 runs). On bare metal, also set the CPU governor to `performance` for the most stable numbers:
+
+```bash
+sudo cpupower frequency-set -g performance
 ```
 
 ### Exhaustive Correctness Test
@@ -126,6 +143,8 @@ Tests every possible 32-bit float input against the C reference. This is a full 
 
 ```bash
 LD_LIBRARY_PATH=src/ bin/TestHarness32
+LD_LIBRARY_PATH=src/ bin/TestHarness32 --func sinf            # run a single function
+LD_LIBRARY_PATH=src/ bin/TestHarness32 --func sinf --pct 1    # single function, 1% sampling for quick checks
 ```
 
 Any mismatch is reported as a failure with the input value and both outputs.

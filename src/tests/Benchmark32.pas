@@ -26,6 +26,7 @@ var
   PWins, CWins, PTies: Int32;
   TotalSpeedup: Double = 0.0;
   BenchCount: Int32 = 0;
+  Filter: string = '';
 
 procedure BenchUni(const name: string; pfC: TUniFuncC; pfP: TUniFuncP);
 var
@@ -38,6 +39,7 @@ var
   mopsC, mopsP: Double;
   cSink, pSink: UInt32;
 begin
+  if (Filter <> '') and (LowerCase(name) <> Filter) then Exit;
   // C version
   sink := 0;
   u := 0;
@@ -99,6 +101,7 @@ var
   mopsC, mopsP: Double;
   cSink, pSink: UInt32;
 begin
+  if (Filter <> '') and (LowerCase(name) <> Filter) then Exit;
   // C version
   sink := 0;
   ux := 0;
@@ -167,6 +170,7 @@ var
   cSink, pSink: UInt32;
   ps, pc: Single;
 begin
+  if (Filter <> '') and (Filter <> 'sincosf') then Exit;
   // C version
   sink := 0;
   u := 0;
@@ -241,7 +245,12 @@ begin
   SetExceptionMask([exInvalidOp, exDenormalized, exZeroDivide,
                     exOverflow, exUnderflow, exPrecision]);
 
-  WriteLn(Format('=== Benchmark: %d calls per function ===', [BENCH_N]));
+  if ParamCount >= 1 then Filter := LowerCase(ParamStr(1));
+
+  if Filter = '' then
+    WriteLn(Format('=== Benchmark: %d calls per function ===', [BENCH_N]))
+  else
+    WriteLn(Format('=== Benchmark: %d calls per function (filter=%s) ===', [BENCH_N, Filter]));
   WriteLn;
 
   BenchUni('acosf',    @cr_acosf,    @pcr_acosf);
@@ -290,13 +299,19 @@ begin
   BenchSinCos;
 
   WriteLn;
-  WriteLn(Format('Pascal won: %d  |  C won: %d  |  Ties (<%d%%): %d', [PWins, CWins, Round(TIE_THRESHOLD * 100), PTies]));
-  if BenchCount > 0 then
+  if BenchCount = 0 then
+    WriteLn(Format('No function matched filter %s', [Filter]))
+  else if BenchCount = 1 then
+    WriteLn(Format('GlobalSink = %u', [GlobalSink]))
+  else
+  begin
+    WriteLn(Format('Pascal won: %d  |  C won: %d  |  Ties (<%d%%): %d', [PWins, CWins, Round(TIE_THRESHOLD * 100), PTies]));
     if TotalSpeedup / BenchCount >= 1.0 then
       WriteLn(Format('On average, Pascal is %.2fx faster than C (arithmetic mean over %d functions)',
         [TotalSpeedup / BenchCount, BenchCount]))
     else
       WriteLn(Format('On average, Pascal is %.2fx slower than C (arithmetic mean over %d functions)',
         [BenchCount / TotalSpeedup, BenchCount]));
-  WriteLn(Format('GlobalSink = %u (prevents dead-code elimination)', [GlobalSink]));
+    WriteLn(Format('GlobalSink = %u (prevents dead-code elimination)', [GlobalSink]));
+  end;
 end.
