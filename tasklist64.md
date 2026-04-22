@@ -16,7 +16,7 @@ Before starting, check the existing functions and notes at:
 
 ## Status summary
 
-- **4 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 in progress — 1.01 rsqrt, 1.02 cbrt, 1.03 atan, 1.04 log2 done)
+- **5 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 in progress — 1.01 rsqrt, 1.02 cbrt, 1.03 atan, 1.04 log2, 1.05 acos done)
 - Target file: `src/pascoremath64.pas`
 - **Phase 0 fully complete** (tasks 0.1–0.10): infrastructure, helpers, and test harness ready
 - libcoremath64.so built from core-math/src/binary64/; test programs compile once pcr_* functions added
@@ -474,7 +474,7 @@ Port in this order. All functions live in `pascoremath64.pas`, named `pcr_<name>
 - [X] **1.02** `cbrt`    — 252 lines  *(uses clzll, fenv)*
 - [X] **1.03** `atan`    — 281 lines  *(uses dint + dd)*
 - [X] **1.04** `log2`    — 313 lines  *(uses clzll + dd)*
-- [ ] **1.05** `acos`    — 354 lines  *(uses dint + dd)*
+- [X] **1.05** `acos`    — 354 lines  *(dd + fenv-free; no dint — all accurate-path refinement is double-double)*
 - [ ] **1.06** `tanh`    — 355 lines  *(uses dint + dd)*
 - [ ] **1.07** `cospi`   — 356 lines  *(uses dint + dd)*
 - [ ] **1.08** `asin`    — 366 lines  *(uses dint + dd)*
@@ -538,6 +538,34 @@ anyway — they are the shortest files and good warm-up exercises.
 
 - Performance: Pascal 106 Mops/s vs C 267 Mops/s (40% of C speed, non-AVX2 with
   software FMA). 10^8 random-input ULP test: 0 mismatches.
+
+**acos implementation notes (task 1.05 completed):**
+
+- `acos.c` claim "uses dint + dd" in the task list was wrong. The accurate
+  refinement is pure double-double; no `TDInt64` or `pcr_clzll` is used. When
+  scanning future Phase 1 entries, re-check against the C source before
+  budgeting dint work.
+
+- The `polydd(v2, dv2, 5, c, &fl)` call in `as_acos_refine` is the *seeded*
+  variant (initial `*l = fl`). Same pattern as log2/atan: inline the loop,
+  do **not** route through `pcr_polydd` (which seeds from the leading pair).
+
+- The slow path uses `sum` (non-fast twosum), `fastsum`, and `fasttwosub` in
+  addition to `fasttwosum` / `muldd`. `fastsum(xh,xl,yh,yl,&e)` is the same
+  as `AtanAddDD` / `Log2AddDD` — inline it. `fasttwosub(x,y)` is
+  `pcr_fasttwosum(s,t, x, -y)`. `sum` uses a full `twosum(xh,ch,&l)` step
+  `s=xh+ch; d=s-xh; l=(ch-d)+(xh+(d-s))` — inline it; it is **not** the same
+  as fasttwosum when `|xh| < |ch|`.
+
+- Seven rare-input worst-case bit-patterns are hardcoded in the refine path
+  (see `cAcosWcIn`). Store inputs and output halves as `Tb64u64` arrays —
+  **do not** transcribe them as decimal literals (both halves would lose
+  exactness; sink-XOR would flag it). Drive the match as a 7-entry `for` loop.
+
+- 10^8 random ULP test: 0 mismatches. 200M-input sink-XOR: MATCH.
+  Benchmark: Pascal 259 Mops/s vs C 267 Mops/s (97% of C, non-AVX2). The
+  fast path is tiny polynomial + muldd + fasttwosum, which the FPC FMA
+  emulation handles almost as well as hardware.
 
 ---
 
