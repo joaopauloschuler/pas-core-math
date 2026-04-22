@@ -16,7 +16,7 @@ Before starting, check the existing functions and notes at:
 
 ## Status summary
 
-- **0 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 ready to start)
+- **1 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 in progress — 1.01 rsqrt done)
 - Target file: `src/pascoremath64.pas`
 - **Phase 0 fully complete** (tasks 0.1–0.10): infrastructure, helpers, and test harness ready
 - libcoremath64.so built from core-math/src/binary64/; test programs compile once pcr_* functions added
@@ -470,7 +470,7 @@ All functions in this phase use `TDInt64` and most use `fasttwosum`/`muldd`, but
 a straightforward one- or two-pass Ziv structure with no `fegetround` branches.
 Port in this order. All functions live in `pascoremath64.pas`, named `pcr_<name>`.
 
-- [ ] **1.01** `rsqrt`   — 220 lines  *(uses clzll, fenv — see note below)*
+- [X] **1.01** `rsqrt`   — 220 lines  *(uses clzll, fenv — see note below)*
 - [ ] **1.02** `cbrt`    — 252 lines  *(uses clzll, fenv)*
 - [ ] **1.03** `atan`    — 281 lines  *(uses dint + dd)*
 - [ ] **1.04** `log2`    — 313 lines  *(uses clzll + dd)*
@@ -489,6 +489,32 @@ Port in this order. All functions live in `pascoremath64.pas`, named `pcr_<name>
 Note: `rsqrt` and `cbrt` technically include `fegetround` calls, but they are simple
 rounding-mode branches, not the multi-path Ziv structure seen in sin/cos. Start with them
 anyway — they are the shortest files and good warm-up exercises.
+
+**rsqrt implementation notes (task 1.01 completed):**
+
+- The Newton-Raphson step requires `drx = fma(r, x, -rx)` (exact rounding error of `r*x`).
+  Setting `drx = 0` universally shifts `rf` for ~6% of inputs (those near a half-ULP
+  boundary), causing them to miss the `mid`-condition refinement trigger — ~6M mismatches.
+
+- `pcr_fma_pascal` (Veltkamp split) overflows for `|x| > DBL_MAX/K ≈ 1.34e300`
+  (biased exponent ≥ 2019, ~0.66% of random doubles). Fix: detect with
+  `ix.u >= UInt64($7E30000000000000)` and compute drx via scaled FMA:
+  ```pascal
+  drx := pcr_fma(r * Double(2^128), x * Double(2^-256), -(rx * Double(2^-128))) * Double(2^128);
+  ```
+  The four scale constants as decimal literals:
+  `3.402823669209385e38` (2^127), `8.636168555094445e-78` (2^-256),
+  `2.9387358770557188e-39` (2^-128).
+
+- **`Double()` cast is mandatory on all scale literals.** In FPC `{$MODE OBJFPC}`,
+  bare decimal literals without `Double()` are evaluated as Extended (80-bit).
+  This causes different code generation in the inlined `pcr_fma_pascal` call,
+  producing wrong intermediate values even in SSE64 mode. Always write
+  `r * Double(3.402823669209385e38)`, never `r * 3.402823669209385e38`.
+
+- Final result: 0 mismatches on 10^9 random doubles (non-AVX2 path via `pcr_fma_pascal`).
+  Benchmark: Pascal 22.3 Mops/s vs C 39.3 Mops/s (56% of C speed; expected with
+  software FMA). AVX2 path would use hardware FMA and reach parity.
 
 ---
 

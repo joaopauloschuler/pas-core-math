@@ -47,6 +47,11 @@ type
 
 operator +(const a: TUInt128; b: UInt64): TUInt128; inline;
 
+procedure AddU128(out r: TUInt128; const a, b: TUInt128); inline;
+procedure SubU128(out r: TUInt128; const a, b: TUInt128); inline;
+procedure ShlU128(var a: TUInt128; sh: Integer); inline;
+procedure ShrU128(var a: TUInt128; sh: Integer); inline;
+
 function Mulu64u64(a, b: UInt64): TUInt128; inline;
 
 // ------- dint64_t arithmetic -------
