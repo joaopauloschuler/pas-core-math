@@ -52,6 +52,38 @@ function pcr_nan(const tagp: PAnsiChar): Double; inline;
 function pcr_feraiseexcept_invalid():Single; inline;
 function pcr_feraiseexcept_divbyzero():Single; inline;
 
+// Count leading zeros in a 64-bit value (__builtin_clzll equivalent).
+// Result is undefined when x = 0.
+function pcr_clzll(x: UInt64): Integer; inline;
+
+// Current FPU rounding mode (wraps Math.GetRoundMode for use in ported functions).
+function pcr_GetRoundMode: TFPURoundingMode; inline;
+
+// ------- binary64 bit-pattern helpers (task 0.10) -------
+// Double equivalents of the cf_*/isint_pf/isodd_pf helpers in pascoremath32.pas.
+
+// Detect signaling NaN via bit-flip at $0008000000000000.
+function pcr_is_signaling(x: Double): Boolean; inline;
+
+// Returns true if y is an exact integer (general use).
+function pcr_isint_d(y: Double): Boolean; inline;
+
+// pow-variant of integer test (same logic as pcr_isint_d).
+function pcr_isint_pd(y: Double): Boolean; inline;
+
+// pow-variant of odd-integer test.
+function pcr_isodd_pd(y: Double): Boolean; inline;
+
+// pow-variant of signaling-NaN test.
+function pcr_is_signaling_pd(x: Double): Boolean; inline;
+
+// Double x double-double multiply: returns (xh+xl)*ch with error in l.
+function pcr_mulddd_pd(xh, xl, ch: Double; out l: Double): Double; inline;
+
+// MXCSR flag save/restore (AVX2: hardware register; otherwise no-op).
+function pcr_get_mxcsr: DWord;
+procedure pcr_set_mxcsr(flag: DWord);
+
 implementation
 
 function pcr_fmaf(x, y, z: Single): Single;
@@ -424,5 +456,137 @@ begin
   x := 0.0;
   Result := 1.0 / x;
 end;
+
+function pcr_clzll(x: UInt64): Integer; inline;
+{$IFDEF AVX2}
+begin
+  Result := 63 - BsrQWord(x);
+end;
+{$ELSE}
+var n: Integer;
+begin
+  if x = 0 then begin Result := 64; Exit; end;
+  n := 0;
+  if (x and UInt64($FFFFFFFF00000000)) = 0 then begin n := n + 32; x := x shl 32; end;
+  if (x and UInt64($FFFF000000000000)) = 0 then begin n := n + 16; x := x shl 16; end;
+  if (x and UInt64($FF00000000000000)) = 0 then begin n := n +  8; x := x shl  8; end;
+  if (x and UInt64($F000000000000000)) = 0 then begin n := n +  4; x := x shl  4; end;
+  if (x and UInt64($C000000000000000)) = 0 then begin n := n +  2; x := x shl  2; end;
+  if (x and UInt64($8000000000000000)) = 0 then n := n + 1;
+  Result := n;
+end;
+{$ENDIF}
+
+function pcr_GetRoundMode: TFPURoundingMode; inline;
+begin
+  Result := GetRoundMode;
+end;
+
+// ---------------------------------------------------------------------------
+// binary64 bit-pattern helpers (task 0.10)
+// ---------------------------------------------------------------------------
+
+function pcr_is_signaling(x: Double): Boolean; inline;
+var u: Tb64u64;
+begin
+  u.f := x;
+  u.u := u.u xor UInt64($0008000000000000);
+  Result := (u.u and UInt64($7FFFFFFFFFFFFFFF)) > UInt64($7FF8000000000000);
+end;
+
+function pcr_isint_d(y: Double): Boolean; inline;
+var wy: Tb64u64;
+    ey, s: Int32;
+begin
+  wy.f := y;
+  ey := Int32((wy.u shr 52) and $7FF) - 1023;
+  s  := ey + 12;
+  if ey >= 0 then begin
+    if s >= 64 then begin Result := True; Exit; end;
+    Result := (wy.u shl s) = 0;
+    Exit;
+  end;
+  Result := (wy.u shl 1) = 0;
+end;
+
+function pcr_isint_pd(y: Double): Boolean; inline;
+var wy: Tb64u64;
+    ey, s: Int32;
+begin
+  wy.f := y;
+  ey := Int32((wy.u shr 52) and $7FF) - 1023;
+  s  := ey + 12;
+  if ey >= 0 then begin
+    if s >= 64 then begin Result := True; Exit; end;
+    Result := (wy.u shl s) = 0;
+    Exit;
+  end;
+  Result := (wy.u shl 1) = 0;
+end;
+
+function pcr_isodd_pd(y: Double): Boolean; inline;
+var wy: Tb64u64;
+    ey, s: Int32;
+    oddb: UInt64;
+begin
+  wy.f := y;
+  ey := Int32((wy.u shr 52) and $7FF) - 1023;
+  s  := ey + 12;
+  oddb := 0;
+  if ey >= 0 then begin
+    if (s < 64) and ((wy.u shl s) = 0) then
+      oddb := (wy.u shr (64 - s)) and 1;
+    if s = 64 then
+      oddb := wy.u and 1;
+  end;
+  Result := oddb <> 0;
+end;
+
+function pcr_is_signaling_pd(x: Double): Boolean; inline;
+var u: Tb64u64;
+begin
+  u.f := x;
+  u.u := u.u xor UInt64($0008000000000000);
+  Result := (u.u and UInt64($7FFFFFFFFFFFFFFF)) > UInt64($7FF8000000000000);
+end;
+
+function pcr_mulddd_pd(xh, xl, ch: Double; out l: Double): Double; inline;
+var ahlh, ahhh, ahhl: Double;
+begin
+  ahlh := ch * xl;
+  ahhh := ch * xh;
+  ahhl := pcr_fma(ch, xh, -ahhh);
+  ahhl := ahhl + ahlh;
+  ch   := ahhh + ahhl;
+  l    := (ahhh - ch) + ahhl;
+  Result := ch;
+end;
+
+function pcr_get_mxcsr: DWord;
+{$IFDEF AVX2}
+var r: DWord;
+begin
+  asm
+    stmxcsr r
+  end;
+  Result := r;
+end;
+{$ELSE}
+begin
+  Result := 0;
+end;
+{$ENDIF}
+
+procedure pcr_set_mxcsr(flag: DWord);
+{$IFDEF AVX2}
+begin
+  asm
+    ldmxcsr flag
+  end;
+end;
+{$ELSE}
+begin
+end;
+{$ENDIF}
 
 end.

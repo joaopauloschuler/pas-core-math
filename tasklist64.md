@@ -16,8 +16,10 @@ Before starting, check the existing functions and notes at:
 
 ## Status summary
 
-- **0 of 41 functions ported** (work not yet started)
+- **0 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 ready to start)
 - Target file: `src/pascoremath64.pas`
+- Phase 0 complete: tasks 0.1–0.5, 0.7, 0.10 done; tasks 0.8–0.9 deferred (test harness / helper promotion)
+- DINT_ONE.ex=1 (confirmed by DToD round-trip tests: DIntFromD(1.0).ex=1, DToD(DINT_ONE)=1.0)
 
 ---
 
@@ -68,7 +70,7 @@ function that uses it.
 
 ---
 
-### [ ] 0.1 — Create `src/pascoremath64.pas` and `src/ccoremath64.pas` scaffolding
+### [X] 0.1 — Create `src/pascoremath64.pas` and `src/ccoremath64.pas` scaffolding
 
 Create both files with the correct unit headers and empty `interface`/`implementation`
 sections. No functions yet. Verify they compile cleanly.
@@ -114,7 +116,7 @@ function, grouped by category) and s/Single/Double/g, s/cr_<n>f/cr_<n>/.
 
 ---
 
-### [ ] 0.2 — Define `TDInt64` in `pascoremathtypes.pas`
+### [X] 0.2 — Define `TDInt64` in `pascoremathtypes.pas`
 
 `dint64_t` is a 128-bit significand type used in the second Ziv iteration. Every binary64
 function uses it. The C definition from `sin.c` (the most complete inline version) is:
@@ -146,7 +148,7 @@ const DINT_ONE:  TDInt64 = (hi: $8000000000000000; lo: 0; ex: 0; sgn: 0);
 
 ---
 
-### [ ] 0.3 — Implement `dint64_t` arithmetic in `pascoremathtypes.pas`
+### [X] 0.3 — Implement `dint64_t` arithmetic in `pascoremathtypes.pas`
 
 These routines are called by nearly every function. Implement them in the types unit so
 they can be shared. Port faithfully from the C definitions found in
@@ -174,7 +176,7 @@ Validate each routine independently with known inputs before proceeding.
 
 ---
 
-### [ ] 0.4 — Define `TQInt64` in `pascoremathtypes.pas`
+### [X] 0.4 — Define `TQInt64` in `pascoremathtypes.pas`
 
 `qint64_t` is a 256-bit significand type used exclusively in `pow` (third Ziv iteration).
 It is the most complex type in the project. Define it now so `pascoremathtypes.pas` stays
@@ -201,7 +203,7 @@ later, just before Phase 5. Only the type definition is needed now.
 
 ---
 
-### [ ] 0.5 — Implement `pcr_clzll` in `pascoremathhelperfuncs.pas`
+### [X] 0.5 — Implement `pcr_clzll` in `pascoremathhelperfuncs.pas`
 
 `__builtin_clzll(x)` counts the number of leading zero bits in a `uint64_t`. It is used
 in `dint_fromd`, `add_dint`, and directly in 13 of the 41 functions.
@@ -291,7 +293,7 @@ Some functions also use `fastsum` (three-term variant). Port it when first encou
 
 ---
 
-### [ ] 0.7 — Implement rounding mode detection helper
+### [X] 0.7 — Implement rounding mode detection helper
 
 Eight functions (cbrt, rsqrt, sin, cos, tan, sincos, asinpi, pow) call `fegetround()` to
 check the current rounding mode and branch accordingly. Wrap it once:
@@ -412,7 +414,7 @@ relies on `pcr_muldd`.
 
 ---
 
-### [ ] 0.10 — Add binary64 siblings of `pascoremath32.pas` bit-pattern helpers
+### [X] 0.10 — Add binary64 siblings of `pascoremath32.pas` bit-pattern helpers
 
 Six single-precision helpers in `pascoremath32.pas` encode bit-layout tests that the
 binary64 port will need in doubled form (exponent bias 1023, 52-bit mantissa,
