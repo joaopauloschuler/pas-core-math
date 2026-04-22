@@ -18,7 +18,7 @@ Before starting, check the existing functions and notes at:
 
 - **0 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 ready to start)
 - Target file: `src/pascoremath64.pas`
-- Phase 0 complete: tasks 0.1–0.5, 0.7, 0.10 done; tasks 0.8–0.9 deferred (test harness / helper promotion)
+- Phase 0 complete: tasks 0.1–0.5, 0.7, 0.9, 0.10 done; task 0.8 deferred (binary64 test harness)
 - DINT_ONE.ex=1 (confirmed by DToD round-trip tests: DIntFromD(1.0).ex=1, DToD(DINT_ONE)=1.0)
 
 ---
@@ -362,7 +362,7 @@ scales with table length.
 
 ---
 
-### [ ] 0.9 — Promote Group A helpers from `pascoremath32.pas` to `pascoremathhelperfuncs.pas`
+### [X] 0.9 — Promote Group A helpers from `pascoremath32.pas` to `pascoremathhelperfuncs.pas`
 
 The binary32 unit already contains working, battle-tested implementations of the
 double-double primitives, polynomial evaluators, and MXCSR flag helpers that the

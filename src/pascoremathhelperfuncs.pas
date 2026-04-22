@@ -84,6 +84,33 @@ function pcr_mulddd_pd(xh, xl, ch: Double; out l: Double): Double; inline;
 function pcr_get_mxcsr: DWord;
 procedure pcr_set_mxcsr(flag: DWord);
 
+// ------- double-double and polynomial helpers (task 0.9, promoted from pascoremath32) -------
+
+// Degree-12 polynomial evaluator (used by acosf, asinf and their binary64 analogues).
+function pcr_poly12(z: Double; const c: array of Double): Double; inline;
+
+// Double-double × double-double product: returns xh*ch + mixed terms, error in l.
+function pcr_muldd(xh, xl, ch, cl: Double; out l: Double): Double; inline;
+
+// Horner evaluation of a flat-array double-double polynomial.
+// c is flat: c[k*2] = high part, c[k*2+1] = low part.
+function pcr_polydd(xh, xl: Double; n: Int32; const c: array of Double; out l: Double): Double; inline;
+
+// All four primitives below write their var outputs LAST (after all value-param
+// reads) so that callers may safely alias value params with var params.
+
+// Error-free sum: s + t = a + b exactly.
+procedure pcr_fasttwosum(var s, t: Double; a, b: Double); inline;
+
+// Error-free product: hi + lo = a * b exactly (via FMA).
+procedure pcr_a_mul(var hi, lo: Double; a, b: Double); inline;
+
+// Scalar × double-double: (hi + lo) = a * (bh + bl).
+procedure pcr_s_mul(var hi, lo: Double; a, bh, bl: Double); inline;
+
+// Double-double × double-double: (hi + lo) = (ah + al) * (bh + bl).
+procedure pcr_d_mul(var hi, lo: Double; ah, al, bh, bl: Double); inline;
+
 implementation
 
 function pcr_fmaf(x, y, z: Single): Single;
@@ -588,5 +615,121 @@ end;
 begin
 end;
 {$ENDIF}
+
+// ---------------------------------------------------------------------------
+// Double-double and polynomial helpers (promoted from pascoremath32, task 0.9)
+// ---------------------------------------------------------------------------
+
+function pcr_poly12(z: Double; const c: array of Double): Double; inline;
+var z2, z4, c0, c2, c4, c6, c8, c10: Double;
+begin
+  z2 := z * z; z4 := z2 * z2;
+  c0  := c[0]  + z * c[1];
+  c2  := c[2]  + z * c[3];
+  c4  := c[4]  + z * c[5];
+  c6  := c[6]  + z * c[7];
+  c8  := c[8]  + z * c[9];
+  c10 := c[10] + z * c[11];
+  c0 := c0 + c2 * z2;
+  c4 := c4 + c6 * z2;
+  c8 := c8 + z2 * c10;
+  c0 := c0 + z4 * (c4 + z4 * c8);
+  Result := c0;
+end;
+
+function pcr_muldd(xh, xl, ch, cl: Double; out l: Double): Double; inline;
+var
+  ahlh, alhh, ahhh, ahhl: Double;
+begin
+  ahlh := ch * xl;
+  alhh := cl * xh;
+  ahhh := ch * xh;
+  ahhl := pcr_fma(ch, xh, -ahhh);
+  ahhl := ahhl + alhh + ahlh;
+  ch := ahhh + ahhl;
+  l := (ahhh - ch) + ahhl;
+  Result := ch;
+end;
+
+function pcr_polydd(xh, xl: Double; n: Int32; const c: array of Double; out l: Double): Double; inline;
+var
+  i, i2: Int32;
+  ch, cl, th, tl: Double;
+begin
+  i := n - 1;
+  i2 := i * 2;
+  ch := c[i2];
+  cl := c[i2 + 1];
+  Dec(i2,2);
+  while i2 >= 8 do begin
+    ch := pcr_muldd(xh, xl, ch, cl, cl);
+    th := ch + c[i2];
+    tl := (c[i2] - th) + ch;
+    ch := th;
+    cl := cl + tl + c[i2 + 1];
+    Dec(i2,2);
+    ch := pcr_muldd(xh, xl, ch, cl, cl);
+    th := ch + c[i2];
+    tl := (c[i2] - th) + ch;
+    ch := th;
+    cl := cl + tl + c[i2 + 1];
+    Dec(i2,2);
+    ch := pcr_muldd(xh, xl, ch, cl, cl);
+    th := ch + c[i2];
+    tl := (c[i2] - th) + ch;
+    ch := th;
+    cl := cl + tl + c[i2 + 1];
+    Dec(i2,2);
+    ch := pcr_muldd(xh, xl, ch, cl, cl);
+    th := ch + c[i2];
+    tl := (c[i2] - th) + ch;
+    ch := th;
+    cl := cl + tl + c[i2 + 1];
+    Dec(i2,2);
+  end;
+  while i2 >= 0 do begin
+    ch := pcr_muldd(xh, xl, ch, cl, cl);
+    th := ch + c[i2];
+    tl := (c[i2] - th) + ch;
+    ch := th;
+    cl := cl + tl + c[i2 + 1];
+    Dec(i2,2);
+  end;
+  l := cl;
+  Result := ch;
+end;
+
+procedure pcr_fasttwosum(var s, t: Double; a, b: Double); inline;
+var s_tmp: Double;
+begin
+  s_tmp := a + b;
+  t     := b - (s_tmp - a);
+  s     := s_tmp;
+end;
+
+procedure pcr_a_mul(var hi, lo: Double; a, b: Double); inline;
+var t_am: Double;
+begin
+  t_am := a * b;
+  lo   := pcr_fma(a, b, -t_am);
+  hi   := t_am;
+end;
+
+procedure pcr_s_mul(var hi, lo: Double; a, bh, bl: Double); inline;
+var bl_sm: Double;
+begin
+  bl_sm := bl;             // save bl before pcr_a_mul may overwrite lo
+  pcr_a_mul(hi, lo, a, bh);
+  lo := pcr_fma(a, bl_sm, lo);
+end;
+
+procedure pcr_d_mul(var hi, lo: Double; ah, al, bh, bl: Double); inline;
+var s_dm, t_dm, ah_dm: Double;
+begin
+  ah_dm := ah;             // save ah before pcr_a_mul may overwrite hi
+  pcr_a_mul(hi, s_dm, ah_dm, bh);
+  t_dm := pcr_fma(al, bh, s_dm);
+  lo   := pcr_fma(ah_dm, bl, t_dm);
+end;
 
 end.
