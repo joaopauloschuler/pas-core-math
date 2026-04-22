@@ -15,6 +15,7 @@ uses Math, pascoremathtypes, pascoremathhelperfuncs, ccoremath64;
 function pcr_rsqrt(x: Double): Double;
 function pcr_cbrt(x: Double): Double;
 function pcr_atan(x: Double): Double;
+function pcr_log2(x: Double): Double;
 
 // ── Stub functions (delegate to C reference until ported) ────────────────────
 function  pcr_acos(x: Double): Double; inline;
@@ -43,7 +44,7 @@ function  pcr_log(x: Double): Double; inline;
 function  pcr_log10(x: Double): Double; inline;
 function  pcr_log10p1(x: Double): Double; inline;
 function  pcr_log1p(x: Double): Double; inline;
-function  pcr_log2(x: Double): Double; inline;
+// pcr_log2 declared in ported section above
 function  pcr_log2p1(x: Double): Double; inline;
 function  pcr_sin(x: Double): Double; inline;
 function  pcr_sinh(x: Double): Double; inline;
@@ -841,6 +842,370 @@ begin
 end;
 
 // ---------------------------------------------------------------------------
+// pcr_log2 — correctly-rounded base-2 logarithm (binary64).
+// Ported from core-math/src/binary64/log2/log2.c by Alexei Sibidanov.
+// ---------------------------------------------------------------------------
+
+const
+  // B[] = {c0 (ushort), c1 (short signed)}, 32 entries
+  cLog2B_c0: array[0..31] of UInt16 = (
+      301,  7189, 13383, 18923, 23845, 28184, 31969, 35231,
+    37996, 40288, 42129, 43542, 44546, 45160, 45399, 45281,
+    44821, 44032, 42929, 41522, 39825, 37848, 35602, 33097,
+    30341, 27345, 24115, 20661, 16989, 13107,  9022,  4740);
+  cLog2B_c1: array[0..31] of Int16 = (
+    27565, 24786, 22167, 19696, 17361, 15150, 13054, 11064,
+     9173,  7372,  5657,  4020,  2457,   962,  -468, -1838,
+    -3151, -4412, -5622, -6786, -7905, -8982,-10020,-11020,
+   -11985,-12916,-13816,-14685,-15526,-16339,-17126,-17889);
+
+  cLog2R1: array[0..32] of Tb64u64 = (
+    (u:$3FF7154800000000),(u:$3FF696AF49200000),
+    (u:$3FF61AB3FB680000),(u:$3FF5A18441680000),
+    (u:$3FF52ADADB480000),(u:$3FF4B6B7C9080000),(u:$3FF4451B0AA80000),(u:$3FF3D5ED8AE00000),
+    (u:$3FF3691834680000),(u:$3FF2FE9B07400000),(u:$3FF2967603680000),(u:$3FF2307AFE500000),
+    (u:$3FF1CCA9F7F80000),(u:$3FF16B02F0600000),(u:$3FF10B85E7880000),(u:$3FF0AE04B2E00000),
+    (u:$3FF0527F52680000),(u:$3FEFF1EB8C400000),(u:$3FEF42A1F1800000),(u:$3FEE9721D4900000),
+    (u:$3FEDEF6B35700000),(u:$3FED4B21BF000000),(u:$3FECAA739BD00000),(u:$3FEC0D32A1500000),
+    (u:$3FEB735ECF800000),(u:$3FEADCC9FBD00000),(u:$3FEA497426400000),(u:$3FE9B92F24400000),
+    (u:$3FE92C2920600000),(u:$3FE8A205C5800000),(u:$3FE81AF33E300000),(u:$3FE796C35FE00000),
+    (u:$3FE7154800000000));
+
+  cLog2R2: array[0..32] of Tb64u64 = (
+    (u:$3FF0000000000000),(u:$3FEFFA7000000000),(u:$3FEFF4F000000000),(u:$3FEFEF6000000000),
+    (u:$3FEFE9E000000000),(u:$3FEFE45000000000),(u:$3FEFDED000000000),(u:$3FEFD94000000000),
+    (u:$3FEFD3C000000000),(u:$3FEFCE4000000000),(u:$3FEFC8C000000000),(u:$3FEFC34000000000),
+    (u:$3FEFBDC000000000),(u:$3FEFB84000000000),(u:$3FEFB2C000000000),(u:$3FEFAD4000000000),
+    (u:$3FEFA7C000000000),(u:$3FEFA24000000000),(u:$3FEF9CD000000000),(u:$3FEF975000000000),
+    (u:$3FEF91E000000000),(u:$3FEF8C6000000000),(u:$3FEF86F000000000),(u:$3FEF817000000000),
+    (u:$3FEF7C0000000000),(u:$3FEF769000000000),(u:$3FEF711000000000),(u:$3FEF6BA000000000),
+    (u:$3FEF663000000000),(u:$3FEF60C000000000),(u:$3FEF5B5000000000),(u:$3FEF55E000000000),
+    (u:$3FEF507000000000));
+
+  cLog2L1Lo: array[0..32] of Tb64u64 = (
+    (u:$0000000000000000),(u:$3E51435EDC775B51),(u:$3E5C8F1CBF9E4073),(u:$BE57BF30FA53957B),
+    (u:$3E4674D30B6276ED),(u:$3E399FCF0D796ACE),(u:$BE55FFD8B92706D2),(u:$3E5BEF90BC5A116D),
+    (u:$3E5FCA73B3D53F0D),(u:$BE441024E560E04E),(u:$3E5484024FAD8461),(u:$3E52D9AB90BA7694),
+    (u:$BE52C998EA30BA7B),(u:$BE475FC8682F918E),(u:$BE5F02F268A85FB8),(u:$BE450030EA7FAE4B),
+    (u:$BE3BFFB8DA5B849D),(u:$3E3F71993FF95475),(u:$3E288028E67F78FA),(u:$3E5F915F5A0B4E89),
+    (u:$3E1C2FE288F968F8),(u:$3E57375A75AE0837),(u:$3E291E48BE920323),(u:$3E2EE7BC0D39A3DB),
+    (u:$BE2899E2AC5F778C),(u:$3E5F1F20176130A7),(u:$3E403FC59D34A4F3),(u:$BDF68722010E4653),
+    (u:$BE558783D505A6EC),(u:$3E4B212AB9F8D51D),(u:$BE5B3ECD767BE776),(u:$3E4B1AD41F07FC10),
+    (u:$0000000000000000));
+
+  cLog2L1Hi: array[0..32] of Tb64u64 = (
+    (u:$0000000000000000),(u:$3F9FFE3800000000),(u:$3FB000BC00000000),(u:$3FB7FF9400000000),
+    (u:$3FBFFFA600000000),(u:$3FC4000580000000),(u:$3FC7FFE500000000),(u:$3FCBFFC300000000),
+    (u:$3FCFFFFD00000000),(u:$3FD2000D00000000),(u:$3FD3FFCC00000000),(u:$3FD5FFE180000000),
+    (u:$3FD80013C0000000),(u:$3FDA0024C0000000),(u:$3FDBFFD300000000),(u:$3FDDFFD7C0000000),
+    (u:$3FDFFFF980000000),(u:$3FE0FFFD40000000),(u:$3FE20010C0000000),(u:$3FE30018A0000000),
+    (u:$3FE3FFF480000000),(u:$3FE5001300000000),(u:$3FE6000EA0000000),(u:$3FE7001120000000),
+    (u:$3FE7FFFB40000000),(u:$3FE8FFFAE0000000),(u:$3FE9FFF1E0000000),(u:$3FEB0012A0000000),
+    (u:$3FEBFFEB80000000),(u:$3FED0004E0000000),(u:$3FEDFFEB20000000),(u:$3FEEFFD520000000),
+    (u:$3FF0000000000000));
+
+  cLog2L2Lo: array[0..32] of Tb64u64 = (
+    (u:$0000000000000000),(u:$BE4E2B19F9C7B840),(u:$BE4B1D68137631FE),(u:$BE4AA92227513FC3),
+    (u:$BE452918E3AB6F5E),(u:$3E41A0B9B9010A9C),(u:$3E509B87F57867EC),(u:$BE33D6B70C673BE6),
+    (u:$3E476D340A6780AB),(u:$3E5E4181E37D9E05),(u:$BE48C181F042B901),(u:$3E49890AE7761D66),
+    (u:$BE555977AE613D5F),(u:$3E4C75F49ACF5E56),(u:$BE3E1FC84D0D42BC),(u:$BE55AB8A182ED279),
+    (u:$BE5B389A7D8A21D9),(u:$BE57376F1A891FA5),(u:$BE30915581B87A8A),(u:$3E4B7F2EAA894FCA),
+    (u:$BE5F8C41BDD38C23),(u:$3E304FFB1F3C8215),(u:$3E5A398CCF2B137D),(u:$3E5373B5BCE07F39),
+    (u:$BE4E42040FD9D454),(u:$3E4EA00EB5770526),(u:$BE53E2002BB54BB8),(u:$3E5797EC835DB8D3),
+    (u:$3E3BDCD45FEDD285),(u:$BE333B8F09D1A210),(u:$BE458937A8EEA36F),(u:$BE43E76203FF54CD),
+    (u:$BE16560F19FC3F41));
+
+  cLog2L2Hi: array[0..32] of Tb64u64 = (
+    (u:$0000000000000000),(u:$3F500E4000000000),(u:$3F5FF10000000000),(u:$3F68026000000000),
+    (u:$3F6FF68000000000),(u:$3F74019000000000),(u:$3F77FD0000000000),(u:$3F7C04C000000000),
+    (u:$3F8000C800000000),(u:$3F81FF8800000000),(u:$3F83FEA800000000),(u:$3F85FE1800000000),
+    (u:$3F87FDE800000000),(u:$3F89FE0800000000),(u:$3F8BFE8800000000),(u:$3F8DFF6000000000),
+    (u:$3F90004800000000),(u:$3F91010C00000000),(u:$3F91FF1000000000),(u:$3F93002C00000000),
+    (u:$3F93FE8C00000000),(u:$3F95000000000000),(u:$3F95FEB400000000),(u:$3F97008400000000),
+    (u:$3F97FF9400000000),(u:$3F98FECC00000000),(u:$3F9A012400000000),(u:$3F9B00B400000000),
+    (u:$3F9C007400000000),(u:$3F9D006000000000),(u:$3F9E007800000000),(u:$3F9F00BC00000000),
+    (u:$3FA0009600000000));
+
+  cLog2C0: Tb64u64 = (u:$BFD62E41D56C6400);
+  cLog2C1: Tb64u64 = (u:$3FC47FD2632D2D32);
+  cLog2C2: Tb64u64 = (u:$BFB5504497831BA7);
+  cLog2C3: Tb64u64 = (u:$3FA7A3314C5BEF3C);
+  cLog2L2H: Tb64u64 = (u:$3FF7154800000000);
+  cLog2L2L: Tb64u64 = (u:$BE9AD47A2F472159);
+
+  // Refine-path tables
+  cLog2T_t1: array[0..16] of Tb64u64 = (
+    (u:$3FF0000000000000), (u:$3FEEA4AFA0000000), (u:$3FED5818E0000000), (u:$3FEC199BE0000000),
+    (u:$3FEAE89F98000000), (u:$3FE9C49180000000), (u:$3FE8ACE540000000), (u:$3FE7A11470000000),
+    (u:$3FE6A09E68000000), (u:$3FE5AB07E0000000), (u:$3FE4BFDAD8000000), (u:$3FE3DEA650000000),
+    (u:$3FE306FE08000000), (u:$3FE2387A70000000), (u:$3FE172B840000000), (u:$3FE0B55870000000),
+    (u:$3FE0000000000000));
+  cLog2T_t2: array[0..15] of Tb64u64 = (
+    (u:$3FF0000000000000), (u:$3FEFE9D968000000), (u:$3FEFD3C228000000), (u:$3FEFBDBA38000000),
+    (u:$3FEFA7C180000000), (u:$3FEF91D800000000), (u:$3FEF7BFDB0000000), (u:$3FEF663278000000),
+    (u:$3FEF507658000000), (u:$3FEF3AC948000000), (u:$3FEF252B38000000), (u:$3FEF0F9C20000000),
+    (u:$3FEEFA1BF0000000), (u:$3FEEE4AAA0000000), (u:$3FEECF4830000000), (u:$3FEEB9F488000000));
+  cLog2T_t3: array[0..15] of Tb64u64 = (
+    (u:$3FF0000000000000), (u:$3FEFFE9D20000000), (u:$3FEFFD3A58000000), (u:$3FEFFBD798000000),
+    (u:$3FEFFA74E8000000), (u:$3FEFF91248000000), (u:$3FEFF7AFB8000000), (u:$3FEFF64D38000000),
+    (u:$3FEFF4EAC8000000), (u:$3FEFF38868000000), (u:$3FEFF22618000000), (u:$3FEFF0C3D0000000),
+    (u:$3FEFEF61A0000000), (u:$3FEFEDFF78000000), (u:$3FEFEC9D68000000), (u:$3FEFEB3B60000000));
+  cLog2T_t4: array[0..15] of Tb64u64 = (
+    (u:$3FF0000000000000), (u:$3FEFFFE9D0000000), (u:$3FEFFFD3A0000000), (u:$3FEFFFBD78000000),
+    (u:$3FEFFFA748000000), (u:$3FEFFF9118000000), (u:$3FEFFF7AE8000000), (u:$3FEFFF64C0000000),
+    (u:$3FEFFF4E90000000), (u:$3FEFFF3860000000), (u:$3FEFFF2238000000), (u:$3FEFFF0C08000000),
+    (u:$3FEFFEF5D8000000), (u:$3FEFFEDFA8000000), (u:$3FEFFEC980000000), (u:$3FEFFEB350000000));
+
+  cLog2LL0: array[0..16, 0..2] of Tb64u64 = (
+    ((u:$0000000000000000), (u:$0000000000000000), (u:$0000000000000000)),
+    ((u:$3FB000001FDA0000), (u:$3D55ED58A7FF2C40), (u:$39F512ACBB219717)),
+    ((u:$3FBFFFFFDA070000), (u:$BD0B38AE1C2D5400), (u:$BA210F11908C5C8D)),
+    ((u:$3FC7FFFFEFB50000), (u:$3D4785D91BB08320), (u:$3A2F5DED30CA48C0)),
+    ((u:$3FD0000004A60000), (u:$3D5380ABF8FE7EB0), (u:$BA2EBD3F567DF886)),
+    ((u:$3FD4000009760000), (u:$3D4D321385BF0A10), (u:$BA1C95A3D59B6C33)),
+    ((u:$3FD80000081B4000), (u:$3D5B6E8F25FF2610), (u:$BA24072D39D44270)),
+    ((u:$3FDC00000F4F4000), (u:$3D4A5FED334580A0), (u:$B9F6F8FDABADD77A)),
+    ((u:$3FDFFFFFF9DE0000), (u:$BD4F85A54FB4A600), (u:$B9F50083897EE638)),
+    ((u:$3FE1FFFFFA35C000), (u:$3D5795DB9D185140), (u:$BA1594F07D4D693F)),
+    ((u:$3FE3FFFFF9CBC000), (u:$3D32FB09A99477A0), (u:$3A1B2C6248382152)),
+    ((u:$3FE5FFFFF6DF2000), (u:$BD53ECF24077C3A0), (u:$BA2382C6B4E2DAA6)),
+    ((u:$3FE800000552E000), (u:$3D47044806F72380), (u:$BA26DA3EB126C999)),
+    ((u:$3FE9FFFFFC182000), (u:$3D45CF031D5D4CF0), (u:$3A2302C44DA79F4B)),
+    ((u:$3FEBFFFFF6B62000), (u:$3D548D11D13372A8), (u:$3A2F045032543C0D)),
+    ((u:$3FEDFFFFF7A42000), (u:$BD40CBF3E62FA860), (u:$3A21CFAF84227211)),
+    ((u:$3FF0000000000000), (u:$0000000000000000), (u:$0000000000000000)));
+
+  cLog2LL1: array[0..16, 0..2] of Tb64u64 = (
+    ((u:$0000000000000000), (u:$0000000000000000), (u:$0000000000000000)),
+    ((u:$3F7000024A000000), (u:$BD5799935D030650), (u:$BA0CACAD0B61C964)),
+    ((u:$3F8000014A880000), (u:$BD586DD926D35EE8), (u:$BA2277AB54C00E64)),
+    ((u:$3F87FFFF7B380000), (u:$3D15FFC7FF00E600), (u:$3A25870383C1225D)),
+    ((u:$3F9000004B940000), (u:$BD44AA9DA7EA0120), (u:$BA247DECFE981022)),
+    ((u:$3F94000064380000), (u:$BD5015D79FD24C70), (u:$3A2EC26C231DDB4C)),
+    ((u:$3F97FFFF8FF80000), (u:$BD5A62A2B755F048), (u:$BA2EEBE936E9A3F9)),
+    ((u:$3F9C000048180000), (u:$3D1D1A1BBCE5F580), (u:$BA24DD25E141AD16)),
+    ((u:$3FA0000050EE0000), (u:$BD5B32450688D5E0), (u:$3A2577A1C80A65B0)),
+    ((u:$3FA2000014760000), (u:$BD3BAC8F6C103D40), (u:$BA1157A2472C9532)),
+    ((u:$3FA3FFFFF2440000), (u:$BD4FBAB0C9D05AA0), (u:$BA13680FFABF1A5B)),
+    ((u:$3FA5FFFFB1CE0000), (u:$3D4EF9EC2BA49140), (u:$BA224850720B73AB)),
+    ((u:$3FA7FFFFD9600000), (u:$3D514E3A91ABEFF0), (u:$BA140E3565C114DD)),
+    ((u:$3FAA0000321C0000), (u:$3D3E33C6A0732340), (u:$BA27E8C937A981D8)),
+    ((u:$3FABFFFFC56A0000), (u:$BD52076781FF0460), (u:$BA296E054EC8F31E)),
+    ((u:$3FADFFFFDBA40000), (u:$BD4EA8B4476EDDE0), (u:$B9E07BFB9FDE770F)),
+    ((u:$3FB000001FDA0000), (u:$3D55ED58A7FF2C40), (u:$39F512ACBB219717)));
+
+  cLog2LL2: array[0..16, 0..2] of Tb64u64 = (
+    ((u:$0000000000000000), (u:$0000000000000000), (u:$0000000000000000)),
+    ((u:$3F30002866000000), (u:$BD5329E31412B688), (u:$3A2279DDC3585863)),
+    ((u:$3F3FFFED31000000), (u:$3D5546DCB40B0518), (u:$BA26D048F41DEBEC)),
+    ((u:$3F48000388000000), (u:$3D5FCE6789678C88), (u:$3A24959DC2FEA030)),
+    ((u:$3F50000668400000), (u:$3D5C5CAEC0AA6620), (u:$BA289D58A2E0D287)),
+    ((u:$3F54000937000000), (u:$BD5DF91BF5DB20F8), (u:$3A2D4FC35005498A)),
+    ((u:$3F58000A2D800000), (u:$3D3E7464F400A700), (u:$BA26365A147CE4A8)),
+    ((u:$3F5C00094A400000), (u:$BD5C55C526E65A68), (u:$BA2A7EA2CF16D2CE)),
+    ((u:$3F60000345400000), (u:$3D48E815121136D0), (u:$BA168F8F7A924FD6)),
+    ((u:$3F620000F6400000), (u:$3D57FB19A44DA298), (u:$BA2A05FC6ED4124D)),
+    ((u:$3F63FFFDB7000000), (u:$3D5BFAC3B1ABE2E8), (u:$BA09AB1F45A1EFB1)),
+    ((u:$3F66000516A00000), (u:$BD402544D9FAF830), (u:$3A2286C39ADFFA8C)),
+    ((u:$3F67FFFFF4200000), (u:$BD52878B893DA790), (u:$3A2B55C5E09022B1)),
+    ((u:$3F6A00056F400000), (u:$BD59D7CCF4019608), (u:$3A2F4B05553FE340)),
+    ((u:$3F6BFFFE65200000), (u:$BD5EE85F47C2B5A0), (u:$3A253FA913D4E9A6)),
+    ((u:$3F6E0001F7600000), (u:$3D42E594FB2AF5E0), (u:$B9CAFAEC77CA8D86)),
+    ((u:$3F7000024A000000), (u:$BD5799935D030650), (u:$BA0CACAD0B61C964)));
+
+  cLog2LL3: array[0..16, 0..2] of Tb64u64 = (
+    ((u:$0000000000000000), (u:$0000000000000000), (u:$0000000000000000)),
+    ((u:$3EF0014690000000), (u:$BD4743D8EA40A4D0), (u:$B9E75086A21C12AB)),
+    ((u:$3F00014C18000000), (u:$3D48E7FA3CF59080), (u:$3A2A11BDCDB1ACE3)),
+    ((u:$3F07FF17C8000000), (u:$3D5118DBBCCE8470), (u:$3A009806ECD19760)),
+    ((u:$3F0FFFCBB8000000), (u:$BD5EAA70B2051E38), (u:$39E0D287C5AA12B4)),
+    ((u:$3F14004294000000), (u:$3D5602B04D79B0C8), (u:$39F8D2C8DDF31648)),
+    ((u:$3F1800A218000000), (u:$BD50A23112178630), (u:$BA2C4652435118F1)),
+    ((u:$3F1BFF9304000000), (u:$BD4385DC475C16B0), (u:$B9FE7288F74BBBDA)),
+    ((u:$3F1FFFF810000000), (u:$3D4355EDCFF4E190), (u:$3A0F8DAAE6C1DB11)),
+    ((u:$3F22002FF2000000), (u:$3D23FBB7CD366140), (u:$3A293C0E5B4DCA92)),
+    ((u:$3F23FFAC90000000), (u:$BD39BDE416DE25C0), (u:$BA2F4DF1D74776B3)),
+    ((u:$3F25FFE340000000), (u:$BD521735D0955DC0), (u:$BA21B0E10765842F)),
+    ((u:$3F28001B52000000), (u:$3D40C0949E968810), (u:$BA1D3771C0B220F3)),
+    ((u:$3F2A0054C8000000), (u:$3D426936197B1050), (u:$3A2E59CAA334554A)),
+    ((u:$3F2BFFD6F0000000), (u:$3D427097B0B27D40), (u:$3A278A37896A0D1F)),
+    ((u:$3F2E00132C000000), (u:$3D3DF1E084120280), (u:$3A1C61F449A4B5D5)),
+    ((u:$3F30002866000000), (u:$BD5329E31412B688), (u:$3A2279DDC3585863)));
+
+  cLog2Cy0H: Tb64u64 = (u:$3FF71547652B82FE);
+  cLog2Cy0L: Tb64u64 = (u:$3C7777D0FFDA0D24);
+  cLog2Cy1H: Tb64u64 = (u:$BFE71547652B82FE);
+  cLog2Cy1L: Tb64u64 = (u:$BC6777D0FFDA0D24);
+  cLog2Cy2H: Tb64u64 = (u:$3FDEC709DC3A03FD);
+  cLog2Cy2L: Tb64u64 = (u:$3C7D27E96BE541E5);
+  cLog2Cl0:  Tb64u64 = (u:$BFD71547652B82FE);
+  cLog2Cl1:  Tb64u64 = (u:$3FD2776C50F1FF14);
+  cLog2Cl2:  Tb64u64 = (u:$BFCEC709DC3ECA5D);
+
+function Log2AddDD(xh, xl, ch, cl: Double; out l: Double): Double; inline;
+var s, d: Double;
+begin
+  s := xh + ch;
+  d := s - xh;
+  l := ((ch - d) + (xh + (d - s))) + (xl + cl);
+  Result := s;
+end;
+
+function Log2Refine(x, a: Double): Double;
+var
+  t, v, w: Tb64u64;
+  ex, e, i1, i2, i3, i4: Int32;
+  k: Int32;
+  i: UInt64;
+  ed: Double;
+  L0, L1, L2: Double;
+  t12, t34, th, tl, dh, dl, sh, sl: Double;
+  xh, xl, chp, clp, tth, ttl: Double;
+  v0, v1, v2: Double;
+begin
+  t.f := x;
+  ex := Int32(t.u shr 52);
+  e  := ex - $3FF;
+  if ex = 0 then
+  begin
+    k := pcr_clzll(t.u);
+    e := e - (k - 12);
+    t.u := t.u shl (k - 11);
+  end;
+  t.u := t.u and (UInt64($FFFFFFFFFFFFFFFF) shr 12);
+  t.u := t.u or (UInt64($3FF) shl 52);
+  ed := e;
+  v.f := a - ed + Double(1.0000305175781250);  // 0x1.00008p+0
+  i := (v.u - (UInt64($3FF) shl 52)) shr (52 - 16);
+  i1 := Int32(i shr 12);
+  i2 := Int32((i shr 8) and $F);
+  i3 := Int32((i shr 4) and $F);
+  i4 := Int32(i and $F);
+
+  L0 := cLog2LL0[i1,0].f + cLog2LL1[i2,0].f + (cLog2LL2[i3,0].f + cLog2LL3[i4,0].f) + ed;
+  L1 := cLog2LL0[i1,1].f + cLog2LL1[i2,1].f + (cLog2LL2[i3,1].f + cLog2LL3[i4,1].f);
+  L2 := cLog2LL0[i1,2].f + cLog2LL1[i2,2].f + (cLog2LL2[i3,2].f + cLog2LL3[i4,2].f);
+
+  t12 := cLog2T_t1[i1].f * cLog2T_t2[i2].f;
+  t34 := cLog2T_t3[i3].f * cLog2T_t4[i4].f;
+  th  := t12 * t34;
+  tl  := pcr_fma(t12, t34, -th);
+  dh  := th * t.f;
+  dl  := pcr_fma(th, t.f, -dh);
+  sh  := tl * t.f;
+  sl  := pcr_fma(tl, t.f, -sh);
+
+  pcr_fasttwosum(xh, xl, dh - Double(1.0), dl);
+  xh := Log2AddDD(xh, xl, sh, sl, xl);
+
+  // polynomial: sl = xh*(cl0 + xh*(cl1 + xh*cl2))
+  sl := xh * (cLog2Cl0.f + xh * (cLog2Cl1.f + xh * cLog2Cl2.f));
+
+  // polydd(xh, xl, 3, cy, &sl) — inline with initial *l = sl
+  // i=2: ch = cy[2].h + sl, cl = ((cy[2].h - ch) + sl) + cy[2].l
+  chp := cLog2Cy2H.f + sl;
+  clp := ((cLog2Cy2H.f - chp) + sl) + cLog2Cy2L.f;
+  // i=1
+  chp := pcr_muldd(xh, xl, chp, clp, clp);
+  tth := chp + cLog2Cy1H.f;  ttl := (cLog2Cy1H.f - tth) + chp;
+  chp := tth;  clp := clp + ttl + cLog2Cy1L.f;
+  // i=0
+  chp := pcr_muldd(xh, xl, chp, clp, clp);
+  tth := chp + cLog2Cy0H.f;  ttl := (cLog2Cy0H.f - tth) + chp;
+  chp := tth;  clp := clp + ttl + cLog2Cy0L.f;
+  sh := chp;  sl := clp;
+
+  sh := pcr_muldd(xh, xl, sh, sl, sl);
+  sh := Log2AddDD(sh, sl, L1, L2, sl);
+
+  pcr_fasttwosum(v0, v2, L0, sh);
+  pcr_fasttwosum(v1, v2, v2, sl);
+
+  t.f := v1;
+  if (t.u and (UInt64($FFFFFFFFFFFFFFFF) shr 12)) = 0 then
+  begin
+    w.f := v2;
+    if ((w.u xor t.u) shr 63) <> 0 then
+      Dec(t.u)
+    else
+      Inc(t.u);
+    v1 := t.f;
+  end;
+  Result := v1 + v0;
+end;
+
+function pcr_log2(x: Double): Double;
+var
+  t: Tb64u64;
+  ex, e, i1, i2, k: Int32;
+  ir: UInt64;
+  d: Int64;
+  j, sum: UInt64;
+  r, o, dxl, dxh, dx, dx2, f_poly, lt, lh, ll, ed: Double;
+  eps, lb, ub: Double;
+begin
+  t.f := x;
+  ex  := Int32(t.u shr 52);
+  e   := ex - $3FF;
+
+  if ex = 0 then
+  begin
+    if t.u = 0 then begin Result := -Infinity; Exit; end;
+    k := pcr_clzll(t.u);
+    e := e - (k - 12);
+    t.u := t.u shl (k - 11);
+    ex := 0;
+  end;
+
+  if ex >= $7FF then
+  begin
+    if (t.u shl 1) = 0 then begin Result := -Infinity; Exit; end;  // -0
+    if (t.u shl 1) > (UInt64($7FF) shl 53) then
+    begin Result := x + x; Exit; end;  // NaN
+    if (t.u shr 63) <> 0 then
+    begin Result := cNaNDouble; Exit; end;  // x < 0
+    Result := x;  // +Inf
+    Exit;
+  end;
+
+  t.u := t.u and (UInt64($FFFFFFFFFFFFFFFF) shr 12);
+  if t.u = 0 then begin Result := e; Exit; end;
+
+  ed  := e;
+  ir  := t.u shr (52 - 5);
+  d   := Int64(t.u and (UInt64($FFFFFFFFFFFFFFFF) shr 17));
+
+  // sum = t.u + (B.c0<<33) + B.c1*(d>>16), signed 64-bit safe
+  sum := t.u + (UInt64(cLog2B_c0[Integer(ir)]) shl 33)
+             + UInt64(Int64(cLog2B_c1[Integer(ir)]) * (d shr 16));
+  j   := sum shr (52 - 10);
+  t.u := t.u or (UInt64($3FF) shl 52);
+  i1  := Int32(j shr 5);
+  i2  := Int32(j and $1F);
+
+  r    := cLog2R1[i1].f * cLog2R2[i2].f;
+  o    := r * t.f;
+  dxl  := pcr_fma(r, t.f, -o);
+  dxh  := o - cLog2L2H.f;
+  dx   := dxh + dxl;
+  dx2  := dx * dx;
+  f_poly := dx2 * ((cLog2C0.f + dx * cLog2C1.f) + dx2 * (cLog2C2.f + dx * cLog2C3.f));
+
+  lt := (cLog2L1Hi[i1].f + cLog2L2Hi[i2].f) + ed;
+  lh := lt + dxh;
+  ll := (lt - lh) + dxh;
+  ll := ll + ((cLog2L1Lo[i1].f + cLog2L2Lo[i2].f) + dxl) + dxh * cLog2L2L.f;
+  ll := ll + f_poly;
+
+  eps := Double(1.6e-22);
+  lb  := lh + (ll - eps);
+  ub  := lh + (ll + eps);
+  if lb = ub then begin Result := lb; Exit; end;
+
+  Result := Log2Refine(x, ub);
+end;
+
+// ---------------------------------------------------------------------------
 // Stubs — delegate to C reference until each function is ported.
 // Replace each stub body with the real Pascal port as phases 1-5 progress.
 // ---------------------------------------------------------------------------
@@ -870,7 +1235,7 @@ function  pcr_log(x: Double): Double;     begin Result := cr_log(x);     end;
 function  pcr_log10(x: Double): Double;   begin Result := cr_log10(x);   end;
 function  pcr_log10p1(x: Double): Double; begin Result := cr_log10p1(x); end;
 function  pcr_log1p(x: Double): Double;   begin Result := cr_log1p(x);   end;
-function  pcr_log2(x: Double): Double;    begin Result := cr_log2(x);    end;
+// pcr_log2 — ported above
 function  pcr_log2p1(x: Double): Double;  begin Result := cr_log2p1(x);  end;
 function  pcr_sin(x: Double): Double;     begin Result := cr_sin(x);     end;
 function  pcr_sinh(x: Double): Double;    begin Result := cr_sinh(x);    end;

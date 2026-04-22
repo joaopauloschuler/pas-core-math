@@ -16,7 +16,7 @@ Before starting, check the existing functions and notes at:
 
 ## Status summary
 
-- **3 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 in progress — 1.01 rsqrt, 1.02 cbrt, 1.03 atan done)
+- **4 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 in progress — 1.01 rsqrt, 1.02 cbrt, 1.03 atan, 1.04 log2 done)
 - Target file: `src/pascoremath64.pas`
 - **Phase 0 fully complete** (tasks 0.1–0.10): infrastructure, helpers, and test harness ready
 - libcoremath64.so built from core-math/src/binary64/; test programs compile once pcr_* functions added
@@ -473,7 +473,7 @@ Port in this order. All functions live in `pascoremath64.pas`, named `pcr_<name>
 - [X] **1.01** `rsqrt`   — 220 lines  *(uses clzll, fenv — see note below)*
 - [X] **1.02** `cbrt`    — 252 lines  *(uses clzll, fenv)*
 - [X] **1.03** `atan`    — 281 lines  *(uses dint + dd)*
-- [ ] **1.04** `log2`    — 313 lines  *(uses clzll + dd)*
+- [X] **1.04** `log2`    — 313 lines  *(uses clzll + dd)*
 - [ ] **1.05** `acos`    — 354 lines  *(uses dint + dd)*
 - [ ] **1.06** `tanh`    — 355 lines  *(uses dint + dd)*
 - [ ] **1.07** `cospi`   — 356 lines  *(uses dint + dd)*
@@ -515,6 +515,29 @@ anyway — they are the shortest files and good warm-up exercises.
 - Final result: 0 mismatches on 10^9 random doubles (non-AVX2 path via `pcr_fma_pascal`).
   Benchmark: Pascal 22.3 Mops/s vs C 39.3 Mops/s (56% of C speed; expected with
   software FMA). AVX2 path would use hardware FMA and reach parity.
+
+**log2 implementation notes (task 1.04 completed):**
+
+- x < 0 returns `cNaNDouble` (negative quiet NaN, $FFF8000000000000), **not**
+  `cNaNDoublePos.f`. The C source uses literal `0.0/0.0` here (not
+  `__builtin_nan`), which produces a *negative* NaN on x86-64 — matching FPC's
+  own `0.0/0.0`. Note 0.10's "prefer positive-quiet-NaN" rule is for
+  `__builtin_nan(...)` call sites only; raw `0.0/0.0` keeps the negative sign.
+  First attempt used `cNaNDoublePos.f` and produced Benchmark64 `sink=MISMATCH`
+  even though all ULP-level tests passed — the sink-XOR invariant caught it.
+
+- The C `polydd` takes an incoming `*l` seed (initial `ch = c[n-1][0] + *l`),
+  unlike `pcr_polydd` in `pascoremathhelperfuncs.pas` which starts from the
+  leading pair directly. For callers that need the seeded form (log2 refine
+  path, atan refine2), inline the loop rather than shoehorning into
+  `pcr_polydd`. Same pattern as `AtanRefine2`.
+
+- `adddd` from the C source is structurally identical to `AtanAddDD` in atan;
+  log2 has a local `Log2AddDD`. Consider promoting a shared `pcr_adddd` helper
+  when the third caller appears — don't do it pre-emptively.
+
+- Performance: Pascal 106 Mops/s vs C 267 Mops/s (40% of C speed, non-AVX2 with
+  software FMA). 10^8 random-input ULP test: 0 mismatches.
 
 ---
 
