@@ -18,7 +18,8 @@ Before starting, check the existing functions and notes at:
 
 - **0 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 ready to start)
 - Target file: `src/pascoremath64.pas`
-- Phase 0 complete: tasks 0.1–0.5, 0.7, 0.9, 0.10 done; task 0.8 deferred (binary64 test harness)
+- **Phase 0 fully complete** (tasks 0.1–0.10): infrastructure, helpers, and test harness ready
+- libcoremath64.so built from core-math/src/binary64/; test programs compile once pcr_* functions added
 - DINT_ONE.ex=1 (confirmed by DToD round-trip tests: DIntFromD(1.0).ex=1, DToD(DINT_ONE)=1.0)
 
 ---
@@ -318,7 +319,7 @@ The C constants map as follows:
 
 ---
 
-### [ ] 0.8 — Set up test programs
+### [X] 0.8 — Set up test programs
 
 Create the four binary64 test programs by cloning their binary32 counterparts:
 

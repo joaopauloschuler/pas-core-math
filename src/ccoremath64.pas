@@ -9,7 +9,7 @@ unit ccoremath64;
 
 interface
 
-{$linklib coremath}
+{$linklib coremath64}
 {$linklib m}
 
 // Univariate functions
