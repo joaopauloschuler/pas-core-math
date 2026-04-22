@@ -132,7 +132,7 @@ begin
       ix.u := ix.u and $7FFFFFFF;
       if ix.u > UInt32($FF shl 23) then begin Result := x + x; Exit; end;
       pcr_feraiseexcept_invalid;
-      Result := pcr_nanf('');
+      Result := cNaNSinglePos.f;
       Exit;
     end;
     if (ix.u shl 9) = 0 then begin Result := 0.0; Exit; end;
@@ -758,7 +758,7 @@ begin
     if x = -1.0 then begin Result := 1.0; Exit; end;
     if (e = $FF) and ((t.u shl 9) <> 0) then begin Result := x + x; Exit; end;
     pcr_feraiseexcept_invalid;
-    Result := pcr_nanf('');
+    Result := cNaNSinglePos1.f;
     Exit;
   end;
   s := 146 - e;
@@ -952,7 +952,7 @@ begin
     if ax_f = 1.0 then begin Result := pcr_copysignf(0.5, x); Exit; end;
     if (e = $FF) and ((t.u shl 9) <> 0) then begin Result := x + x; Exit; end;
     pcr_feraiseexcept_invalid;
-    Result := pcr_nanf('');
+    Result := cNaNSinglePos1.f;
     Exit;
   end;
   s := 146 - e;
@@ -3138,7 +3138,7 @@ begin
     if ux_ac = $3F800000 then begin Result := 0.0; Exit; end;
     if (ux_ac shl 1) > $FF000000 then begin Result := x + x; Exit; end; // nan
     pcr_feraiseexcept_invalid;
-    Result := pcr_nanf(nil);
+    Result := cNaNSinglePos.f;
     Exit;
   end
   else if ux_ac <= $3F99DB23 then begin
@@ -3188,7 +3188,7 @@ begin
     if ux_ac = $7F800000 then begin Result := x; Exit; end;  // +inf
     if (ux_ac shl 1) > $FF000000 then begin Result := x + x; Exit; end;  // nan
     pcr_feraiseexcept_invalid;
-    Result := pcr_nanf(nil);
+    Result := cNaNSinglePos.f;
   end;
 end;
 

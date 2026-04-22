@@ -31,8 +31,13 @@ operator +(const a: TUInt128; b: UInt64): TUInt128; inline;
 function Mulu64u64(a, b: UInt64): TUInt128; inline;
 
 const
-  cNaNSingle: Single = 0.0/0.0;
+  cNaNSingle: Single = 0.0/0.0;       // x86 indefinite: 0xFFC00000 (negative quiet NaN)
   cNaNDouble: Double = 0.0/0.0;
+  // Positive quiet NaNs matching __builtin_nanf("") and __builtin_nanf("1") in C.
+  // Must be Tb32u32 because Pascal has no hex-float literal syntax.
+  // Access the Single value via the .f field.
+  cNaNSinglePos:  Tb32u32 = (u: $7FC00000); // positive quiet NaN, payload 0
+  cNaNSinglePos1: Tb32u32 = (u: $7FC00001); // positive quiet NaN, payload 1
   // 2^(-127): subnormal Single used to trigger IEEE 754 underflow via multiplication
   cUnderflowSingle: Single = 5.877471754111438e-39;
 
