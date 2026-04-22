@@ -2,7 +2,7 @@
 Task: speed up a function or procedure via better algorithms.
 Date: Started investigation.
 
-## Codegen tip: prefer individual named Double constants over small Double arrays
+## Codegen tip: prefer individual named Double constants over Double arrays
 
 When a function uses a small array of `Double` constants indexed only with
 compile-time-constant indices (e.g. `b_exp[0]`, `b_exp[1]`, `b_exp[2]`,

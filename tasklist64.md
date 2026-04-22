@@ -6,6 +6,12 @@ of `Double` inputs (exhaustive testing of all 2^64 inputs is infeasible).
 
 C source reference: `core-math/src/binary64/`
 
+Before starting, check the existing functions and notes at:
+* src/pascoremathtypes.pas
+* src/pascoremathhelperfuncs.pas
+* The section "Codegen tip: wrap bare decimal literals as `Double(...)` to stay on SSE" in the file notes.md.
+* The section "Codegen tip: prefer individual named Double constants over Double arrays" in the file notes.md.
+
 ---
 
 ## Status summary
