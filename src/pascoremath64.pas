@@ -17,6 +17,7 @@ function pcr_cbrt(x: Double): Double;
 function pcr_atan(x: Double): Double;
 function pcr_log2(x: Double): Double;
 function pcr_acos(x: Double): Double;
+function pcr_tanh(x: Double): Double;
 
 // ── Stub functions (delegate to C reference until ported) ────────────────────
 // pcr_acos declared in ported section above
@@ -51,7 +52,7 @@ function  pcr_sin(x: Double): Double; inline;
 function  pcr_sinh(x: Double): Double; inline;
 function  pcr_sinpi(x: Double): Double; inline;
 function  pcr_tan(x: Double): Double; inline;
-function  pcr_tanh(x: Double): Double; inline;
+// pcr_tanh declared in ported section above
 function  pcr_tanpi(x: Double): Double; inline;
 function  pcr_tgamma(x: Double): Double; inline;
 function  pcr_atan2(y, x: Double): Double; inline;
@@ -1503,6 +1504,510 @@ begin
 end;
 
 // ---------------------------------------------------------------------------
+// pcr_tanh — correctly-rounded binary64 hyperbolic tangent.
+// Ported from core-math/src/binary64/tanh/tanh.c by Alexei Sibidanov.
+// ---------------------------------------------------------------------------
+
+const
+  // t0[64][2]: (lo, hi) pair; hi ~ 2^(i0/64) on the coarse grid.
+  cTanhT0: array[0..63, 0..1] of Tb64u64 = (
+    ((u:$0000000000000000),(u:$3FF0000000000000)),
+    ((u:$BC719083535B085E),(u:$3FF02C9A3E778061)),
+    ((u:$3C8D73E2A475B466),(u:$3FF059B0D3158574)),
+    ((u:$3C6186BE4BB28500),(u:$3FF0874518759BC8)),
+    ((u:$3C98A62E4ADC610A),(u:$3FF0B5586CF9890F)),
+    ((u:$3C403A1727C57B52),(u:$3FF0E3EC32D3D1A2)),
+    ((u:$BC96C51039449B3A),(u:$3FF11301D0125B51)),
+    ((u:$BC932FBF9AF1369E),(u:$3FF1429AAEA92DE0)),
+    ((u:$BC819041B9D78A76),(u:$3FF172B83C7D517B)),
+    ((u:$3C8E5B4C7B4968E4),(u:$3FF1A35BEB6FCB75)),
+    ((u:$3C9E016E00A2643C),(u:$3FF1D4873168B9AA)),
+    ((u:$3C8DC775814A8494),(u:$3FF2063B88628CD6)),
+    ((u:$3C99B07EB6C70572),(u:$3FF2387A6E756238)),
+    ((u:$3C82BD339940E9DA),(u:$3FF26B4565E27CDD)),
+    ((u:$3C8612E8AFAD1256),(u:$3FF29E9DF51FDEE1)),
+    ((u:$3C90024754DB41D4),(u:$3FF2D285A6E4030B)),
+    ((u:$3C86F46AD23182E4),(u:$3FF306FE0A31B715)),
+    ((u:$3C932721843659A6),(u:$3FF33C08B26416FF)),
+    ((u:$BC963AEABF42EAE2),(u:$3FF371A7373AA9CB)),
+    ((u:$BC75E436D661F5E2),(u:$3FF3A7DB34E59FF7)),
+    ((u:$3C8ADA0911F09EBC),(u:$3FF3DEA64C123422)),
+    ((u:$BC5EF3691C309278),(u:$3FF4160A21F72E2A)),
+    ((u:$3C489B7A04EF80D0),(u:$3FF44E086061892D)),
+    ((u:$3C73C1A3B69062F0),(u:$3FF486A2B5C13CD0)),
+    ((u:$3C7D4397AFEC42E2),(u:$3FF4BFDAD5362A27)),
+    ((u:$BC94B309D25957E4),(u:$3FF4F9B2769D2CA7)),
+    ((u:$BC807ABE1DB13CAC),(u:$3FF5342B569D4F82)),
+    ((u:$3C99BB2C011D93AC),(u:$3FF56F4736B527DA)),
+    ((u:$3C96324C054647AC),(u:$3FF5AB07DD485429)),
+    ((u:$3C9BA6F93080E65E),(u:$3FF5E76F15AD2148)),
+    ((u:$BC9383C17E40B496),(u:$3FF6247EB03A5585)),
+    ((u:$BC9BB60987591C34),(u:$3FF6623882552225)),
+    ((u:$BC9BDD3413B26456),(u:$3FF6A09E667F3BCD)),
+    ((u:$BC6BBE3A683C88AA),(u:$3FF6DFB23C651A2F)),
+    ((u:$BC816E4786887A9A),(u:$3FF71F75E8EC5F74)),
+    ((u:$BC90245957316DD4),(u:$3FF75FEB564267C9)),
+    ((u:$BC841577EE049930),(u:$3FF7A11473EB0187)),
+    ((u:$3C705D02BA15797E),(u:$3FF7E2F336CF4E62)),
+    ((u:$BC9D4C1DD41532D8),(u:$3FF82589994CCE13)),
+    ((u:$BC9FC6F89BD4F6BA),(u:$3FF868D99B4492ED)),
+    ((u:$3C96E9F156864B26),(u:$3FF8ACE5422AA0DB)),
+    ((u:$3C85CC13A2E3976C),(u:$3FF8F1AE99157736)),
+    ((u:$BC675FC781B57EBC),(u:$3FF93737B0CDC5E5)),
+    ((u:$BC9D185B7C1B85D0),(u:$3FF97D829FDE4E50)),
+    ((u:$3C7C7C46B071F2BE),(u:$3FF9C49182A3F090)),
+    ((u:$BC9359495D1CD532),(u:$3FFA0C667B5DE565)),
+    ((u:$BC9D2F6EDB8D41E2),(u:$3FFA5503B23E255D)),
+    ((u:$3C90FAC90EF7FD32),(u:$3FFA9E6B5579FDBF)),
+    ((u:$3C97A1CD345DCC82),(u:$3FFAE89F995AD3AD)),
+    ((u:$BC62805E3084D708),(u:$3FFB33A2B84F15FB)),
+    ((u:$BC75584F7E54AC3A),(u:$3FFB7F76F2FB5E47)),
+    ((u:$3C823DD07A2D9E84),(u:$3FFBCC1E904BC1D2)),
+    ((u:$3C811065895048DE),(u:$3FFC199BDD85529C)),
+    ((u:$3C92884DFF483CAC),(u:$3FFC67F12E57D14B)),
+    ((u:$3C7503CBD1E949DC),(u:$3FFCB720DCEF9069)),
+    ((u:$BC9CBC3743797A9C),(u:$3FFD072D4A07897C)),
+    ((u:$3C82ED02D75B3706),(u:$3FFD5818DCFBA487)),
+    ((u:$3C9C2300696DB532),(u:$3FFDA9E603DB3285)),
+    ((u:$BC91A5CD4F184B5C),(u:$3FFDFC97337B9B5F)),
+    ((u:$3C839E8980A9CC90),(u:$3FFE502EE78B3FF6)),
+    ((u:$BC9E9C23179C2894),(u:$3FFEA4AFA2A490DA)),
+    ((u:$3C9DC7F486A4B6B0),(u:$3FFEFA1BEE615A27)),
+    ((u:$3C99D3E12DD8A18A),(u:$3FFF50765B6E4540)),
+    ((u:$3C874853F3A5931E),(u:$3FFFA7C1819E90D8)));
+
+  // t1[64][2]: fine grid, (lo, hi) pair.
+  cTanhT1: array[0..63, 0..1] of Tb64u64 = (
+    ((u:$0000000000000000),(u:$3FF0000000000000)),
+    ((u:$3C9AE8E38C59C72A),(u:$3FF000B175EFFDC7)),
+    ((u:$BC57B5D0D58EA8F4),(u:$3FF00162F3904052)),
+    ((u:$3C94115CB6B16A8E),(u:$3FF0021478E11CE6)),
+    ((u:$BC8D7C96F201BB2E),(u:$3FF002C605E2E8CF)),
+    ((u:$3C984711D4C35EA0),(u:$3FF003779A95F959)),
+    ((u:$BC80484245243778),(u:$3FF0042936FAA3D8)),
+    ((u:$BC94B237DA2025FA),(u:$3FF004DADB113DA0)),
+    ((u:$BC75E00E62D6B30E),(u:$3FF0058C86DA1C0A)),
+    ((u:$3C9A1D6CEDBB9480),(u:$3FF0063E3A559473)),
+    ((u:$BC94ACF197A00142),(u:$3FF006EFF583FC3D)),
+    ((u:$BC6EAF2EA42391A6),(u:$3FF007A1B865A8CA)),
+    ((u:$3C7DA93F90835F76),(u:$3FF0085382FAEF83)),
+    ((u:$BC86A79084AB093C),(u:$3FF00905554425D4)),
+    ((u:$3C986364F8FBE8F8),(u:$3FF009B72F41A12B)),
+    ((u:$BC882E8E14E3110E),(u:$3FF00A6910F3B6FD)),
+    ((u:$BC84F6B2A7609F72),(u:$3FF00B1AFA5ABCBF)),
+    ((u:$BC7E1A258EA8F71A),(u:$3FF00BCCEB7707EC)),
+    ((u:$3C74362CA5BC26F2),(u:$3FF00C7EE448EE02)),
+    ((u:$3C9095A56C919D02),(u:$3FF00D30E4D0C483)),
+    ((u:$BC6406AC4E81A646),(u:$3FF00DE2ED0EE0F5)),
+    ((u:$3C9B5A6902767E08),(u:$3FF00E94FD0398E0)),
+    ((u:$BC991B2060859320),(u:$3FF00F4714AF41D3)),
+    ((u:$3C8427068AB22306),(u:$3FF00FF93412315C)),
+    ((u:$3C9C1D0660524E08),(u:$3FF010AB5B2CBD11)),
+    ((u:$BC9E7BDFB3204BE8),(u:$3FF0115D89FF3A8B)),
+    ((u:$3C8843AA8B9CBBC6),(u:$3FF0120FC089FF63)),
+    ((u:$BC734104EE7EDAE8),(u:$3FF012C1FECD613B)),
+    ((u:$BC72B6AEB6176892),(u:$3FF0137444C9B5B5)),
+    ((u:$3C7A8CD33B8A1BB2),(u:$3FF01426927F5278)),
+    ((u:$3C72EDC08E5DA99A),(u:$3FF014D8E7EE8D2F)),
+    ((u:$3C857BA2DC7E0C72),(u:$3FF0158B4517BB88)),
+    ((u:$3C9B61299AB8CDB8),(u:$3FF0163DA9FB3335)),
+    ((u:$BC990565902C5F44),(u:$3FF016F0169949ED)),
+    ((u:$3C870FC41C5C2D54),(u:$3FF017A28AF25567)),
+    ((u:$3C94B9A6E145D76C),(u:$3FF018550706AB62)),
+    ((u:$BC7008EFF5142BFA),(u:$3FF019078AD6A19F)),
+    ((u:$BC977669F033C7DE),(u:$3FF019BA16628DE2)),
+    ((u:$BC909BB78EEEAD0A),(u:$3FF01A6CA9AAC5F3)),
+    ((u:$3C9371231477ECE6),(u:$3FF01B1F44AF9F9E)),
+    ((u:$3C75E7626621EB5A),(u:$3FF01BD1E77170B4)),
+    ((u:$BC9BC72B100828A4),(u:$3FF01C8491F08F08)),
+    ((u:$BC6CE39CBBAB8BBE),(u:$3FF01D37442D5070)),
+    ((u:$3C816996709DA2E2),(u:$3FF01DE9FE280AC8)),
+    ((u:$BC8C11F5239BF536),(u:$3FF01E9CBFE113EF)),
+    ((u:$3C8E1D4EB5EDC6B4),(u:$3FF01F4F8958C1C6)),
+    ((u:$BC9AFB99946EE3F0),(u:$3FF020025A8F6A35)),
+    ((u:$BC98F06D8A148A32),(u:$3FF020B533856324)),
+    ((u:$BC82BF310FC54EB6),(u:$3FF02168143B0281)),
+    ((u:$BC9C95A035EB4176),(u:$3FF0221AFCB09E3E)),
+    ((u:$BC9491793E46834C),(u:$3FF022CDECE68C4F)),
+    ((u:$BC73E8D0D9C49090),(u:$3FF02380E4DD22AD)),
+    ((u:$BC9314AA16278AA4),(u:$3FF02433E494B755)),
+    ((u:$3C848DAF888E9650),(u:$3FF024E6EC0DA046)),
+    ((u:$3C856DC8046821F4),(u:$3FF02599FB483385)),
+    ((u:$3C945B42356B9D46),(u:$3FF0264D1244C719)),
+    ((u:$BC7082EF51B61D7E),(u:$3FF027003103B10E)),
+    ((u:$3C72106ED0920A34),(u:$3FF027B357854772)),
+    ((u:$BC9FD4CF26EA5D0E),(u:$3FF0286685C9E059)),
+    ((u:$BC909F8775E78084),(u:$3FF02919BBD1D1D8)),
+    ((u:$3C564CBBA902CA28),(u:$3FF029CCF99D720A)),
+    ((u:$3C94383EF231D206),(u:$3FF02A803F2D170D)),
+    ((u:$3C94A47A505B3A46),(u:$3FF02B338C811703)),
+    ((u:$3C9E471202234680),(u:$3FF02BE6E199C811)));
+
+  // as_tanh_database: 12-entry sorted-by-|x| table (x, f, dlo).
+  cTanhDb: array[0..11, 0..2] of Tb64u64 = (
+    ((u:$3FCAC343B179FEC4),(u:$3FCA612499C53078),(u:$3C60000000000000)),
+    ((u:$3FD00764A988BF73),(u:$3FCF676484C0703B),(u:$B970000000000000)),
+    ((u:$3FD17D1E8A63711F),(u:$3FD110E96A6C2D96),(u:$B970000000000000)),
+    ((u:$3FD291C601A05276),(u:$3FD210B7D0C03743),(u:$3C70000000000000)),
+    ((u:$3FD36F33D51C264D),(u:$3FD2DBB7B1C91363),(u:$B950000000000000)),
+    ((u:$3FD43EAEA23649C3),(u:$3FD39877ED028641),(u:$BC90000000000000)),
+    ((u:$3FDD88D7550B2826),(u:$3FDB9A3637366AFD),(u:$3C70000000000000)),
+    ((u:$3FDE611AA58AB608),(u:$3FDC493DC899E4A6),(u:$BC90000000000000)),
+    ((u:$3FE01EFE7AC8C15D),(u:$3FDDC3FE1B524821),(u:$B970000000000000)),
+    ((u:$3FE1005EC0BCCABB),(u:$3FDF20B1C8557DED),(u:$BC90000000000000)),
+    ((u:$3FE33DFEB0FA4BFE),(u:$3FE1372F9EE76E99),(u:$3C90000000000000)),
+    ((u:$3FE49F24AC5CAC35),(u:$3FE22C495FF06104),(u:$B970000000000000)));
+
+  // as_exp_accurate: ch[3][2]
+  cTanhExpCh: array[0..2, 0..1] of Tb64u64 = (
+    ((u:$3FF0000000000000),(u:$3A16C16BD194535D)),
+    ((u:$3FE0000000000000),(u:$BA28259D904FD34F)),
+    ((u:$3FC5555555555555),(u:$3C653E93E9F26E62)));
+  // Inner exp polynomial seed coefficients (0x1.555...p-5 etc.)
+  cTanhExpP0: Tb64u64 = (u:$3FA5555555555555);
+  cTanhExpP1: Tb64u64 = (u:$3F811111113E93E9);
+  cTanhExpP2: Tb64u64 = (u:$3F56C16C169400A7);
+  // log(2) split for accurate path: l2h + l2l + l2ll
+  cTanhL2hA:  Tb64u64 = (u:$3F262E42FF000000);   //  0x1.62e42ffp-13
+  cTanhL2lA:  Tb64u64 = (u:$3D0718432A1B0E26);   //  0x1.718432a1b0e26p-47
+  cTanhL2llA: Tb64u64 = (u:$3999FF0342542FC3);   //  0x1.9ff0342542fc3p-102
+
+  // as_tanh_zero: ch[10][2]
+  cTanhZeroCh: array[0..9, 0..1] of Tb64u64 = (
+    ((u:$BFD5555555555555),(u:$BC75555555555555)),
+    ((u:$3FC1111111111111),(u:$3C41111111110916)),
+    ((u:$BFABA1BA1BA1BA1C),(u:$3C47917917A46F2C)),
+    ((u:$3F9664F4882C10FA),(u:$BC09A52A06F1E599)),
+    ((u:$BF8226E355E6C23D),(u:$3C2C297394C24E38)),
+    ((u:$3F6D6D3D0E157DE0),(u:$BC0311087E5B1526)),
+    ((u:$BF57DA36452B75E1),(u:$BBE2868CDE54EA0C)),
+    ((u:$3F4355824803667B),(u:$3BD2CD8FC406C3F7)),
+    ((u:$BF2F57D7734C821D),(u:$3B9DA22861B4CA80)),
+    ((u:$3F1967E18AD3FACF),(u:$BBB0831108273A74)));
+
+  // as_tanh_zero: cl[6]
+  cTanhZeroCl: array[0..5] of Tb64u64 = (
+    (u:$BF0497D8E6462927),(u:$3EF0B1318C243BD7),(u:$BEDB0F2935E9A120),
+    (u:$3EC5E9444536E654),(u:$BEB174FF2A31908C),(u:$3E9749698C8D338D));
+
+  // Medium-path polynomial in x2 (after x^3 factor) for |x| in [2^-30, 0.25)
+  cTanhMedC: array[0..7] of Tb64u64 = (
+    (u:$BFD5555555555554),(u:$3FC1111111110D61),(u:$BFABA1BA1B983D8B),(u:$3F9664F4820E99F0),
+    (u:$BF8226E11E4AC7CF),(u:$3F6D6C4AB70668B6),(u:$BF57BBECB57CE996),(u:$3F41451443697DD8));
+
+  // Large/medium exp polynomial ch[4]
+  cTanhChOuter: array[0..3] of Tb64u64 = (
+    (u:$4000000000000000),(u:$4000000000000000),(u:$3FF55555557E54FF),(u:$3FE55555553A12F4));
+
+  cTanhSBig:   Tb64u64 = (u:$C0C71547652B82FE);   // -0x1.71547652b82fep+13
+  cTanhMagic:  Tb64u64 = (u:$4188000004000000);   //  0x1.8000004p+25
+  cTanhP25:    Tb64u64 = (u:$4188000000000000);   //  0x1.8p+25  (= 50331648)
+  cTanhL2hM:   Tb64u64 = (u:$BF162E42FF000000);   // -0x1.62e42ffp-14
+  cTanhL2lM:   Tb64u64 = (u:$BCF718432A1B0E26);   // -0x1.718432a1b0e26p-48
+  cTanhL2L:    Tb64u64 = (u:$BF162E42FEFA39EF);   // -0x1.62e42fefa39efp-14 (large path)
+  cTanhP55:    Tb64u64 = (u:$3C80000000000000);   //  0x1p-55
+  cTanh1a52:   Tb64u64 = (u:$3CBA000000000000);   //  0x1.ap-52
+  cTanh1p62:   Tb64u64 = (u:$3C10000000000000);   //  0x1p-62
+  cTanh11p49:  Tb64u64 = (u:$3CE1000000000000);   //  0x1.1p-49
+  cTanh1p3_55: Tb64u64 = (u:$3C83000000000000);   //  0x1.3p-55
+  cTanhMask27: UInt64  = $FFFFFFFFF8000000;
+  cTanhAixLge: UInt64  = $40330FC1931F09CA;
+  cTanhAixMed: UInt64  = $400D76C8B4395810;
+  cTanhAixSml: UInt64  = $3FD0000000000000;
+  cTanhAixT30: UInt64  = $3E10000000000000;
+  cTanhAixT32: UInt64  = $3DF0000000000000;
+
+function TanhDatabase(x, f: Double): Double;
+var
+  a, b, m: Int32;
+  ax, sgn: Double;
+begin
+  a := 0; b := 11;
+  ax := Abs(x);
+  m := (a + b) div 2;
+  while a <= b do
+  begin
+    if cTanhDb[m, 0].f < ax then a := m + 1
+    else if cTanhDb[m, 0].f = ax then
+    begin
+      if x >= Double(0.0) then sgn := Double(1.0) else sgn := -Double(1.0);
+      f := sgn * cTanhDb[m, 1].f + sgn * cTanhDb[m, 2].f;
+      Break;
+    end
+    else b := m - 1;
+    m := (a + b) div 2;
+  end;
+  Result := f;
+end;
+
+function TanhExpAccurate(x, t, th, tl: Double; out l: Double): Double;
+var
+  dx, dxl, dxll, dxh, fl: Double;
+  chp, clp, thp, tlp: Double;
+  fh, zh, zl, uh, ul, vh, vl: Double;
+begin
+  dx   := x - cTanhL2hA.f * t;
+  dxl  := cTanhL2lA.f * t;
+  dxll := cTanhL2llA.f * t + pcr_fma(cTanhL2lA.f, t, -dxl);
+  dxh  := dx + dxl;
+  dxl  := ((dx - dxh) + dxl) + dxll;
+
+  // Seed fl = dxh*(p0 + dxh*(p1 + dxh*p2))
+  fl := dxh * (cTanhExpP0.f + dxh * (cTanhExpP1.f + dxh * cTanhExpP2.f));
+
+  // polydd(dxh, dxl, 3, ch, &fl) — seeded
+  chp := cTanhExpCh[2,0].f + fl;
+  clp := ((cTanhExpCh[2,0].f - chp) + fl) + cTanhExpCh[2,1].f;
+  // i = 1
+  chp := pcr_muldd(dxh, dxl, chp, clp, clp);
+  thp := chp + cTanhExpCh[1,0].f; tlp := (cTanhExpCh[1,0].f - thp) + chp;
+  chp := thp; clp := clp + tlp + cTanhExpCh[1,1].f;
+  // i = 0
+  chp := pcr_muldd(dxh, dxl, chp, clp, clp);
+  thp := chp + cTanhExpCh[0,0].f; tlp := (cTanhExpCh[0,0].f - thp) + chp;
+  chp := thp; clp := clp + tlp + cTanhExpCh[0,1].f;
+
+  fh := chp; fl := clp;
+  fh := pcr_muldd(dxh, dxl, fh, fl, fl);
+  fh := pcr_muldd(th,  tl,  fh, fl, fl);
+
+  zh := th + fh; zl := (th - zh) + fh;
+  uh := zh + tl; ul := ((zh - uh) + tl) + zl;
+  vh := uh + fl; vl := ((uh - vh) + fl) + ul;
+  l := vl;
+  Result := vh;
+end;
+
+function TanhZero(x: Double): Double;
+var
+  x2, x2l, y0, y1, y2: Double;
+  chp, clp, thp, tlp: Double;
+  s_tmp, z_tmp: Double;
+  i: Int32;
+  t_u, w_u: Tb64u64;
+begin
+  x2  := x * x;
+  x2l := pcr_fma(x, x, -x2);
+
+  y2 := x2 * (cTanhZeroCl[0].f + x2 * (cTanhZeroCl[1].f + x2 * (cTanhZeroCl[2].f
+        + x2 * (cTanhZeroCl[3].f + x2 * (cTanhZeroCl[4].f + x2 * cTanhZeroCl[5].f)))));
+
+  // polydd (n=10) seeded with y2
+  chp := cTanhZeroCh[9,0].f + y2;
+  clp := ((cTanhZeroCh[9,0].f - chp) + y2) + cTanhZeroCh[9,1].f;
+  for i := 8 downto 0 do
+  begin
+    chp := pcr_muldd(x2, x2l, chp, clp, clp);
+    thp := chp + cTanhZeroCh[i,0].f;
+    tlp := (cTanhZeroCh[i,0].f - thp) + chp;
+    chp := thp;
+    clp := clp + tlp + cTanhZeroCh[i,1].f;
+  end;
+  y1 := chp; y2 := clp;
+
+  // y1 = mulddd(y1, y2, x, &y2)
+  y1 := pcr_mulddd_pd(y1, y2, x, y2);
+  // y1 = muldd_acc(y1, y2, x2, x2l, &y2)
+  y1 := pcr_muldd(y1, y2, x2, x2l, y2);
+
+  // y0 = fasttwosum(x, y1, &y1)
+  pcr_fasttwosum(y0, y1, x, y1);
+  // y1 = fasttwosum(y1, y2, &y2)
+  s_tmp := y1 + y2;
+  z_tmp := s_tmp - y1;
+  y2 := y2 - z_tmp;
+  y1 := s_tmp;
+
+  t_u.f := y1;
+  if (t_u.u and (UInt64($FFFFFFFFFFFFFFFF) shr 12)) = 0 then
+  begin
+    w_u.f := y2;
+    if ((w_u.u xor t_u.u) shr 63) <> 0 then
+      Dec(t_u.u)
+    else
+      Inc(t_u.u);
+    y1 := t_u.f;
+    if y2 = Double(0.0) then
+    begin
+      Result := TanhDatabase(x, y0 + y1);
+      Exit;
+    end;
+  end;
+  Result := y0 + y1;
+end;
+
+function pcr_tanh(x: Double): Double;
+var
+  ax, v0, t, t0h, t1h, th, tl, t0l, t1l: Double;
+  dx, dx2, p, rh, rl, e, lb, ub: Double;
+  rqh, rql, ph, pl, qh, ql, qd, res: Double;
+  x2, x3, x4, x8, p0, p1: Double;
+  one, df, fsgn: Double;
+  ix, jt, v_u, sp, lu: Tb64u64;
+  aix: UInt64;
+  i1, i0: Int32;
+  ie: Int64;
+  sh_sum, d_sum, sl_sum: Double;
+begin
+  ax := Abs(x);
+  ix.f := ax;
+  aix := ix.u;
+
+  if aix >= cTanhAixLge then
+  begin
+    if aix > UInt64($7FF0000000000000) then begin Result := x + x; Exit; end;   // NaN
+    if x >= Double(0.0) then fsgn := Double(1.0) else fsgn := -Double(1.0);
+    if aix = UInt64($7FF0000000000000) then begin Result := fsgn; Exit; end;    // ±Inf
+    if x >= Double(0.0) then df := cTanhP55.f else df := -cTanhP55.f;
+    Result := fsgn - df;
+    Exit;
+  end;
+
+  v0 := pcr_fma(ax, cTanhSBig.f, cTanhMagic.f);
+  jt.f := v0;
+  v_u.u := jt.u and cTanhMask27;
+  t := v_u.f - cTanhP25.f;
+
+  i1 := Int32((jt.u shr 27) and $3F);
+  i0 := Int32((jt.u shr 33) and $3F);
+  ie := SarInt64(Int64(jt.u shl 13), 52);
+  sp.u := UInt64(Int64(1023) + ie) shl 52;
+
+  t0h := cTanhT0[i0, 1].f;
+  t1h := cTanhT1[i1, 1].f;
+  th  := t0h * t1h;
+
+  if aix < cTanhAixMed then
+  begin
+    // |x| < 3.683
+    if aix < cTanhAixSml then
+    begin
+      // |x| < 0.25
+      if aix < cTanhAixT30 then
+      begin
+        // |x| < 2^-30
+        if aix < cTanhAixT32 then
+        begin
+          // |x| < 2^-32
+          if aix = 0 then begin Result := x; Exit; end;
+          Result := pcr_fma(x, -cTanhP55.f, x);
+          Exit;
+        end;
+        x3 := x * x * x;
+        Result := x - x3 / Double(3.0);
+        Exit;
+      end;
+
+      x2 := x * x; x3 := x2 * x; x4 := x2 * x2; x8 := x4 * x4;
+      p1 := (cTanhMedC[4].f + x2 * cTanhMedC[5].f)
+            + x4 * (cTanhMedC[6].f + x2 * cTanhMedC[7].f);
+      p0 := (cTanhMedC[0].f + x2 * cTanhMedC[1].f)
+            + x4 * (cTanhMedC[2].f + x2 * cTanhMedC[3].f);
+      p0 := p0 + x8 * p1;
+      p0 := p0 * x3;
+
+      pcr_fasttwosum(rh, rl, x, p0);
+      e  := x3 * cTanh1a52.f;
+      lb := rh + (rl - e);
+      ub := rh + (rl + e);
+      if lb = ub then begin Result := lb; Exit; end;
+      Result := TanhZero(x);
+      Exit;
+    end;
+
+    // 0.25 <= |x| < 3.683 — fast path with Ziv test
+    t0l := cTanhT0[i0, 0].f;
+    t1l := cTanhT1[i1, 0].f;
+    tl  := t0h * t1l + t1h * t0l + pcr_fma(t0h, t1h, -th);
+    th  := th * sp.f;
+    tl  := tl * sp.f;
+
+    dx  := (cTanhL2hM.f * t - ax) - cTanhL2lM.f * t;
+    dx2 := dx * dx;
+    p   := dx * ((cTanhChOuter[0].f + dx * cTanhChOuter[1].f)
+                 + dx2 * (cTanhChOuter[2].f + dx * cTanhChOuter[3].f));
+    rh  := th;
+    rl  := tl + rh * p;
+    pcr_fasttwosum(rh, rl, rh, rl);
+
+    ph := rh; pl := rl;
+    qh := rh; ql := rl;
+    pcr_fasttwosum(qh, qd, Double(1.0), qh);
+    ql := ql + qd;
+
+    rqh := Double(1.0) / qh;
+    rql := (ql * rqh + pcr_fma(rqh, qh, -Double(1.0))) * (-rqh);
+    ph  := pcr_muldd(ph, pl, rqh, rql, pl);
+
+    e  := rh * cTanh1p62.f;
+    // fasttwosub(0.5, ph, &rl): s = 0.5 - ph; z = 0.5 - s; rl = z - ph;
+    rh := Double(0.5) - ph;
+    rl := (Double(0.5) - rh) - ph;
+    rl := rl - pl;
+    if x >= Double(0.0) then
+    begin rh := rh * Double(2.0); rl := rl * Double(2.0); end
+    else
+    begin rh := rh * -Double(2.0); rl := rl * -Double(2.0); end;
+    lb := rh + (rl - e);
+    ub := rh + (rl + e);
+    if lb = ub then begin Result := lb; Exit; end;
+  end
+  else
+  begin
+    // |x| >= 3.683 — fast fallback when tanh ≈ ±1
+    dx  := pcr_fma(cTanhL2L.f, t, -ax);
+    dx2 := dx * dx;
+    p   := dx * ((cTanhChOuter[0].f + dx * cTanhChOuter[1].f)
+                 + dx2 * (cTanhChOuter[2].f + dx * cTanhChOuter[3].f));
+    rh  := th * sp.f;
+    rh  := rh + (p + ((Double(2.0) * cTanh1p3_55.f) * ax)) * rh;
+    e   := rh * cTanh11p49.f;
+    rh  := (Double(2.0) * rh) / (Double(1.0) + rh);
+    if x >= Double(0.0) then one := Double(1.0) else one := -Double(1.0);
+    if x >= Double(0.0) then rh := rh else rh := -rh;
+    lb  := one - (rh + e);
+    ub  := one - (rh - e);
+    if lb = ub then begin Result := lb; Exit; end;
+
+    t0l := cTanhT0[i0, 0].f;
+    t1l := cTanhT1[i1, 0].f;
+    tl  := t0h * t1l + t1h * t0l + pcr_fma(t0h, t1h, -th);
+    th  := th * sp.f;
+    tl  := tl * sp.f;
+  end;
+
+  // Accurate (slow) path: shared by both medium and large branches
+  rh := TanhExpAccurate(-Double(2.0) * ax, t, th, tl, rl);
+
+  pcr_fasttwosum(qh, qd, Double(1.0), rh);
+  ql := rl + qd;
+  pcr_fasttwosum(qh, ql, qh, ql);
+
+  rqh := Double(1.0) / qh;
+  rql := (ql * rqh + pcr_fma(rqh, qh, -Double(1.0))) * (-rqh);
+  ph  := pcr_muldd(rh, rl, rqh, rql, pl);
+
+  // fasttwosub(0.5, ph, &rl)
+  rh := Double(0.5) - ph;
+  rl := (Double(0.5) - rh) - ph;
+  rl := rl - pl;
+  pcr_fasttwosum(rh, rl, rh, rl);
+
+  if x >= Double(0.0) then
+    res := Double(2.0) * rh + Double(2.0) * rl
+  else
+    res := -Double(2.0) * rh - Double(2.0) * rl;
+
+  lu.f := rl;
+  if (((lu.u + 32) and (UInt64($FFFFFFFFFFFFFFFF) shr 12)) < 65) then
+  begin
+    Result := TanhDatabase(x, res);
+    Exit;
+  end;
+  Result := res;
+end;
+
+// ---------------------------------------------------------------------------
 // Stubs — delegate to C reference until each function is ported.
 // Replace each stub body with the real Pascal port as phases 1-5 progress.
 // ---------------------------------------------------------------------------
@@ -1538,7 +2043,6 @@ function  pcr_sin(x: Double): Double;     begin Result := cr_sin(x);     end;
 function  pcr_sinh(x: Double): Double;    begin Result := cr_sinh(x);    end;
 function  pcr_sinpi(x: Double): Double;   begin Result := cr_sinpi(x);   end;
 function  pcr_tan(x: Double): Double;     begin Result := cr_tan(x);     end;
-function  pcr_tanh(x: Double): Double;    begin Result := cr_tanh(x);    end;
 function  pcr_tanpi(x: Double): Double;   begin Result := cr_tanpi(x);   end;
 function  pcr_tgamma(x: Double): Double;  begin Result := cr_tgamma(x);  end;
 function  pcr_atan2(y, x: Double): Double;  begin Result := cr_atan2(y, x);   end;

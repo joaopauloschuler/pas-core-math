@@ -16,7 +16,7 @@ Before starting, check the existing functions and notes at:
 
 ## Status summary
 
-- **5 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 in progress — 1.01 rsqrt, 1.02 cbrt, 1.03 atan, 1.04 log2, 1.05 acos done)
+- **6 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 in progress — 1.01 rsqrt, 1.02 cbrt, 1.03 atan, 1.04 log2, 1.05 acos, 1.06 tanh done)
 - Target file: `src/pascoremath64.pas`
 - **Phase 0 fully complete** (tasks 0.1–0.10): infrastructure, helpers, and test harness ready
 - libcoremath64.so built from core-math/src/binary64/; test programs compile once pcr_* functions added
@@ -475,7 +475,7 @@ Port in this order. All functions live in `pascoremath64.pas`, named `pcr_<name>
 - [X] **1.03** `atan`    — 281 lines  *(uses dint + dd)*
 - [X] **1.04** `log2`    — 313 lines  *(uses clzll + dd)*
 - [X] **1.05** `acos`    — 354 lines  *(dd + fenv-free; no dint — all accurate-path refinement is double-double)*
-- [ ] **1.06** `tanh`    — 355 lines  *(uses dint + dd)*
+- [X] **1.06** `tanh`    — 355 lines  *(no dint — pure double-double; task list hint "dint + dd" was incorrect)*
 - [ ] **1.07** `cospi`   — 356 lines  *(uses dint + dd)*
 - [ ] **1.08** `asin`    — 366 lines  *(uses dint + dd)*
 - [ ] **1.09** `cosh`    — 377 lines  *(uses dint + dd)*
@@ -538,6 +538,56 @@ anyway — they are the shortest files and good warm-up exercises.
 
 - Performance: Pascal 106 Mops/s vs C 267 Mops/s (40% of C speed, non-AVX2 with
   software FMA). 10^8 random-input ULP test: 0 mismatches.
+
+**tanh implementation notes (task 1.06 completed):**
+
+- The task-list hint "uses dint + dd" was wrong for `tanh` (same as for
+  `acos`): the accurate refinement is pure double-double + a small
+  12-entry lookup `as_tanh_database`; no `TDInt64` path exists. Recheck
+  the C source before budgeting dint for future Phase 1 entries.
+
+- `mulddd` in tanh.c is identical to `pcr_mulddd_pd` (double × double-
+  double, final error via `fasttwosum`-shaped extraction). `muldd_acc`
+  is identical to `pcr_muldd`. Both Pascal helpers can be reused as-is
+  for tanh's fast and slow paths.
+
+- `fasttwosub(x, y, &e)` is not the same as
+  `pcr_fasttwosum(s, t, x, -y)` — the natural inline form is
+  `s = x - y; e = (x - s) - y;`. Don't try to route through
+  `pcr_fasttwosum` with a negated operand — that adds an extra rounding.
+
+- The SSE `_mm_and_pd` mask `~((1<<27)-1)` = `0xFFFFFFFFF8000000`
+  zeroes the low 27 bits of `v0`'s bit pattern; use the `Tb64u64`
+  union with a direct `and` on `.u`, identical in effect to the
+  non-x86 branch of the C source.
+
+- Eight exponent-mask edge cases dominate: `aix >= 0x40330fc1931f09ca`
+  (tanh ≈ ±1, fast constant result), medium range, small |x| < 0.25,
+  very small |x| < 2^-30, tiniest |x| < 2^-32 (return `fma(x,-2^-55,x)`),
+  and true zero (return x). Match the C's nested-if order exactly —
+  the order is load-bearing for NaN/Inf correctness.
+
+- `fasttwosum(1, qh, &qd)` in the medium path assumes `|1| >= |qh|`,
+  but `qh` can exceed 1 when `rh > 0` (e.g. negative x with small
+  |x|). The C uses this fast form anyway because the callers only
+  need bounded error, not exactness. Faithfully port — don't
+  substitute `sum`/twosum.
+
+- Hex-float table extraction: **use a programmatic converter
+  (float.fromhex + IEEE-754 pack).** Hand-copying 128 `{lo, hi}`
+  entries introduced 5+ transcription errors on the first pass
+  (17-hex-digit overruns, off-by-one in exponent digit, mantissa
+  padding misread). Build a tiny Python helper once, dump the
+  full Pascal array from it, and diff against a regeneration to
+  catch any residual typos before compiling.
+
+- 10^8 random ULP test: 0 mismatches. 200M-input sink-XOR: MATCH.
+  Benchmark: Pascal 8.4 Mops/s vs C 51.8 Mops/s (~16%, non-AVX2
+  with emulated FMA). The fast-path div `(2*rh)/(1+rh)` plus the
+  slow-path `TanhExpAccurate` polydd are the throughput bottlenecks;
+  hardware-FMA builds should close most of the gap, but the
+  reciprocal-division pattern likely keeps tanh below the other
+  Phase-1 functions.
 
 **acos implementation notes (task 1.05 completed):**
 
