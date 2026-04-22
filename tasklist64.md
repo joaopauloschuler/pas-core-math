@@ -16,7 +16,7 @@ Before starting, check the existing functions and notes at:
 
 ## Status summary
 
-- **2 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 in progress — 1.01 rsqrt, 1.02 cbrt done)
+- **3 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 in progress — 1.01 rsqrt, 1.02 cbrt, 1.03 atan done)
 - Target file: `src/pascoremath64.pas`
 - **Phase 0 fully complete** (tasks 0.1–0.10): infrastructure, helpers, and test harness ready
 - libcoremath64.so built from core-math/src/binary64/; test programs compile once pcr_* functions added
@@ -472,7 +472,7 @@ Port in this order. All functions live in `pascoremath64.pas`, named `pcr_<name>
 
 - [X] **1.01** `rsqrt`   — 220 lines  *(uses clzll, fenv — see note below)*
 - [X] **1.02** `cbrt`    — 252 lines  *(uses clzll, fenv)*
-- [ ] **1.03** `atan`    — 281 lines  *(uses dint + dd)*
+- [X] **1.03** `atan`    — 281 lines  *(uses dint + dd)*
 - [ ] **1.04** `log2`    — 313 lines  *(uses clzll + dd)*
 - [ ] **1.05** `acos`    — 354 lines  *(uses dint + dd)*
 - [ ] **1.06** `tanh`    — 355 lines  *(uses dint + dd)*
@@ -682,6 +682,23 @@ Apply this checklist to every function before marking it done:
     These arise because C requires explicit `(uint32_t)(int32_t)` casts around signed/unsigned
     operations. Pascal's type system handles the same cases without the extra layers. Keep
     casts that genuinely change signedness or width; remove those that simply round-trip.
+
+15. **`pcr_fma` double-rounding for tiny x — return x directly for |x| < 2^-27.**
+    In `pcr_atan`, the C code calls `__builtin_fma(-0x1p-54, x, x)` for |x| < 2^-27.
+    `pcr_fma_pascal` (the emulated FMA) double-rounds for biased_exp=2 inputs: the product
+    `(-2^-54)*x` rounds to ±2^-1074 (smallest subnormal), `TwoSum(±2^-1074, x)` lands
+    exactly on a tie, and round-to-even may round away from x. Hardware FMA computes the
+    exact product and rounds once, always giving x. In round-to-nearest mode, atan(x) = x
+    for all |x| < 2^-27, so `Result := x` is the correct and safe replacement.
+
+16. **`copysign(1, x)*A[i][1]` must NOT be implemented as bitwise OR when A[i][1] < 0.**
+    In the `AtanRefine2` slow path, `df` is set to `copysign(1.0, x)*A[ip][1]`. Because
+    `A[ip][1]` (the lo part of a double-double table entry) can be negative, using
+    `ta_u.u := cAtanALo[ip].u or sign_bit_of_x` is wrong — it forces the sign bit to 1 when
+    x < 0, leaving already-negative entries with the wrong sign. The correct pattern is:
+    `df := cAtanALo[ip].f; if x < 0.0 then df := -df;` (i.e. flip the stored value's sign).
+    Bitwise OR is only safe when the table value is guaranteed non-negative (e.g. `cAtanAHi`
+    stores |atan| values which are always positive).
 
 14. **Use `assembler;` whole-function bodies to guarantee System V ABI param passing.**
     When a function needs SSE/AVX args in `xmm0`/`xmm1`/`xmm2` directly (e.g. `pcr_fma`,
