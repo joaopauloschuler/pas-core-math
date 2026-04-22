@@ -245,6 +245,11 @@ Validate with: `pcr_clzll(1) = 63`, `pcr_clzll($8000000000000000) = 0`,
 
 ### [ ] 0.6 — Implement double-double helpers in `pascoremathhelperfuncs.pas`
 
+> **Superseded by task 0.9.** The binary32 unit already contains working versions of
+> `fasttwosum`, `muldd`, and the full double-double primitive suite. Do not
+> re-implement them from the C source — promote the existing Pascal versions out of
+> `pascoremath32.pas` per task 0.9 below.
+
 These are the fast-path precision helpers used by 33 of the 41 functions. They appear
 identically (or near-identically) across many `binary64/*.c` files. Implement them once
 here so they can be inlined everywhere.
@@ -328,6 +333,91 @@ Extend `build.sh` (or add `build64.sh`) to compile all three binary64 programs.
 
 ---
 
+### [ ] 0.9 — Promote Group A helpers from `pascoremath32.pas` to `pascoremathhelperfuncs.pas`
+
+The binary32 unit already contains working, battle-tested implementations of the
+double-double primitives, polynomial evaluators, and MXCSR flag helpers that the
+binary64 port will need. Move them into `pascoremathhelperfuncs.pas` so both units
+share a single source.
+
+**Supersedes task 0.6.** Do not write fresh `pcr_fasttwosum` / `pcr_muldd` from the
+`binary64/exp/exp.c` C source; the Pascal versions already exist and are exercised
+by the full binary32 test suite.
+
+Promote these symbols from the `pascoremath32.pas` implementation section into the
+`pascoremathhelperfuncs.pas` interface, renaming the `cf_*` prefix to `pcr_*` at the
+same time so names are no longer compoundf-specific:
+
+| Current symbol (line in `pascoremath32.pas`) | New name | Purpose |
+|---|---|---|
+| `pcr_poly12` (60) | `pcr_poly12` | Degree-12 polynomial evaluator over `array of Double` |
+| `muldd` (3623) | `pcr_muldd` | Double-double × double-double product; error term via `out` |
+| `polydd` (3638) | `pcr_polydd` | Horner evaluation of a flat-array double-double polynomial |
+| `cf_fast_two_sum` (4968) | `pcr_fasttwosum` | Error-free sum; `s + t = a + b` exactly |
+| `cf_a_mul` (4977) | `pcr_a_mul` | Error-free product; `hi + lo = a * b` exactly (via `pcr_fma`) |
+| `cf_s_mul` (4986) | `pcr_s_mul` | Scalar × double-double: `(hi + lo) = a * (bh + bl)` |
+| `cf_d_mul` (4995) | `pcr_d_mul` | Double-double × double-double: `(hi + lo) = (ah + al) * (bh + bl)` |
+| `cf_get_flag` (4911) | `pcr_get_mxcsr` | Save MXCSR flags (AVX2 path; no-op elsewhere) |
+| `cf_set_flag` (4926) | `pcr_set_mxcsr` | Restore MXCSR flags (AVX2 path; no-op elsewhere) |
+
+**Preserve the alias-safety invariant.** The comment at `pascoremath32.pas:4965`
+("All four primitives below write their var outputs LAST … callers may safely alias
+value params with var params") is load-bearing for `pcr_powf` / `pcr_compoundf`.
+Copy it verbatim above `pcr_fasttwosum` in the new location so future edits don't
+silently break that contract.
+
+**Steps:**
+
+1. Copy declarations into the `interface` section of `pascoremathhelperfuncs.pas`;
+   copy bodies into the `implementation` section. Keep all `inline` markers on the
+   interface declarations — FPC inlines across units with `{$INLINE ON}` (already
+   set in `pascoremath.inc`).
+2. Delete the originals from `pascoremath32.pas` (implementation section only).
+3. Rename all call sites inside `pascoremath32.pas` (`cf_*` → `pcr_*`). The bulk are
+   in `pcr_compoundf`, `pcr_powf`, and the `atan2` double-double paths.
+4. Rebuild both test harnesses and benchmarks. Verify `sink=MATCH` on every function
+   in `Benchmark32` and no Mops/s regression.
+
+**These helpers depend on `pcr_fma` being a true hardware FMA.** The binary32
+experience (Bug B in `tasklist.md`) showed that a software FMA causes rounding
+errors. Verify `pcr_fma` emits `VFMADD213SD` on x86-64 before any binary64 function
+relies on `pcr_muldd`.
+
+---
+
+### [ ] 0.10 — Add binary64 siblings of `pascoremath32.pas` bit-pattern helpers
+
+Six single-precision helpers in `pascoremath32.pas` encode bit-layout tests that the
+binary64 port will need in doubled form (exponent bias 1023, 52-bit mantissa,
+signaling-NaN bit at `$0008000000000000`). Add the `Double` equivalents to
+`pascoremathhelperfuncs.pas` so they are ready when Phase 4 (`sin`/`cos`/`tan`/
+`sincos`) and Phase 5 (`pow`) need them:
+
+| Binary32 source (line in `pascoremath32.pas`) | New binary64 name | Purpose |
+|---|---|---|
+| `cf_is_signalingf` (4939) | `pcr_is_signaling` | Detect signaling NaN via bit-flip at `$0008000000000000` |
+| `cf_isint` (4948) | `pcr_isint_d` | Is `y: Double` an exact integer? |
+| `isint_pf` (4058) | `pcr_isint_pd` | `pow` variant of integer test |
+| `isodd_pf` (4072) | `pcr_isodd_pd` | `pow` variant of odd-integer test |
+| `is_signalingf_pf` (4086) | `pcr_is_signaling_pd` | `pow` variant of signaling-NaN test |
+| `mulddd_pf` (4046) | `pcr_mulddd_pd` | Double × double-double multiply used in the `pow` accurate path |
+
+`is_exact_pf` (line 4094) is tightly bound to `pcr_powf`'s table structure — defer
+porting it until task 5.02 (`pow`), when the binary64 exact-detection tables are
+known.
+
+**Constants to reuse when translating:** signaling-NaN mask `$0008000000000000`,
+quiet bit `$7FF8000000000000`, exponent bias `1023`, mantissa width `52`. These are
+straight translations of the binary32 bit-positions encoded in the `cf_*_pf`
+helpers.
+
+Validate each helper with a small unit test (analogous to `FixedTest32.pas`) that
+exercises: `+0`, `-0`, `±Inf`, quiet NaN, signaling NaN, subnormals, and a handful
+of integer / non-integer / odd / even cases at the boundary (values around `2^52`
+and `2^53`).
+
+---
+
 ## Phase 1 — Simple-to-medium (220–420 lines, dint + double-double, no fenv)
 
 All functions in this phase use `TDInt64` and most use `fasttwosum`/`muldd`, but have
@@ -381,6 +471,7 @@ anyway — they are the shortest files and good warm-up exercises.
 - [ ] **3.04** `exp10m1` — 1153 lines *(uses dint)*
 - [ ] **3.05** `erfc`    — 1247 lines *(uses dint)*
 - [ ] **3.06** `lgamma`  — 1452 lines *(uses dint + dd)*
+  - Reference: `pascoremath32.pas:3197` (`lgamma_as_sinpi`) and `:3211` (`lgamma_as_ln`) — existing `Double`-precision auxiliary functions used by `pcr_lgammaf`. Mirror their shape when porting; the coefficient tables (`c_nz1`/`c_nz2`/`c_nz3`, `rn_md`/`rd_md`) will be re-derived from `binary64/lgamma/lgamma.c`.
 - [ ] **3.07** `log10p1` — 1577 lines *(uses dint)*
 - [ ] **3.08** `hypot`   — 283 lines  *(uses dint + dd + fenv — listed here due to fenv complexity)*
 
@@ -395,10 +486,14 @@ large-argument range-reduction helper will appear in all four — it **must not 
 Validate `AddDInt`, `MulDInt`, `DIntFromD`, and `DToD` exhaustively before starting.
 
 - [ ] **4.01** `cos`     — 2068 lines *(dint + clzll + fenv)*
+  - Reference: `pascoremath32.pas:5633` (`sincos_ipi` 2/π table — reuse as-is), `:5653` (`sincos_rbig` large-argument reduction), `:5732` (`sincos_rltl` small/medium-argument reduction), `:5840` (`cosf_db`), `:5883` (`cosf_big`). Binary64 widens the UInt32 input to UInt64 and keeps more limbs of the product, but the reduction skeleton is identical. Per note 3 below, factor the reduction into a shared routine used by 4.01/4.02/4.04/4.05.
 - [ ] **4.02** `sin`     — 2089 lines *(dint + clzll + fenv)*
+  - Reference: same shared reduction as 4.01, plus `pascoremath32.pas:5752` (`sinf_add_sign`), `:5763` (`sinf_db`), `:5806` (`sinf_big`).
 - [ ] **4.03** `log2p1`  — 2162 lines *(dint — listed here due to line count)*
 - [ ] **4.04** `sincos`  — 2252 lines *(dint + clzll + fenv, out-parameter API)*
+  - Reference: same shared reduction as 4.01, plus `pascoremath32.pas:6146` (`sincosf_database`) and `:6221` (`sincosf_big`) for the combined-output pattern.
 - [ ] **4.05** `tan`     — 2297 lines *(dint + clzll + fenv)*
+  - Reference: `pascoremath32.pas:6068` (`tanf_rbig`) and `:6126` (`tanf_rltl`). Shares the `sincos_ipi` table with 4.01–4.04.
 
 ---
 
