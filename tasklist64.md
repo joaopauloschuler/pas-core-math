@@ -108,6 +108,10 @@ end.
 - C reference declarations: `cr_<name>` — *no* `f` suffix (e.g. `cr_sin`, `cr_exp`, `cr_log`)
 - Both use `Double` as the argument and return type.
 
+**`ccoremath32.pas` is the template for `ccoremath64.pas`.** Clone its structure
+(one `function cr_<name>(x: Double): Double; cdecl; external;` declaration per
+function, grouped by category) and s/Single/Double/g, s/cr_<n>f/cr_<n>/.
+
 ---
 
 ### [ ] 0.2 — Define `TDInt64` in `pascoremathtypes.pas`
@@ -314,9 +318,24 @@ The C constants map as follows:
 
 ### [ ] 0.8 — Set up test programs
 
-Create `src/tests/TestHarness64.pas`, `src/tests/Benchmark64.pas`, and
-`src/tests/BenchmarkFPC64.pas`. These are structurally identical to their binary32
-counterparts but use `Double`, `Tb64u64`, and the 64-bit `cr_*` / `pcr_*` functions.
+Create the four binary64 test programs by cloning their binary32 counterparts:
+
+| Binary32 template | Binary64 clone | Role |
+|---|---|---|
+| `src/tests/TestHarness32.pas` | `TestHarness64.pas` | Stride-based comparison of `pcr_*` vs `cr_*` across the input space |
+| `src/tests/Benchmark32.pas`   | `Benchmark64.pas`   | Throughput benchmark **and** sink-XOR correctness check |
+| `src/tests/BenchmarkFPC32.pas`| `BenchmarkFPC64.pas`| Baseline: FPC `Math` unit vs `pcr_*` |
+| `src/tests/FixedTest32.pas`   | `FixedTest64.pas`   | Fixed inputs (including `.wc` worst-cases) |
+
+All four are structurally identical to their binary32 counterparts — substitute
+`Double`, `Tb64u64`, and the 64-bit `cr_*` / `pcr_*` names.
+
+**Keep the sink-XOR invariant in `Benchmark64.pas`.** The binary32 benchmark XORs
+every output bit-pattern into a running `UInt64` accumulator and prints `MATCH` /
+`MISMATCH` against the C reference. This cheap always-on invariant caught four
+NaN-sign bugs in April 2026 that ULP-tolerant sampling missed. Keep it in binary64
+— it is near-free and the only line of defence against systematic sign/payload
+drift.
 
 **Key difference from binary32:** exhaustive testing over all 2^64 `Double` inputs is
 infeasible. The test strategy is:
@@ -325,11 +344,19 @@ infeasible. The test strategy is:
    simple LCG or xorshift64 RNG seeded from the system clock.
 2. **Structured coverage** — always include: all subnormals, ±0, ±Inf, NaN, all powers
    of 2, boundary values near ±1, ±π, ±π/2, and known worst-case inputs from the
-   `.wc` files in `core-math/src/binary64/<function>/`.
+   `.wc` files in `core-math/src/binary64/<function>/`. `FixedTest64.pas` is the
+   home for `.wc` ingestion (see `FixedTest32.pas` for the format).
 3. **Bivariate functions** (atan2, atan2pi, hypot, pow) — use a structured grid of
    10^6 × 10^6 sampled pairs.
 
-Extend `build.sh` (or add `build64.sh`) to compile all three binary64 programs.
+Extend `build.sh` (or add `build64.sh`) to compile all four binary64 programs.
+
+**Pin benchmarks to a single core.** Prepend `taskset -c 1 env` to every `Benchmark64` /
+`BenchmarkFPC64` invocation for stable Mops/s numbers.
+
+**Use `src/hexfloat.pas` for all hex-float constants.** Never retype a hex float by
+hand — binary64 tables are 2× the size of binary32's, and transcription error risk
+scales with table length.
 
 ---
 
@@ -405,6 +432,22 @@ signaling-NaN bit at `$0008000000000000`). Add the `Double` equivalents to
 `is_exact_pf` (line 4094) is tightly bound to `pcr_powf`'s table structure — defer
 porting it until task 5.02 (`pow`), when the binary64 exact-detection tables are
 known.
+
+**Preemptive trap — do not call `pcr_nan` at NaN-return sites.** `pcr_nan` (and
+`cNaNDouble`) evaluate to `0.0/0.0` = `$FFF8000000000000`, i.e. a *negative* quiet
+NaN. Every `__builtin_nan(tagp)` call in the C binary64 sources returns a
+*positive* quiet NaN, and the sink-XOR check in `Benchmark64.pas` will flag every
+one of those call sites as a bit-pattern mismatch. The binary32 port hit this in
+exactly four functions (`rsqrtf`, `acoshf`, `acospif`, `asinpif`) — commit
+`c878c29`. **Rule:** replace `pcr_nan(...)` with `cNaNDoublePos.f` (for
+`__builtin_nan("")`, `"<0"`, `"<1"`) or `cNaNDoublePos1.f` (for
+`__builtin_nan("1")`) at every binary64 NaN-return site. Add both constants to
+`pascoremathtypes.pas` as part of this task:
+
+```pascal
+cNaNDoublePos:  Tb64u64 = (u: $7FF8000000000000); // positive quiet NaN, payload 0
+cNaNDoublePos1: Tb64u64 = (u: $7FF8000000000001); // positive quiet NaN, payload 1
+```
 
 **Constants to reuse when translating:** signaling-NaN mask `$0008000000000000`,
 quiet bit `$7FF8000000000000`, exponent bias `1023`, mantissa width `52`. These are
@@ -610,6 +653,19 @@ Apply this checklist to every function before marking it done:
     These arise because C requires explicit `(uint32_t)(int32_t)` casts around signed/unsigned
     operations. Pascal's type system handles the same cases without the extra layers. Keep
     casts that genuinely change signedness or width; remove those that simply round-trip.
+
+14. **Use `assembler;` whole-function bodies to guarantee System V ABI param passing.**
+    When a function needs SSE/AVX args in `xmm0`/`xmm1`/`xmm2` directly (e.g. `pcr_fma`,
+    `pcr_roundeven`, `pcr_fmax`, `pcr_fmin` in `pascoremathhelperfuncs.pas`), declare
+    it as a pure `assembler;` body rather than a Pascal body with an embedded `asm`
+    block. FPC then honours the System V AMD64 ABI and places `x` in `xmm0`, `y` in
+    `xmm1`, `z` in `xmm2`, and returns the result in `xmm0` — letting the body be a
+    single instruction (`vfmadd213sd xmm0, xmm1, xmm2` / `ret`). A Pascal body with an
+    `asm` block forces FPC to emit a full prologue/epilogue and spill args through the
+    stack frame, which breaks zero-instruction leaf routines. See `pcr_fmaf` for the
+    canonical pattern. Note that any function containing an `asm` block (pure
+    `assembler;` or embedded) cannot be inlined — so only use this for irreducible
+    primitives, and prefer FPC intrinsics (note 12) wherever possible.
 
 ---
 
