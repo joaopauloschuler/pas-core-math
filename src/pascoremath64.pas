@@ -13,6 +13,7 @@ uses Math, pascoremathtypes, pascoremathhelperfuncs, ccoremath64;
 
 // ── Ported functions ──────────────────────────────────────────────────────────
 function pcr_rsqrt(x: Double): Double;
+function pcr_cbrt(x: Double): Double;
 
 // ── Stub functions (delegate to C reference until ported) ────────────────────
 function  pcr_acos(x: Double): Double; inline;
@@ -24,7 +25,7 @@ function  pcr_asinpi(x: Double): Double; inline;
 function  pcr_atan(x: Double): Double; inline;
 function  pcr_atanh(x: Double): Double; inline;
 function  pcr_atanpi(x: Double): Double; inline;
-function  pcr_cbrt(x: Double): Double; inline;
+// pcr_cbrt declared in ported section above
 function  pcr_cos(x: Double): Double; inline;
 function  pcr_cosh(x: Double): Double; inline;
 function  pcr_cospi(x: Double): Double; inline;
@@ -267,6 +268,189 @@ begin
 end;
 
 // ---------------------------------------------------------------------------
+// pcr_cbrt — correctly-rounded cube root (binary64).
+// Ported from core-math/src/binary64/cbrt/cbrt.c by Alexei Sibidanov.
+// ---------------------------------------------------------------------------
+const
+  // escale[it] = 2^(it/3), bit patterns
+  cCbrtEsc0: Tb64u64 = (u: $3FF0000000000000);  // 1.0
+  cCbrtEsc1: Tb64u64 = (u: $3FF428A2F98D728B);  // 2^(1/3)
+  cCbrtEsc2: Tb64u64 = (u: $3FF965FEA53D6E3D);  // 2^(2/3)
+  // polynomial c[4] approximating z^(1/3) on [1,2]
+  cCbrtC0: Double = 0.55282341840164717;   // 0x1.1b0babccfef9cp-1
+  cCbrtC1: Double = 0.58711429182669816;   // 0x1.2c9a3e94d1da5p-1
+  cCbrtC2: Double = -0.16296967194987905;  // -0x1.4dc30b1a1ddbap-3
+  cCbrtC3: Double = 0.023104964110781469;  // 0x1.7a8d3e4ec9b07p-6
+  cCbrtU0: Double = 0.33333333333333331;   // 1/3  = 0x1.5555555555555p-2
+  cCbrtU1: Double = 0.22222222222222221;   // 2/9  = 0x1.c71c71c71c71cp-3
+  // off[0] for nearest half-ULP check
+  cCbrtOff:   Double = 1.1102230246251565e-16;  // 2^-53
+  cCbrtUlp52: Double = 2.2204460492503131e-16;  // 2^-52
+  cCbrtThr75: Double = 2.6469779601696886e-23;  // 2^-75
+  cCbrtThr98: Double = 3.1554436208840472e-30;  // 2^-98
+  cCbrtThr60: Double = 8.6736173798840355e-19;  // 2^-60
+  // hard cases for round-to-nearest
+  cCbrtH0In:  Tb64u64 = (u: $4009B78223AA307C);
+  cCbrtH0Out: Tb64u64 = (u: $3FF79D15D0E8D59C);
+  cCbrtH1In:  Tb64u64 = (u: $401A202BFC89DDFF);
+  cCbrtH1Out: Tb64u64 = (u: $3FFDE87AA837820F);
+  // directed-rounding hard-case inputs (|zz|)
+  cCbrtWIn: array[0..6] of Tb64u64 = (
+    (u: $3FF3A9CCD7F022DB), (u: $3FF7845D2FAAC6FE),
+    (u: $3FFD1EF81CBBBE71), (u: $4000A2014F62987C),
+    (u: $400FE18A044A5501), (u: $401A6BB8C803147B),
+    (u: $401AC8538A031CBD));
+  // directed-rounding hard-case outputs (positive base)
+  cCbrtWOut: array[0..6] of Tb64u64 = (
+    (u: $3FF1236160BA9B93), (u: $3FF23115E657E49C),
+    (u: $3FF388FB44CDCF5A), (u: $3FF46BCBF47DC1E8),
+    (u: $3FF95DECFEC9C904), (u: $3FFE05335A6401DE),
+    (u: $3FFE281D87098DE8));
+
+function pcr_cbrt(x: Double): Double;
+var
+  cvt0, cvt1, cvt2, cvt3, cvt4, cvt5, tmp: Tb64u64;
+  hx, mant, sign, ix, isc: UInt64;
+  e, et, it: UInt32;
+  nz, rm: Int32;
+  flag: DWord;
+  z, zz, r, rr, z2: Double;
+  c0, c2, y, y2, y2l, y3, y3l, h, dy, y1: Double;
+  ady, ady0, ady1, azz, off: Double;
+  m0, m1: Int64;
+  i: Integer;
+begin
+  cvt0.f := x;
+  hx   := cvt0.u;
+  mant := hx and UInt64($000FFFFFFFFFFFFF);
+  sign := hx shr 63;
+  e    := UInt32((hx shr 52) and $7FF);
+
+  if ((e + 1) and $7FF) < 2 then begin
+    ix := hx and UInt64($7FFFFFFFFFFFFFFF);
+    if (e = $7FF) or (ix = 0) then begin Result := x + x; Exit; end;
+    nz   := pcr_clzll(ix) - 11;
+    mant := mant shl nz;
+    mant := mant and UInt64($000FFFFFFFFFFFFF);
+    Dec(e, UInt32(nz) - 1);
+  end;
+
+  flag := pcr_get_mxcsr;
+  rm   := Int32(Ord(GetRoundMode));  // 0=nearest,1=down,2=up,3=zero
+
+  e      := e + 3072;
+  cvt1.u := mant or (UInt64($3FF) shl 52);
+  cvt5.u := cvt1.u;
+  et     := e div 3;
+  it     := e mod 3;
+  cvt5.u := cvt5.u + (UInt64(it) shl 52);
+  cvt5.u := cvt5.u or (sign shl 63);
+  zz     := cvt5.f;
+
+  case it of
+    0:    isc := cCbrtEsc0.u;
+    1:    isc := cCbrtEsc1.u;
+    else  isc := cCbrtEsc2.u;
+  end;
+  isc    := isc or (sign shl 63);
+  cvt2.u := isc;
+  z  := cvt1.f;
+  r  := Double(1.0) / z;
+
+  // rr = r * rsc[it*2 | sign], rsc = {1,-1, 0.5,-0.5, 0.25,-0.25}
+  case it shl 1 or sign of
+    0:    rr := r * Double(1.0);
+    1:    rr := r * Double(-1.0);
+    2:    rr := r * Double(0.5);
+    3:    rr := r * Double(-0.5);
+    4:    rr := r * Double(0.25);
+    else  rr := r * Double(-0.25);
+  end;
+
+  // first Newton-Raphson: polynomial initial estimate then cubic correction
+  z2 := z * z;
+  c0 := cCbrtC0 + z * cCbrtC1;
+  c2 := cCbrtC2 + z * cCbrtC3;
+  y  := c0 + z2 * c2;
+  y2 := y * y;
+  h  := y2 * (y * r) - Double(1.0);
+  y  := y - (h * y) * (cCbrtU0 - cCbrtU1 * h);
+  y  := y * cvt2.f;
+
+  // second Newton-Raphson with double-double error term
+  y2  := y * y;
+  y2l := pcr_fma(y, y, -y2);
+  y3  := y2 * y;
+  y3l := pcr_fma(y, y2, -y3) + y * y2l;
+  h   := ((y3 - zz) + y3l) * rr;
+  dy  := h * (y * cCbrtU0);
+  y1  := y - dy;
+  dy  := (y - y1) - dy;
+
+  ady := Abs(dy);
+  if rm = 0 then off := cCbrtOff else off := Double(0.0);
+  ady0 := Abs(ady - off);
+  ady1 := Abs(ady - (cCbrtUlp52 + off));
+
+  if (ady0 < cCbrtThr75) or (ady1 < cCbrtThr75) then begin
+    // extra refinement pass
+    y2  := y1 * y1;
+    y2l := pcr_fma(y1, y1, -y2);
+    y3  := y2 * y1;
+    y3l := pcr_fma(y1, y2, -y3) + y1 * y2l;
+    h   := ((y3 - zz) + y3l) * rr;
+    dy  := h * (y1 * cCbrtU0);
+    y   := y1 - dy;
+    dy  := (y1 - y) - dy;
+    y1  := y;
+    ady  := Abs(dy);
+    ady0 := Abs(ady - off);
+    ady1 := Abs(ady - (cCbrtUlp52 + off));
+    if (ady0 < cCbrtThr98) or (ady1 < cCbrtThr98) then begin
+      azz := Abs(zz);
+      // round-to-nearest hard cases
+      if azz = cCbrtH0In.f then begin
+        tmp.u := cCbrtH0Out.u or (sign shl 63);
+        y1 := tmp.f;
+      end;
+      if azz = cCbrtH1In.f then begin
+        tmp.u := cCbrtH1Out.u or (sign shl 63);
+        y1 := tmp.f;
+      end;
+      // directed-rounding hard cases
+      if rm > 0 then
+        for i := 0 to 6 do
+          if azz = cCbrtWIn[i].f then begin
+            // add 1 ULP before applying sign when rm+sign=2
+            if rm + Int32(sign) = 2 then
+              tmp.u := cCbrtWOut[i].u + UInt64(1)
+            else
+              tmp.u := cCbrtWOut[i].u;
+            tmp.u := tmp.u or (sign shl 63);
+            y1 := tmp.f;
+          end;
+    end;
+  end;
+
+  // scale y1 to the correct exponent: add (et-1365) to biased exponent
+  cvt3.f := y1;
+  cvt3.u := cvt3.u + (UInt64(et - UInt32(1365)) shl 52);
+
+  // check if we are within 1 ULP of a half-ULP boundary
+  m0 := Int64(cvt3.u shl 30);
+  m1 := m0 shr 63;  // arithmetic shift: 0 if positive, -1 if negative
+  if UInt64(m0 xor m1) <= (UInt64(1) shl 30) then begin
+    cvt4.f := y1;
+    cvt4.u := (cvt4.u + (UInt64(1) shl 15)) and UInt64($FFFFFFFFFFFF0000);
+    if (Abs((cvt4.f - y1) - dy) < cCbrtThr60) or (Abs(zz) = Double(1.0)) then begin
+      cvt3.u := (cvt3.u + (UInt64(1) shl 15)) and UInt64($FFFFFFFFFFFF0000);
+      pcr_set_mxcsr(flag);
+    end;
+  end;
+  Result := cvt3.f;
+end;
+
+// ---------------------------------------------------------------------------
 // Stubs — delegate to C reference until each function is ported.
 // Replace each stub body with the real Pascal port as phases 1-5 progress.
 // ---------------------------------------------------------------------------
@@ -279,7 +463,7 @@ function  pcr_asinpi(x: Double): Double;  begin Result := cr_asinpi(x);  end;
 function  pcr_atan(x: Double): Double;    begin Result := cr_atan(x);    end;
 function  pcr_atanh(x: Double): Double;   begin Result := cr_atanh(x);   end;
 function  pcr_atanpi(x: Double): Double;  begin Result := cr_atanpi(x);  end;
-function  pcr_cbrt(x: Double): Double;    begin Result := cr_cbrt(x);    end;
+// pcr_cbrt — ported above
 function  pcr_cos(x: Double): Double;     begin Result := cr_cos(x);     end;
 function  pcr_cosh(x: Double): Double;    begin Result := cr_cosh(x);    end;
 function  pcr_cospi(x: Double): Double;   begin Result := cr_cospi(x);   end;

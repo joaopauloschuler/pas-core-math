@@ -16,7 +16,7 @@ Before starting, check the existing functions and notes at:
 
 ## Status summary
 
-- **1 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 in progress — 1.01 rsqrt done)
+- **2 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 in progress — 1.01 rsqrt, 1.02 cbrt done)
 - Target file: `src/pascoremath64.pas`
 - **Phase 0 fully complete** (tasks 0.1–0.10): infrastructure, helpers, and test harness ready
 - libcoremath64.so built from core-math/src/binary64/; test programs compile once pcr_* functions added
@@ -471,7 +471,7 @@ a straightforward one- or two-pass Ziv structure with no `fegetround` branches.
 Port in this order. All functions live in `pascoremath64.pas`, named `pcr_<name>`.
 
 - [X] **1.01** `rsqrt`   — 220 lines  *(uses clzll, fenv — see note below)*
-- [ ] **1.02** `cbrt`    — 252 lines  *(uses clzll, fenv)*
+- [X] **1.02** `cbrt`    — 252 lines  *(uses clzll, fenv)*
 - [ ] **1.03** `atan`    — 281 lines  *(uses dint + dd)*
 - [ ] **1.04** `log2`    — 313 lines  *(uses clzll + dd)*
 - [ ] **1.05** `acos`    — 354 lines  *(uses dint + dd)*
