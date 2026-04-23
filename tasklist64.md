@@ -45,6 +45,93 @@ fast *and* slow path. `TDInt64` only needs to be validated before Phases 4 and 5
 
 ---
 
+## Porting families — "port these together" groupings
+
+Table-sharing survey of all 41 binary64 C sources (verified via `diff` on the
+individual `static const` blocks). Porting a family together lets the second
+entry reuse the first entry's already-validated Pascal constant block and cut
+table transcription risk roughly in half.
+
+**Already exploited:**
+- **asin** (1.08) reused **acos**'s (1.05) 33×8 polynomial table, sin(pi/64)
+  double-double table, c[5][2] inner Taylor, and ct[3] tail — byte-identical.
+
+**Confirmed strong sharing (port the pair/group in one go):**
+
+1. **`log` ↔ `log10`** (Phase 2.10 & 2.12) — **all six tables identical** (`r1`,
+   `r2`, `l1`, `l2`, `p1`, `p2`, each `diff = 0`). Port `log` first, expose the
+   tables as shared `cLog*` constants, then `log10` is essentially a wrapper
+   that multiplies by `log10(2)`.
+
+2. **`exp` / `exp2` / `exp10` / `expm1`** (Phase 1.10, 1.11, 1.12, 2.01) —
+   **all four share the same `t0[]` table** (`diff = 0` for every pair). `exp`
+   and `exp2` additionally share `t1[]`. The per-function polynomial `ch[]`
+   differs. Port `exp` first, extract `cExpT0`/`cExpT1`, then the three
+   siblings reuse those tables.
+
+3. **`exp2m1` ↔ `exp10m1`** (Phase 3.01 & 3.04) — share the extended-precision
+   table set (`Q_1`, `T1`, `T2`, `Q_2`, `P`, `Q` — same names, same shape).
+   Port `exp2m1` first; `exp10m1` differs mainly in the leading scale.
+
+4. **`sinpi` ↔ `cospi`** (Phase 1.14 & 1.07-done) — `Sn`, `Sm`, `Cm` tables
+   are byte-identical (the 4-line diff is just the variable declaration).
+   `cospi` is already done; **`sinpi` should reuse `cCospi*` tables directly**.
+
+5. **`atan` ↔ `atanpi`** (Phase 1.03-done & 2.04) — `A[][2]` table identical
+   (`diff = 0`). `atan` is already done; **`atanpi` should reuse `cAtanA*`
+   tables** and differ only in the final `* 1/pi` scaling.
+
+6. **`sin` / `cos` / `tan` / `sincos`** (Phase 4.01–4.05) — all four share the
+   2/π reduction table `ipi[]` and the coefficient table `C[]` (sin's `C[]` vs
+   cos's `C[]`: `diff = 0`). The tasklist already flags this via rule 3
+   ("large-argument range reduction helper must not be duplicated"); port
+   `cos` first, extract the shared range-reducer + tables, then sin/sincos/tan
+   become shorter wrappers over the same primitive.
+
+7. **`acosh` ↔ `asinh`** (Phase 2.02 & 2.05) — `l1[][2]` and `l2[][2]` tables
+   start with byte-identical entries (log-of-2 anchor table). `ch`/`cl`/`r1`/`r2`
+   tables differ in tail entries but share the leading structure. Worth porting
+   as a pair with the common log-anchor extracted.
+
+**Weaker / partial sharing (worth checking but not a slam-dunk):**
+
+- **`atan2` ↔ `atan2pi`** (Phase 2.07 & 2.11) — bivariate wrappers. Likely
+  share most of their polynomial structure with `atan`/`atanpi`; inspect when
+  porting.
+- **`log1p` / `log2p1` / `log10p1`** (Phase 2.06, 4.03, 3.07) — all "plus-1"
+  log variants. `log1p` has 4 tables, the others have 6. Likely share the
+  core log1p polynomial; worth a diff check before porting `log2p1`/`log10p1`
+  (both of which are the largest sources at 2162 / 1577 lines).
+- **`erf` ↔ `erfc`** (Phase 2.08 & 3.05) — share table *names* (`C`, `c0`,
+  `C2`, `exceptions`, `p`) but erfc adds `E2`, `T`, `T1`, `T2`, `Tacc`,
+  `Q_1`, `threshold`. Diff the shared-name blocks before committing to reuse.
+- **`tgamma` ↔ `lgamma`** (Phase 3.02 & 3.06) — 3 vs 1 tables; inspect when
+  porting tgamma first.
+- **`asinpi`** (Phase 2.09) — has only `ch[]` and `exceptions[]`; structurally
+  closer to `asin` than its size (798 lines) suggests, because most of the
+  bulk is the exceptions table. Port after `asin` and reuse any polynomial
+  overlap.
+
+**Standalone (no meaningful sharing found):**
+
+- `rsqrt`, `cbrt`, `log2`, `tanh`, `atanh` (no inline tables or fully
+  function-specific), `hypot`, `tanpi` (its `Sn`/`Sm`/`Cm` differ from
+  sinpi/cospi by 128–162 lines), `acospi`, `pow`.
+
+**Suggested revised port order** (honouring families):
+
+- Phase 1: `cosh` → `exp` → `exp2` → `exp10` → `sinh` (share exp table work);
+  `sinpi` immediately after `cospi` (already done); `tanpi` standalone.
+- Phase 2: `expm1` (leverages exp-family tables); `log` → `log10` back-to-back;
+  `atanpi` right after `atan` via the shared `A[]` table; `atan2` → `atan2pi`
+  as a bivariate pair; `acosh` → `asinh` as a pair; `asinpi`, `log1p` last.
+- Phase 3: `exp2m1` → `exp10m1`; `log10p1` alone (only Phase-3 dint user);
+  others follow.
+- Phase 4: port `cos` first (extract shared 2/π reducer + `C[]`), then
+  `sin`/`sincos`/`tan` reuse it.
+
+---
+
 ## Folder structure (after completion)
 
 ```
