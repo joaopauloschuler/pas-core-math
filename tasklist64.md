@@ -583,7 +583,11 @@ Port in this order. All functions live in `pascoremath64.pas`, named `pcr_<name>
 - [X] **1.11** `exp2`    — 384 lines  *(pure dd; reuses cExpT0/cExpT1)*
 - [X] **1.12** `exp`     — 386 lines  *(pure dd; shared cExpT0/cExpT1 extracted for family)*
 - [ ] **1.13** `tanpi`   — 388 lines  *(pure dd — verified)*
-- [ ] **1.14** `sinpi`   — 400 lines  *(pure dd — verified)*
+- [X] **1.14** `sinpi`   — 400 lines  *(pure dd — verified)*
+  - **Port notes (2026-04-23):** `src/sinpi_port.inc` reuses CospiSincosN/CospiSincosN2 and cSinpiRef*/cSincosN*_* tables already present for cospi. New content: SinpiAsZero (4+3-coefficient polynomial, different arity from cospi's 2+2), SinpiRefine (same math as CospiSinpiRefine but with sinpi's 4-entry exception db vs cospi's 8), entry point. Three sharp edges to watch:
+    - **FPC `shr` on Int64 is LOGICAL, not arithmetic** — cospi keeps m positive so never notices, but sinpi sign-extends m via `m = ((m0^sgn)-sgn)`. Use the explicit `SinpiSar` helper (or `if m<0 then m := -Int64(m0)` branch).
+    - **Hex-float bit-pack errors** — hand-encoded constants are error-prone; use `tmp/enc.py` (or equivalent) to mechanically generate. Caught 10+ wrong constants this way; `0x1.466bc67754b46p+1` packs to `$400466BC67754B46`, not `$4004466BC67754B4` (13 mantissa hex digits, not 12).
+    - **Subnormal tiny-path fma** — pcr_fma_pascal's Dekker emulation is not correctly rounded for subnormal outputs. The scale-up branch ( `|x| < 2^-970`) uses a helper `SinpiHwFma` (inline `vfmadd213sd`) for its two FMAs to get correctly-rounded subnormals.
 - [ ] **1.15** `sinh`    — 418 lines  *(pure dd — verified)*
 
 Note: `rsqrt` and `cbrt` technically include `fegetround` calls, but they are simple
