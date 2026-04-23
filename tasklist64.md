@@ -857,7 +857,9 @@ here were wrong.)
 - [X] **2.01** `expm1`   — 436 lines  *(pure dd; reuses cExpT0/cExpT1 + cExpAccCh, own cExpm1Tz table)*
 - [ ] **2.02** `acosh`   — 451 lines  *(pure dd)*
 - [ ] **2.03** `atanh`   — 479 lines  *(pure dd)*
-- [ ] **2.04** `atanpi`  — 479 lines  *(pure dd)*
+- [X] **2.04** `atanpi`  — 479 lines  *(pure dd)*
+  - **Port notes (2026-04-23):** `src/atanpi_port.inc` reuses atan's `cAtanAHi/ALo`, `cAtanC0/1/2`, `cAtanIdHi/Lo/Lo2/Lo3`, `cAtanPhiScale`, `cAtanRefCh*`/`Cl*`, `cAtanCh*`/`Ch2*`, `cAtanPiHalfH/L`, `cAtanEFactor`, `cAtanFmaUb`. New content: 1/π dd pair, `ONE_OVER_3PI`, thresholds (0x1.bep20, 0x1.c7p-27, 2^-54), 20-entry tiny-exception table, 56-entry refine-exception table, `AtanpiAsympt` / `AtanpiTiny` / `AtanpiSmall` / `AtanpiRefine` / `pcr_atanpi`. At the end of the fast path and of refine, multiply the atan-space (ah, al) by (1/πH, 1/πL) via `pcr_muldd` (a fasttwosum normalize precedes the fast-path multiply). Fast-path error bound is `h * 0x1.41p-52` (not atan's `0x3.fp-52`); the refine is triggered with the *atan-space* estimate `ub0 = (al + h*0x3.fp-52) + ah`, computed before the 1/π multiply. Benchmark: Pascal 46.8 Mops/s vs C 49.8 Mops/s (94%). One sharp edge:
+    - **Refine `phi` uses `|a|`, not `|x|`** — `a` is the atan-space estimate passed by the caller; reusing `|x|` picks the wrong index from the `A[]` table and the polynomial refinement diverges catastrophically (~6% of inputs, off by thousands). The atan port (`AtanRefine2`) already has this right; easy to miss when adapting structurally. Also: `AtanpiSmall` needs correctly-rounded subnormal FMA (same as sinpi's scale-up branch) — local `AtanpiHwFma` uses `vfmadd213sd` directly.
 - [ ] **2.05** `asinh`   — 489 lines  *(pure dd)*
 - [ ] **2.06** `log1p`   — 490 lines  *(pure dd)*
 - [ ] **2.07** `atan2`   — 586 lines  *(pure dd, bivariate)*
