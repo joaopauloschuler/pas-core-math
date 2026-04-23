@@ -26,13 +26,22 @@ Before starting, check the existing functions and notes at:
 
 ## Critical difference from the binary32 port
 
-In binary32, `dint64_t` was only needed by the four hardest trig functions (sin/cos/tan/sincos).
-In binary64, **every single function** uses `dint64_t` — it is the standard second-pass data
-type for Ziv's rounding strategy across the entire library. The double-double helpers
-(`fasttwosum`, `muldd`) are similarly universal, appearing in 33 of the 41 functions.
+**Correction (April 2026, after porting 8 functions).** An earlier version of this
+section claimed that "every single function uses `dint64_t`". That was wrong —
+verified by grepping `dint64_t` / `dint_fromd` / `add_dint` / `mul_dint` across all
+41 `binary64/*.c` sources. The real count is **9 of 41**: `log`, `log10`,
+`log10p1`, `log2p1`, `cos`, `sin`, `sincos`, `tan`, and `pow`. The other 32
+functions use pure double-double refinement with small ad-hoc tables — no
+`TDInt64` path at all. The binary32 and binary64 ports are therefore structurally
+similar: dint is concentrated in the trig/log-family slow paths, not universal.
 
-**Phase 0 infrastructure is therefore the critical path.** No function can be correctly ported
-until `TDInt64` and its arithmetic are implemented and independently validated.
+The double-double helpers (`fasttwosum`, `muldd`) *are* near-universal, appearing
+in 33 of the 41 functions.
+
+**Phase 0 infrastructure is still the critical path**, but for a different reason:
+`pcr_fasttwosum` / `pcr_muldd` / `pcr_fma` correctness underpins every function's
+fast *and* slow path. `TDInt64` only needs to be validated before Phases 4 and 5
+(cos/sin/tan/sincos/log/log10/log10p1/log2p1/pow).
 
 ---
 
@@ -466,25 +475,29 @@ and `2^53`).
 
 ## Phase 1 — Simple-to-medium (220–420 lines, dint + double-double, no fenv)
 
-All functions in this phase use `TDInt64` and most use `fasttwosum`/`muldd`, but have
-a straightforward one- or two-pass Ziv structure with no `fegetround` branches.
+**None of the Phase 1 functions use `TDInt64`.** (Originally this section claimed
+all of them did — verified wrong by `grep` on the C sources.) The refinement
+path is pure double-double throughout, plus the occasional ad-hoc table. `clzll`
+is used by `rsqrt`, `cbrt`, and `log2` only; `fegetround` by `rsqrt` and `cbrt`
+only. All 15 functions use `fasttwosum` / `muldd`.
+
 Port in this order. All functions live in `pascoremath64.pas`, named `pcr_<name>`.
 
-- [X] **1.01** `rsqrt`   — 220 lines  *(uses clzll, fenv — see note below)*
-- [X] **1.02** `cbrt`    — 252 lines  *(uses clzll, fenv)*
-- [X] **1.03** `atan`    — 281 lines  *(uses dint + dd)*
-- [X] **1.04** `log2`    — 313 lines  *(uses clzll + dd)*
-- [X] **1.05** `acos`    — 354 lines  *(dd + fenv-free; no dint — all accurate-path refinement is double-double)*
-- [X] **1.06** `tanh`    — 355 lines  *(no dint — pure double-double; task list hint "dint + dd" was incorrect)*
-- [X] **1.07** `cospi`   — 356 lines  *(no dint — pure double-double + 3 × 33-entry lookup tables; task-list hint "dint + dd" was incorrect)*
-- [X] **1.08** `asin`    — 366 lines  *(no dint — pure double-double; task-list hint "dint + dd" was wrong; reuses cAcos* tables — asin & acos share the 33×8 polynomial table, the sin(pi/64·j) table, the inner c[5][2] polynomial, and ct[3] tail)*
-- [ ] **1.09** `cosh`    — 377 lines  *(uses dint + dd)*
-- [ ] **1.10** `exp10`   — 379 lines  *(uses dint + dd)*
-- [ ] **1.11** `exp2`    — 384 lines  *(uses dint + dd)*
-- [ ] **1.12** `exp`     — 386 lines  *(uses dint + dd)*
-- [ ] **1.13** `tanpi`   — 388 lines  *(uses dint + dd)*
-- [ ] **1.14** `sinpi`   — 400 lines  *(uses dint + dd)*
-- [ ] **1.15** `sinh`    — 418 lines  *(uses dint + dd)*
+- [X] **1.01** `rsqrt`   — 220 lines  *(clzll + fenv + dd)*
+- [X] **1.02** `cbrt`    — 252 lines  *(clzll + fenv + dd)*
+- [X] **1.03** `atan`    — 281 lines  *(pure dd; no dint)*
+- [X] **1.04** `log2`    — 313 lines  *(clzll + dd; no dint)*
+- [X] **1.05** `acos`    — 354 lines  *(pure dd; no dint, no fenv)*
+- [X] **1.06** `tanh`    — 355 lines  *(pure dd)*
+- [X] **1.07** `cospi`   — 356 lines  *(pure dd + 3 × 33-entry lookup tables)*
+- [X] **1.08** `asin`    — 366 lines  *(pure dd; reuses acos tables)*
+- [ ] **1.09** `cosh`    — 377 lines  *(pure dd — verified; earlier "dint + dd" hint was wrong)*
+- [ ] **1.10** `exp10`   — 379 lines  *(pure dd — verified)*
+- [ ] **1.11** `exp2`    — 384 lines  *(pure dd — verified)*
+- [ ] **1.12** `exp`     — 386 lines  *(pure dd — verified)*
+- [ ] **1.13** `tanpi`   — 388 lines  *(pure dd — verified)*
+- [ ] **1.14** `sinpi`   — 400 lines  *(pure dd — verified)*
+- [ ] **1.15** `sinh`    — 418 lines  *(pure dd — verified)*
 
 Note: `rsqrt` and `cbrt` technically include `fegetround` calls, but they are simple
 rounding-mode branches, not the multi-path Ziv structure seen in sin/cos. Start with them
@@ -745,32 +758,41 @@ anyway — they are the shortest files and good warm-up exercises.
 
 ## Phase 2 — Medium (436–882 lines)
 
-- [ ] **2.01** `expm1`   — 436 lines  *(uses dint + dd)*
-- [ ] **2.02** `acosh`   — 451 lines  *(uses dint + dd)*
-- [ ] **2.03** `atanh`   — 479 lines  *(uses dint + dd)*
-- [ ] **2.04** `atanpi`  — 479 lines  *(uses dint + dd)*
-- [ ] **2.05** `asinh`   — 489 lines  *(uses dint + dd)*
-- [ ] **2.06** `log1p`   — 490 lines  *(uses dint + dd)*
-- [ ] **2.07** `atan2`   — 586 lines  *(uses dint + dd, bivariate)*
-- [ ] **2.08** `erf`     — 710 lines  *(uses dint only)*
-- [ ] **2.09** `asinpi`  — 798 lines  *(uses dint + clzll + fenv)*
-- [ ] **2.10** `log`     — 832 lines  *(uses dint + clzll)*
-- [ ] **2.11** `atan2pi` — 866 lines  *(uses dint, bivariate)*
-- [ ] **2.12** `log10`   — 882 lines  *(uses dint + clzll)*
+Of the 12 Phase-2 functions, **only `log` and `log10` use `TDInt64`.** The rest
+are pure double-double. `clzll` is used only by `asinpi`, `log`, and `log10`.
+`fegetround` is used only by `asinpi`. (Verified by grep; original annotations
+here were wrong.)
+
+- [ ] **2.01** `expm1`   — 436 lines  *(pure dd)*
+- [ ] **2.02** `acosh`   — 451 lines  *(pure dd)*
+- [ ] **2.03** `atanh`   — 479 lines  *(pure dd)*
+- [ ] **2.04** `atanpi`  — 479 lines  *(pure dd)*
+- [ ] **2.05** `asinh`   — 489 lines  *(pure dd)*
+- [ ] **2.06** `log1p`   — 490 lines  *(pure dd)*
+- [ ] **2.07** `atan2`   — 586 lines  *(pure dd, bivariate)*
+- [ ] **2.08** `erf`     — 710 lines  *(pure dd; no dint — earlier "dint only" annotation was wrong)*
+- [ ] **2.09** `asinpi`  — 798 lines  *(clzll + fenv + dd; no dint)*
+- [ ] **2.10** `log`     — 832 lines  *(**dint** + clzll + dd — first real dint user in the sequence)*
+- [ ] **2.11** `atan2pi` — 866 lines  *(pure dd, bivariate; no dint)*
+- [ ] **2.12** `log10`   — 882 lines  *(**dint** + clzll + dd)*
 
 ---
 
 ## Phase 3 — Hard (1022–1577 lines)
 
-- [ ] **3.01** `exp2m1`  — 1022 lines *(uses dint)*
-- [ ] **3.02** `tgamma`  — 1096 lines *(uses dint + dd)*
-- [ ] **3.03** `acospi`  — 1099 lines *(uses dint)*
-- [ ] **3.04** `exp10m1` — 1153 lines *(uses dint)*
-- [ ] **3.05** `erfc`    — 1247 lines *(uses dint)*
-- [ ] **3.06** `lgamma`  — 1452 lines *(uses dint + dd)*
+Of the Phase-3 functions, **only `log10p1` uses `TDInt64`**; the other seven are
+pure double-double. `hypot` uses `clzll` but not dint or fenv. `lgamma` uses
+`clzll` (2 call sites) but not dint. (Verified by grep.)
+
+- [ ] **3.01** `exp2m1`  — 1022 lines *(pure dd; no dint)*
+- [ ] **3.02** `tgamma`  — 1096 lines *(pure dd; no dint)*
+- [ ] **3.03** `acospi`  — 1099 lines *(pure dd; no dint)*
+- [ ] **3.04** `exp10m1` — 1153 lines *(pure dd; no dint)*
+- [ ] **3.05** `erfc`    — 1247 lines *(pure dd; no dint)*
+- [ ] **3.06** `lgamma`  — 1452 lines *(clzll + dd; no dint)*
   - Reference: `pascoremath32.pas:3197` (`lgamma_as_sinpi`) and `:3211` (`lgamma_as_ln`) — existing `Double`-precision auxiliary functions used by `pcr_lgammaf`. Mirror their shape when porting; the coefficient tables (`c_nz1`/`c_nz2`/`c_nz3`, `rn_md`/`rd_md`) will be re-derived from `binary64/lgamma/lgamma.c`.
-- [ ] **3.07** `log10p1` — 1577 lines *(uses dint)*
-- [ ] **3.08** `hypot`   — 283 lines  *(uses dint + dd + fenv — listed here due to fenv complexity)*
+- [ ] **3.07** `log10p1` — 1577 lines *(**dint** + dd — only Phase-3 dint user)*
+- [ ] **3.08** `hypot`   — 283 lines  *(clzll + dd; no dint, no fenv — listed here due to historical grouping, not complexity)*
 
 ---
 
@@ -786,7 +808,7 @@ Validate `AddDInt`, `MulDInt`, `DIntFromD`, and `DToD` exhaustively before start
   - Reference: `pascoremath32.pas:5633` (`sincos_ipi` 2/π table — reuse as-is), `:5653` (`sincos_rbig` large-argument reduction), `:5732` (`sincos_rltl` small/medium-argument reduction), `:5840` (`cosf_db`), `:5883` (`cosf_big`). Binary64 widens the UInt32 input to UInt64 and keeps more limbs of the product, but the reduction skeleton is identical. Per note 3 below, factor the reduction into a shared routine used by 4.01/4.02/4.04/4.05.
 - [ ] **4.02** `sin`     — 2089 lines *(dint + clzll + fenv)*
   - Reference: same shared reduction as 4.01, plus `pascoremath32.pas:5752` (`sinf_add_sign`), `:5763` (`sinf_db`), `:5806` (`sinf_big`).
-- [ ] **4.03** `log2p1`  — 2162 lines *(dint — listed here due to line count)*
+- [ ] **4.03** `log2p1`  — 2162 lines *(**dint** + dd — listed here due to line count; no fenv, no clzll)*
 - [ ] **4.04** `sincos`  — 2252 lines *(dint + clzll + fenv, out-parameter API)*
   - Reference: same shared reduction as 4.01, plus `pascoremath32.pas:6146` (`sincosf_database`) and `:6221` (`sincosf_big`) for the combined-output pattern.
 - [ ] **4.05** `tan`     — 2297 lines *(dint + clzll + fenv)*
