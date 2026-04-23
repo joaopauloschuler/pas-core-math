@@ -26,6 +26,7 @@ function pcr_exp10(x: Double): Double;
 function pcr_expm1(x: Double): Double;
 function pcr_cos(x: Double): Double;
 function pcr_sin(x: Double): Double;
+procedure pcr_sincos(x: Double; out s, c: Double);
 
 // ── Stub functions (delegate to C reference until ported) ────────────────────
 // pcr_acos declared in ported section above
@@ -67,7 +68,7 @@ function  pcr_atan2(y, x: Double): Double; inline;
 function  pcr_atan2pi(y, x: Double): Double; inline;
 function  pcr_hypot(x, y: Double): Double; inline;
 function  pcr_pow(x, y: Double): Double; inline;
-procedure pcr_sincos(x: Double; out s, c: Double); inline;
+// pcr_sincos declared in ported section above
 
 implementation
 
@@ -4047,6 +4048,7 @@ end;
 
 {$I cos_port.inc}
 {$I sin_port.inc}
+{$I sincos_port.inc}
 
 // ---------------------------------------------------------------------------
 // Stubs — delegate to C reference until each function is ported.
@@ -4090,9 +4092,6 @@ function  pcr_atan2(y, x: Double): Double;  begin Result := cr_atan2(y, x);   en
 function  pcr_atan2pi(y, x: Double): Double; begin Result := cr_atan2pi(y, x); end;
 function  pcr_hypot(x, y: Double): Double;  begin Result := cr_hypot(x, y);   end;
 function  pcr_pow(x, y: Double): Double;    begin Result := cr_pow(x, y);     end;
-procedure pcr_sincos(x: Double; out s, c: Double);
-begin
-  cr_sincos(x, @s, @c);
-end;
+// pcr_sincos — ported above
 
 end.

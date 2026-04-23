@@ -902,8 +902,9 @@ Validate `AddDInt`, `MulDInt`, `DIntFromD`, and `DToD` exhaustively before start
   - Reference: same shared reduction as 4.01, plus `pascoremath32.pas:5752` (`sinf_add_sign`), `:5763` (`sinf_db`), `:5806` (`sinf_big`).
   - **Port notes (2026-04-23):** wrapped around the cos_port shared primitives; only SinFast/SinAccurate/pcr_sin in `src/sin_port.inc`. **Tiny-path pitfall:** C does `fma(x, -2^-54, x)` for `|x| <= 0x1.7137449123ef6p-26`. Per the C comment, this rounds to `x` for all inputs in that range — but `pcr_fma_pascal` (the Dekker emulation used in non-AVX2 builds) is NOT correctly rounded for subnormal or minimum-normal inputs, producing `x-ulp` instead of `x`. Fix: return `x` directly in the tiny branch (bit-exact per the C comment; we lose the INEXACT flag raise but gain bit-exact matching).
 - [ ] **4.03** `log2p1`  — 2162 lines *(**dint** + dd — listed here due to line count; no fenv, no clzll)*
-- [ ] **4.04** `sincos`  — 2252 lines *(dint + clzll + fenv, out-parameter API)*
+- [X] **4.04** `sincos`  — 2252 lines *(dint + clzll + fenv, out-parameter API)*
   - Reference: same shared reduction as 4.01, plus `pascoremath32.pas:6146` (`sincosf_database`) and `:6221` (`sincosf_big`) for the combined-output pattern.
+  - **Port notes (2026-04-23):** `src/sincos_port.inc` reuses CosReduce*/CosEval*/CosAccurate/SinAccurate. Tracks two sign flags (`neg` for sin, `negc` for cos) through the tri-fold. Tiny path returns (x, 1.0) directly — C's `1.0 - 2^-54` ties-to-even to 1.0.
 - [ ] **4.05** `tan`     — 2297 lines *(dint + clzll + fenv)*
   - Reference: `pascoremath32.pas:6068` (`tanf_rbig`) and `:6126` (`tanf_rltl`). Shares the `sincos_ipi` table with 4.01–4.04.
 
