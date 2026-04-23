@@ -26,6 +26,7 @@ function pcr_exp10(x: Double): Double;
 function pcr_expm1(x: Double): Double;
 function pcr_cos(x: Double): Double;
 function pcr_sin(x: Double): Double;
+function pcr_tan(x: Double): Double;
 procedure pcr_sincos(x: Double; out s, c: Double);
 
 // ── Stub functions (delegate to C reference until ported) ────────────────────
@@ -60,7 +61,7 @@ function  pcr_log2p1(x: Double): Double; inline;
 // pcr_sin declared in ported section above
 function  pcr_sinh(x: Double): Double; inline;
 function  pcr_sinpi(x: Double): Double; inline;
-function  pcr_tan(x: Double): Double; inline;
+// pcr_tan declared in ported section above
 // pcr_tanh declared in ported section above
 function  pcr_tanpi(x: Double): Double; inline;
 function  pcr_tgamma(x: Double): Double; inline;
@@ -4048,6 +4049,7 @@ end;
 
 {$I cos_port.inc}
 {$I sin_port.inc}
+{$I tan_port.inc}
 {$I sincos_port.inc}
 
 // ---------------------------------------------------------------------------
@@ -4085,7 +4087,7 @@ function  pcr_log2p1(x: Double): Double;  begin Result := cr_log2p1(x);  end;
 // pcr_sin — ported above
 function  pcr_sinh(x: Double): Double;    begin Result := cr_sinh(x);    end;
 function  pcr_sinpi(x: Double): Double;   begin Result := cr_sinpi(x);   end;
-function  pcr_tan(x: Double): Double;     begin Result := cr_tan(x);     end;
+// pcr_tan — ported above
 function  pcr_tanpi(x: Double): Double;   begin Result := cr_tanpi(x);   end;
 function  pcr_tgamma(x: Double): Double;  begin Result := cr_tgamma(x);  end;
 function  pcr_atan2(y, x: Double): Double;  begin Result := cr_atan2(y, x);   end;

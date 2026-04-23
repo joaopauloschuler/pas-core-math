@@ -905,8 +905,9 @@ Validate `AddDInt`, `MulDInt`, `DIntFromD`, and `DToD` exhaustively before start
 - [X] **4.04** `sincos`  — 2252 lines *(dint + clzll + fenv, out-parameter API)*
   - Reference: same shared reduction as 4.01, plus `pascoremath32.pas:6146` (`sincosf_database`) and `:6221` (`sincosf_big`) for the combined-output pattern.
   - **Port notes (2026-04-23):** `src/sincos_port.inc` reuses CosReduce*/CosEval*/CosAccurate/SinAccurate. Tracks two sign flags (`neg` for sin, `negc` for cos) through the tri-fold. Tiny path returns (x, 1.0) directly — C's `1.0 - 2^-54` ties-to-even to 1.0.
-- [ ] **4.05** `tan`     — 2297 lines *(dint + clzll + fenv)*
+- [X] **4.05** `tan`     — 2297 lines *(dint + clzll + fenv)*
   - Reference: `pascoremath32.pas:6068` (`tanf_rbig`) and `:6126` (`tanf_rltl`). Shares the `sincos_ipi` table with 4.01–4.04.
+  - **Port notes (2026-04-23):** `src/tan_port.inc` + `src/tan_tinv.inc` (256-entry inv-seed table). Couldn't reuse CosReduceFast — tan needs one **extra T[] limb** of precision (because it divides by cos2pi(R), which vanishes near π/2), so TanReduceFast exists separately. Also needs **InvDInt / DivDInt** (dint reciprocal via 3 Newton iterations + Karp-Markstein), not present in cos/sin. Fast path uses Karp-Markstein (`TanFastDiv`) for the double-double quotient. Same tiny-path workaround as sin (return x directly; C's `fma(x, 2^-54, x)` would give bit-exact results only with a correctly rounded fma).
 
 ---
 
