@@ -16,7 +16,7 @@ Before starting, check the existing functions and notes at:
 
 ## Status summary
 
-- **7 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 in progress — 1.01 rsqrt, 1.02 cbrt, 1.03 atan, 1.04 log2, 1.05 acos, 1.06 tanh, 1.07 cospi done)
+- **8 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 in progress — 1.01 rsqrt, 1.02 cbrt, 1.03 atan, 1.04 log2, 1.05 acos, 1.06 tanh, 1.07 cospi, 1.08 asin done)
 - Target file: `src/pascoremath64.pas`
 - **Phase 0 fully complete** (tasks 0.1–0.10): infrastructure, helpers, and test harness ready
 - libcoremath64.so built from core-math/src/binary64/; test programs compile once pcr_* functions added
@@ -477,7 +477,7 @@ Port in this order. All functions live in `pascoremath64.pas`, named `pcr_<name>
 - [X] **1.05** `acos`    — 354 lines  *(dd + fenv-free; no dint — all accurate-path refinement is double-double)*
 - [X] **1.06** `tanh`    — 355 lines  *(no dint — pure double-double; task list hint "dint + dd" was incorrect)*
 - [X] **1.07** `cospi`   — 356 lines  *(no dint — pure double-double + 3 × 33-entry lookup tables; task-list hint "dint + dd" was incorrect)*
-- [ ] **1.08** `asin`    — 366 lines  *(uses dint + dd)*
+- [X] **1.08** `asin`    — 366 lines  *(no dint — pure double-double; task-list hint "dint + dd" was wrong; reuses cAcos* tables — asin & acos share the 33×8 polynomial table, the sin(pi/64·j) table, the inner c[5][2] polynomial, and ct[3] tail)*
 - [ ] **1.09** `cosh`    — 377 lines  *(uses dint + dd)*
 - [ ] **1.10** `exp10`   — 379 lines  *(uses dint + dd)*
 - [ ] **1.11** `exp2`    — 384 lines  *(uses dint + dd)*
@@ -646,6 +646,72 @@ anyway — they are the shortest files and good warm-up exercises.
   the C hardware-FMA path, while Pascal's simpler epilogue edges
   ahead. Accurate refinement is rarely triggered (Ziv-test usually
   passes).
+
+**asin implementation notes (task 1.08 completed):**
+
+- Task-list hint "dint + dd" was wrong — fourth Phase-1 function in a row
+  where the hint was incorrect. `asin.c` has no `TDInt64`; the slow path is
+  pure double-double plus a 29-entry `as_asin_database` binary search.
+  Pattern now firmly established: always re-check the C source before
+  budgeting dint work for Phase 1.
+
+- **Reuses the acos constants wholesale.** `cAcosCC` (33×8 polynomial
+  table), `cAcosSHi`/`cAcosSLo` (sin(pi/64·j) double-double), `cAcosCHi`/
+  `cAcosCLo` (inner Taylor c[5][2]), `cAcosCt` (outer tail ct[3]),
+  `cAcosPi64H/M/L`, `cAcosPiHalfH/L`, `cAcosRefScale`, `cAcosC2fK`,
+  `cAcosP5`, `cAcosN7`, `cAcosP7` are all byte-identical between the two
+  functions (verified via `diff` on the cc table). No duplicate
+  transcription needed — a big win given the scale risk flagged in tanh
+  note 15.
+
+- Asin-only constants: `cAsinSmallTh` (threshold for |x| below which
+  asin(x) ≈ x to half-ULP), `cAsinSmallC = 0x1p-55`, `cAsinEps1 =
+  0x1.962p-52`, `cAsinEps2 = 0x1p-100`. Acos uses `0x1.8cp-52`, asin uses
+  `0x1.962p-52`.
+
+- **pcr_fma sign-of-zero trap.** For x = -0, the C code returns
+  `__builtin_fma(0x1p-55, x, x) = -0` (hardware FMA preserves sign).
+  `pcr_fma_pascal` flipped it to +0. First submission passed 10^8 random
+  inputs except the single input `x = -0` (caught by TestHarness64 diag).
+  Fix: short-circuit `ax = 0 → Result := x` in the tiny-x branch, before
+  calling pcr_fma. Keep the pcr_fma call for the non-zero tiny range so
+  the inexact flag still fires.
+
+- Refinement uses **fasttwosum-based `fastsum`**, not full `twosum`. Acos's
+  equivalent line uses `sum` (twosum). Do not copy-paste the acos
+  `sh_tmp/d_tmp/sl_tmp` block into asin — a direct `pcr_fasttwosum(fh, pl)`
+  suffices per the asin C source.
+
+- The C refine uses `v *= sgn; dv *= sgn` (same sign as x). Acos uses
+  `v *= -sgn; dv *= -sgn` (negated). Watch the sign when pattern-matching
+  between the two.
+
+- `jt = jf * sgn` is a **signed** integer in [-32, 32] (the C comment
+  "0 <= jt <= 64" is wrong). Use `Int64 jt; if x>=0 then jt := jf else jt := -jf;`
+  and convert to Double for the `ph = jt * pi64H` product. ph/pl/ps are
+  exact for |jt| <= 64.
+
+- `as_asin_database` is a 29-entry binary search with a 32-bit `signs`
+  mask (`0x1f73ffcb`): when an input hits a known worst-case, the output
+  is reconstructed from `ydb[m]` plus a sign-modulated 2^-54 epsilon.
+  Drive the match as Pascal `while a <= b` binary search; the copysign
+  pattern simplifies because `ydb[m]` is always positive, so
+  `copysign(ydb[m], x) + copysign(1,x)*t.f` becomes
+  `if x >= 0 then yt+t.f else -yt-t.f`.
+
+- The `hard` test before calling the database is the same pattern as acos
+  but mechanically different: `tn.u = (ph.exp_bits) - (53<<52)`,
+  `tl.u &= 0x7fff...` (|pl|), then `dn = tl.u - tn.u`, `de = (tn.u - tl.u) >> 52`,
+  `hard = (-2 <= dn && dn <= 0) || (de > 46)`. The two subtractions
+  intentionally wrap around uint64 in opposite directions; cast dn to
+  Int64 after, but keep de as unsigned >>52 (shown in C as `long` but the
+  shift is always logical on the uint64 result).
+
+- 10^8 random ULP test: 0 mismatches. 200M-input Benchmark64: sink=MATCH.
+  Benchmark: Pascal **59.1 Mops/s** vs C 291.1 Mops/s (~20%, non-AVX2 with
+  emulated FMA). Large gap reflects how much of the critical path is
+  `pcr_muldd` calls (7+ per fast path, 20+ per slow); hardware-FMA builds
+  should close most of it.
 
 **acos implementation notes (task 1.05 completed):**
 

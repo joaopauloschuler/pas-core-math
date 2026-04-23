@@ -19,12 +19,13 @@ function pcr_log2(x: Double): Double;
 function pcr_acos(x: Double): Double;
 function pcr_tanh(x: Double): Double;
 function pcr_cospi(x: Double): Double;
+function pcr_asin(x: Double): Double;
 
 // ── Stub functions (delegate to C reference until ported) ────────────────────
 // pcr_acos declared in ported section above
 function  pcr_acosh(x: Double): Double; inline;
 function  pcr_acospi(x: Double): Double; inline;
-function  pcr_asin(x: Double): Double; inline;
+// pcr_asin declared in ported section above
 function  pcr_asinh(x: Double): Double; inline;
 function  pcr_asinpi(x: Double): Double; inline;
 // pcr_atan declared in ported section above
@@ -2608,13 +2609,263 @@ begin
 end;
 
 // ---------------------------------------------------------------------------
+// pcr_asin — correctly-rounded binary64 arc sine.
+// Ported from core-math/src/binary64/asin/asin.c by Alexei Sibidanov.
+// Reuses cAcosCC / cAcosSHi / cAcosSLo / cAcosCHi / cAcosCLo / cAcosCt:
+// asin and acos share the same 33×8 polynomial table and the same
+// 33-entry sin(pi/64*j) double-double table.
+// ---------------------------------------------------------------------------
+
+const
+  cAsinSmallTh:  Tb64u64 = (u: $7CAE26E892247DEC); // ax<this → fma(2^-55,x,x)
+  cAsinSmallC:   Tb64u64 = (u: $3C80000000000000); // 0x1p-55
+  cAsinEps1:     Tb64u64 = (u: $3CB9620000000000); // 0x1.962p-52
+  cAsinEps2:     Tb64u64 = (u: $3960000000000000); // 0x1p-100
+  cAsinSignsMask: UInt32 = $1F73FFCB;
+
+  // 29-entry rare-input database (xdb, ydb), per as_asin_database in asin.c.
+  cAsinDbX: array[0..28] of UInt64 = (
+    $3E57137449123EF6, $3E5D12ED0AF1A27E, $3E851C4B960778F5, $3E93CFC2A006A414,
+    $3E9CBAA95DADB559, $3EBACD69F89AD8F1, $3EF2BFFFFFFC233B, $3EFFF0F3022B2E9D,
+    $3F13217783D70D1D, $3F1C373FF4AAD79B, $3F6B3F28593CAD2F, $3F8E17B3F6BB5E6E,
+    $3F941D60A76A82ED, $3F9921C0A0486537, $3F9A3A2919D6B19B, $3F9D6315F7EE7E01,
+    $3F9EA6FDC56FC61A, $3FA69768DC89BB00, $3FAA4816B2066707, $3FAD77B117F230D6,
+    $3FAFC7A07B2549AA, $3FB2DF0542154F1B, $3FB51CF5DB1B1956, $3FC9697CB602C582,
+    $3FCD0EF799001BA9, $3FD4A8E1A96E38E3, $3FDDA4E0E6C717A5, $3FDEA8E8FDF47549,
+    $3FE3B9994ABB81D4);
+  cAsinDbY: array[0..28] of Tb64u64 = (
+    (u:$3E57137449123EF7),(u:$3E5D12ED0AF1A27F),(u:$3E851C4B9607790D),(u:$3E93CFC2A006A465),
+    (u:$3E9CBAA95DADB650),(u:$3EBACD69F89AE57A),(u:$3EF2C00000006DDD),(u:$3EFFF0F3024065E7),
+    (u:$3F132177841FFBEF),(u:$3F1C373FF594D65B),(u:$3F6B3F2BA40DBC66),(u:$3F8E17FAEFAC7797),
+    (u:$3F941DB571D96126),(u:$3F99226605233224),(u:$3F9A3AE514C9BEFA),(u:$3F9D641E6D5E769A),
+    (u:$3F9EA829E3E988E5),(u:$3FA69949B3D51FB1),(u:$3FAA4B0BFB0454D5),(u:$3FAD7BDCD778049F),
+    (u:$3FAFCCDC252CAD1F),(u:$3FB2E36813A98740),(u:$3FB5231B416BA885),(u:$3FC994FFB5DAF0F9),
+    (u:$3FCD5064E6FE82C5),(u:$3FD50954B7BBF87B),(u:$3FDED25C5EB8C916),(u:$3FDFF92A8CA216CD),
+    (u:$3FE540E24E5F33F3));
+
+function AsinDatabase(x, f: Double): Double;
+var
+  t: Tb64u64;
+  ax: UInt64;
+  a, b, m: Int32;
+  yt: Double;
+begin
+  Result := f;
+  t.f := x;
+  ax := t.u and (UInt64($7FFFFFFFFFFFFFFF));
+  a := 0; b := High(cAsinDbX); m := (a + b) div 2;
+  while a <= b do
+  begin
+    if cAsinDbX[m] < ax then a := m + 1
+    else if cAsinDbX[m] = ax then
+    begin
+      // t.f = ydb[m]; t.u -= 54<<52; t.u |= ((signs>>m)&1) << 63
+      t.u := cAsinDbY[m].u - (UInt64(54) shl 52);
+      t.u := t.u or ((UInt64((cAsinSignsMask shr m) and 1)) shl 63);
+      yt := cAsinDbY[m].f;        // ydb[m] is always positive
+      if x >= Double(0.0) then
+        Result :=  yt + t.f
+      else
+        Result := -yt - t.f;
+      Exit;
+    end
+    else b := m - 1;
+    m := (a + b) div 2;
+  end;
+end;
+
+function AsinRefine(x, phi: Double): Double;
+var
+  s2, dx2, c2h, c2l, c2f, ch, cl: Double;
+  jf: Int64;
+  Ch_v, Cl_v, Sh_v, Sl_v, ax_r: Double;
+  dsh, dsl, dch, dcl: Double;
+  Sc, dSc, Cs, dCs, v, dv: Double;
+  sgn: Double;
+  jt: Int64;
+  jtd: Double;
+  v2, dv2: Double;
+  fh, fl: Double;
+  chp, clp, th, tl: Double;
+  ph, pl, ps: Double;
+  pl_new, ps_inner: Double;
+  th_u, tl_u, tn_u: Tb64u64;
+  dn, de: Int64;
+  hard: Boolean;
+  res: Double;
+begin
+  s2  := x * x;
+  dx2 := pcr_fma(x, x, -s2);
+  pcr_fasttwosum(c2h, c2l, Double(1.0), -s2);   // == fasttwosub(1, s2)
+  c2l := c2l - dx2;
+  pcr_fasttwosum(c2h, c2l, c2h, c2l);
+
+  c2f := pcr_fma(x, -x, Double(1.0));
+  ch  := Sqrt(c2f);
+  cl  := (c2l - pcr_fma(ch, ch, -c2f)) * ((Double(0.5) / c2f) * ch);
+
+  jf := Trunc(pcr_roundeven(Abs(phi) * cAcosRefScale.f));
+
+  Ch_v := cAcosSHi[32 - jf].f;  Cl_v := cAcosSLo[32 - jf].f;
+  Sh_v := cAcosSHi[jf].f;       Sl_v := cAcosSLo[jf].f;
+
+  ax_r := Abs(x);
+  dsh := ax_r - Sh_v;  dsl := -Sl_v;
+  dch := ch   - Ch_v;  dcl := cl - Cl_v;
+
+  Sc  := pcr_fma(Sh_v, dch, cAcosC2fK.f) - cAcosC2fK.f;
+  dSc := pcr_fma(Sh_v, dch, -Sc);
+
+  Cs  := pcr_fma(Ch_v, dsh, cAcosC2fK.f) - cAcosC2fK.f;
+  dCs := pcr_fma(Ch_v, dsh, -Cs);
+
+  v  := Cs - Sc;
+  dv := (Ch_v * dsl + Cl_v * dsh) - (Sh_v * dcl + Sl_v * dch) - (dSc - dCs);
+  pcr_fasttwosum(v, dv, v, dv);
+
+  if x >= Double(0.0) then sgn := Double(1.0) else sgn := -Double(1.0);
+  if x >= Double(0.0) then jt := jf else jt := -jf;     // jf*sgn, range [-32,32]
+  jtd := jt;
+
+  v2 := pcr_muldd(v, dv, v, dv, dv2);
+  v  := v  * sgn;
+  dv := dv * sgn;
+
+  fl := v2 * (cAcosCt[0].f + v2 * (cAcosCt[1].f + v2 * cAcosCt[2].f));
+  // fh = polydd(v2, dv2, 5, c, &fl) with incoming *l = fl (seeded variant)
+  pcr_fasttwosum(chp, fl, cAcosCHi[4].f, fl);
+  clp := cAcosCLo[4].f + fl;
+  chp := pcr_muldd(v2, dv2, chp, clp, clp);
+  pcr_fasttwosum(th, tl, cAcosCHi[3].f, chp);
+  chp := th;  clp := (cAcosCLo[3].f + clp) + tl;
+  chp := pcr_muldd(v2, dv2, chp, clp, clp);
+  pcr_fasttwosum(th, tl, cAcosCHi[2].f, chp);
+  chp := th;  clp := (cAcosCLo[2].f + clp) + tl;
+  chp := pcr_muldd(v2, dv2, chp, clp, clp);
+  pcr_fasttwosum(th, tl, cAcosCHi[1].f, chp);
+  chp := th;  clp := (cAcosCLo[1].f + clp) + tl;
+  chp := pcr_muldd(v2, dv2, chp, clp, clp);
+  pcr_fasttwosum(th, tl, cAcosCHi[0].f, chp);
+  chp := th;  clp := (cAcosCLo[0].f + clp) + tl;
+  fh := chp;  fl := clp;
+
+  fh := pcr_muldd(v, dv, fh, fl, fl);
+
+  ph := jtd * cAcosPi64H.f;
+  pl := cAcosPi64M.f * jtd;
+  ps := cAcosPi64L.f * jtd;
+  // pl = fastsum(fh, fl, pl, ps, &ps)  (fasttwosum form, not full twosum)
+  pcr_fasttwosum(pl_new, ps_inner, fh, pl);
+  ps := (fl + ps) + ps_inner;
+  pl := pl_new;
+  pcr_fasttwosum(ph, pl, ph, pl);
+  pcr_fasttwosum(pl, ps, pl, ps);
+  pcr_fasttwosum(ph, pl, ph, pl);
+  pcr_fasttwosum(pl, ps, pl, ps);
+
+  th_u.f := ph;  tl_u.f := pl;
+  tn_u.u := (th_u.u and (UInt64($7FF) shl 52)) - (UInt64(53) shl 52);
+  tl_u.u := tl_u.u and (UInt64($7FFFFFFFFFFFFFFF));   // |pl|
+  dn := Int64(tl_u.u - tn_u.u);
+  de := Int64((tn_u.u - tl_u.u) shr 52);
+  hard := ((dn >= -2) and (dn <= 0)) or (de > 46);
+  res := ph + pl;
+  if hard then res := AsinDatabase(x, res);
+  Result := res;
+end;
+
+function pcr_asin(x: Double): Double;
+var
+  ix: Tb64u64;
+  ax: UInt64;
+  k: Int64;
+  j: Int64;
+  f0h, f0l, t, z, zl, jd: Double;
+  t2, d_poly, fh, fl, eps, lb, ub, sum_sh, fastsum_sl: Double;
+begin
+  ix.f := x;
+  ax := ix.u shl 1;
+
+  if ax > UInt64($7FC0000000000000) then
+  begin
+    // |x| > 0.5 branch
+    k := ix.u shr 63;
+    if k = 0 then
+    begin
+      f0h :=  cAcosPiHalfH.f;  f0l :=  cAcosPiHalfL.f;
+    end
+    else
+    begin
+      f0h := -cAcosPiHalfH.f;  f0l := -cAcosPiHalfL.f;
+    end;
+    if ax >= UInt64($7FE0000000000000) then
+    begin
+      if ax = UInt64($7FE0000000000000) then
+      begin Result := f0h + f0l; Exit; end;        // |x| = 1
+      if ax > UInt64($FFE0000000000000) then
+      begin Result := x + x; Exit; end;            // NaN
+      Result := Double(0.0) / Double(0.0); Exit;   // |x|>1: NaN (negative, like C)
+    end;
+    t  := Double(2.0) - Double(2.0) * Abs(x);
+    jd := pcr_roundeven(t * cAcosP5.f);            // t * 32
+    if x >= Double(0.0) then z := -Sqrt(t) else z := Sqrt(t);  // copysign(sqrt(t), -x)
+    zl := pcr_fma(z, z, -t) * ((-Double(0.5) / t) * z);
+    t  := Double(0.25) * t - jd * cAcosN7.f;       // 0.25*t - jd/128
+  end
+  else
+  begin
+    // |x| <= 0.5
+    if ax < cAsinSmallTh.u then
+    begin
+      // tiny x: asin(x) ~ x. fma(2^-55, x, x) preserves sign of ±0 with
+      // hardware FMA but the emulated pcr_fma_pascal can flip -0 → +0;
+      // short-circuit for x=±0 to keep the sign bit intact.
+      if ax = 0 then
+        Result := x
+      else
+        Result := pcr_fma(cAsinSmallC.f, x, x);
+      Exit;
+    end;
+    f0h := Double(0.0);
+    f0l := Double(0.0);
+    t   := x * x;
+    jd  := pcr_roundeven(t * cAcosP7.f);           // t * 128
+    t   := pcr_fma(x, x, -cAcosN7.f * jd);
+    z   := x;
+    zl  := Double(0.0);
+  end;
+
+  j := Trunc(jd);
+  t2 := t * t;
+  d_poly := t * ((cAcosCC[j,2].f + t * cAcosCC[j,3].f) +
+                 t2 * ((cAcosCC[j,4].f + t * cAcosCC[j,5].f) +
+                       t2 * (cAcosCC[j,6].f + t * cAcosCC[j,7].f)));
+  fh := cAcosCC[j,0].f;
+  fl := cAcosCC[j,1].f + d_poly;
+  fh := pcr_muldd(z, zl, fh, fl, fl);
+  // fastsum(f0h, f0l, fh, fl, &fl_out): sh = fasttwosum(f0h, fh, &sl); fl_out = (f0l+fl)+sl
+  fastsum_sl := Double(0.0);
+  pcr_fasttwosum(sum_sh, fastsum_sl, f0h, fh);
+  fl := (f0l + fl) + fastsum_sl;
+  fh := sum_sh;
+
+  eps := Abs(z * t) * cAsinEps1.f + cAsinEps2.f;
+  lb  := fh + (fl - eps);
+  ub  := fh + (fl + eps);
+  if lb <> ub then
+    Result := AsinRefine(x, lb)
+  else
+    Result := lb;
+end;
+
+// ---------------------------------------------------------------------------
 // Stubs — delegate to C reference until each function is ported.
 // Replace each stub body with the real Pascal port as phases 1-5 progress.
 // ---------------------------------------------------------------------------
 // pcr_acos — ported above
 function  pcr_acosh(x: Double): Double;   begin Result := cr_acosh(x);   end;
 function  pcr_acospi(x: Double): Double;  begin Result := cr_acospi(x);  end;
-function  pcr_asin(x: Double): Double;    begin Result := cr_asin(x);    end;
+// pcr_asin — ported above
 function  pcr_asinh(x: Double): Double;   begin Result := cr_asinh(x);   end;
 function  pcr_asinpi(x: Double): Double;  begin Result := cr_asinpi(x);  end;
 // pcr_atan — ported above
