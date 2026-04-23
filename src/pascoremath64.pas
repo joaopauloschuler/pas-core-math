@@ -24,6 +24,7 @@ function pcr_exp(x: Double): Double;
 function pcr_exp2(x: Double): Double;
 function pcr_exp10(x: Double): Double;
 function pcr_expm1(x: Double): Double;
+function pcr_cos(x: Double): Double;
 
 // ── Stub functions (delegate to C reference until ported) ────────────────────
 // pcr_acos declared in ported section above
@@ -36,7 +37,7 @@ function  pcr_asinpi(x: Double): Double; inline;
 function  pcr_atanh(x: Double): Double; inline;
 function  pcr_atanpi(x: Double): Double; inline;
 // pcr_cbrt declared in ported section above
-function  pcr_cos(x: Double): Double; inline;
+// pcr_cos declared in ported section above
 function  pcr_cosh(x: Double): Double; inline;
 // pcr_cospi declared in ported section above
 function  pcr_erf(x: Double): Double; inline;
@@ -4043,6 +4044,8 @@ begin
   Result := ExpAsLdexp(lb, ie);
 end;
 
+{$I cos_port.inc}
+
 // ---------------------------------------------------------------------------
 // Stubs — delegate to C reference until each function is ported.
 // Replace each stub body with the real Pascal port as phases 1-5 progress.
@@ -4057,7 +4060,7 @@ function  pcr_asinpi(x: Double): Double;  begin Result := cr_asinpi(x);  end;
 function  pcr_atanh(x: Double): Double;   begin Result := cr_atanh(x);   end;
 function  pcr_atanpi(x: Double): Double;  begin Result := cr_atanpi(x);  end;
 // pcr_cbrt — ported above
-function  pcr_cos(x: Double): Double;     begin Result := cr_cos(x);     end;
+// pcr_cos — ported above
 function  pcr_cosh(x: Double): Double;    begin Result := cr_cosh(x);    end;
 // pcr_cospi — ported above
 function  pcr_erf(x: Double): Double;     begin Result := cr_erf(x);     end;

@@ -67,6 +67,11 @@ function CmpDIntAbs(const a, b: TDInt64): Integer;
 procedure AddDInt(out r: TDInt64; const a, b: TDInt64);
 // Multiply two TDInt64 values (error bounded by 6 ulp_128)
 procedure MulDInt(out r: TDInt64; const a, b: TDInt64);
+// Multiply two TDInt64 values, assuming b.lo = 0 (error bounded by 2 ulp_128)
+procedure MulDInt21(out r: TDInt64; const a, b: TDInt64);
+// Normalize X so that X.hi has its most significant bit set (if X <> 0).
+// Used by the 2*pi range-reduction routines (sin/cos/tan/sincos).
+procedure NormalizeDInt(var X: TDInt64);
 // Convert Double to TDInt64
 procedure DIntFromD(out a: TDInt64; b: Double);
 // Convert TDInt64 to Double (modifies a via subnormalise; pass a copy if const needed)
@@ -423,6 +428,61 @@ begin
   r.lo  := rr.lo;
   r.ex  := rex_a + rex_b + Int64(ex) - 1;
   r.sgn := rsgn;
+end;
+
+// Ported from mul_dint_21 in core-math/src/binary64/cos/cos.c:
+// "Multiply two dint64_t numbers, assuming the low part of b is zero,
+//  with error bounded by 2 ulps."
+procedure MulDInt21(out r: TDInt64; const a, b: TDInt64);
+var
+  hi, lo: TUInt128;
+  ah, al, bh: UInt64;
+  rex_a, rex_b: Int64;
+  rsgn: Byte;
+  ex: UInt64;
+begin
+  ah := a.hi; al := a.lo;
+  bh := b.hi;
+  rex_a := a.ex; rex_b := b.ex;
+  rsgn := a.sgn xor b.sgn;
+
+  hi := Mulu64u64(ah, bh);
+  lo := Mulu64u64(al, bh);
+
+  // r.r = hi + (lo >> 64)
+  hi := hi + lo.hi;
+
+  ex := hi.hi shr 63;
+  if ex = 0 then begin
+    hi.hi := (hi.hi shl 1) or (hi.lo shr 63);
+    hi.lo := hi.lo shl 1;
+  end;
+
+  r.hi  := hi.hi;
+  r.lo  := hi.lo;
+  r.ex  := rex_a + rex_b + Int64(ex) - 1;
+  r.sgn := rsgn;
+end;
+
+// Ported from normalize() in core-math/src/binary64/cos/cos.c:
+// shift left so X.hi has its MSB set (if X <> 0); adjust ex accordingly.
+procedure NormalizeDInt(var X: TDInt64);
+var
+  cnt: Integer;
+begin
+  if X.hi <> 0 then begin
+    cnt := clzll64(X.hi);
+    if cnt <> 0 then begin
+      X.hi := (X.hi shl cnt) or (X.lo shr (64 - cnt));
+      X.lo := X.lo shl cnt;
+    end;
+    X.ex := X.ex - Int64(cnt);
+  end else if X.lo <> 0 then begin
+    cnt := clzll64(X.lo);
+    X.hi := X.lo shl cnt;
+    X.lo := 0;
+    X.ex := X.ex - Int64(64 + cnt);
+  end;
 end;
 
 // Ported from dint_fromd / fast_extract in sin.c.

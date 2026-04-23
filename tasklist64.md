@@ -891,8 +891,13 @@ large-argument range-reduction helper will appear in all four — it **must not 
 
 Validate `AddDInt`, `MulDInt`, `DIntFromD`, and `DToD` exhaustively before starting.
 
-- [ ] **4.01** `cos`     — 2068 lines *(dint + clzll + fenv)*
+- [X] **4.01** `cos`     — 2068 lines *(dint + clzll + fenv)*
   - Reference: `pascoremath32.pas:5633` (`sincos_ipi` 2/π table — reuse as-is), `:5653` (`sincos_rbig` large-argument reduction), `:5732` (`sincos_rltl` small/medium-argument reduction), `:5840` (`cosf_db`), `:5883` (`cosf_big`). Binary64 widens the UInt32 input to UInt64 and keeps more limbs of the product, but the reduction skeleton is identical. Per note 3 below, factor the reduction into a shared routine used by 4.01/4.02/4.04/4.05.
+  - **Port notes (2026-04-23):**
+    - Tables (T, S, C, PSfast, PCfast, PS, PC, SC) auto-extracted by `tmp/extract_cos_tables.py` into `src/cos_tables.inc` (827 lines). Regenerate — do **not** hand-edit.
+    - Shared primitives `CosReduce` / `CosReduce2` / `CosReduceFast` / `CosEvalPS` / `CosEvalPC` / `CosEvalPSfast` / `CosEvalPCfast` live in `src/cos_port.inc` and will be reused by 4.02/4.04/4.05. `MulDInt21` / `NormalizeDInt` were added to `pascoremathtypes.pas`.
+    - **Hex-float encoding trap:** `0x1.mmm...p-N` → biased exp = `1023 - N` (not `1023 - N + 2`). The `cCosCL = -0x1.6b01ec5417056p-57` constant had exp field `$3C8` (→ `p-55`) instead of `$3C6`. Only cos(1.0) exposed it (other fast-path tests happened to round to the same bits despite 4× too-large `l` after reduction). Always double-check `Tb64u64` literals against `printf("%a", v)` of the C source.
+    - **Pascal case-insensitivity trap:** `X: TDInt64` local conflicts with `x: Double` parameter (renamed local to `Xd`).
 - [ ] **4.02** `sin`     — 2089 lines *(dint + clzll + fenv)*
   - Reference: same shared reduction as 4.01, plus `pascoremath32.pas:5752` (`sinf_add_sign`), `:5763` (`sinf_db`), `:5806` (`sinf_big`).
 - [ ] **4.03** `log2p1`  — 2162 lines *(**dint** + dd — listed here due to line count; no fenv, no clzll)*
