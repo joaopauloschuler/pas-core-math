@@ -18,6 +18,7 @@ function pcr_atan(x: Double): Double;
 function pcr_log2(x: Double): Double;
 function pcr_acos(x: Double): Double;
 function pcr_tanh(x: Double): Double;
+function pcr_cospi(x: Double): Double;
 
 // ── Stub functions (delegate to C reference until ported) ────────────────────
 // pcr_acos declared in ported section above
@@ -32,7 +33,7 @@ function  pcr_atanpi(x: Double): Double; inline;
 // pcr_cbrt declared in ported section above
 function  pcr_cos(x: Double): Double; inline;
 function  pcr_cosh(x: Double): Double; inline;
-function  pcr_cospi(x: Double): Double; inline;
+// pcr_cospi declared in ported section above
 function  pcr_erf(x: Double): Double; inline;
 function  pcr_erfc(x: Double): Double; inline;
 function  pcr_exp(x: Double): Double; inline;
@@ -2008,6 +2009,605 @@ begin
 end;
 
 // ---------------------------------------------------------------------------
+// pcr_cospi — correctly-rounded binary64 cos(pi*x).
+// Ported from core-math/src/binary64/cospi/cospi.c by Alexei Sibidanov.
+// All helper routines (fasttwosum/muldd_acc/mulddd/polydd) inline; the
+// accurate refinement is pure double-double (no TDInt64 path).
+// Tables extracted programmatically from cospi.c (see tasklist64.md 1.07).
+// ---------------------------------------------------------------------------
+
+const
+  // Main path constants sn[3], cn[2]
+  cCospiSn: array[0..2] of Tb64u64 = (
+    (u:$3B5921FB54442D18),(u:$B204ABBCE625BE51),(u:$289466BC6044BA16));
+  cCospiCn: array[0..1] of Tb64u64 = (
+    (u:$B6B3BD3CC9BE45DB),(u:$2D503C1F00186416));
+
+  // as_cospi_zero tables
+  cCospiZeroCh: array[0..1, 0..1] of Tb64u64 = (
+    ((u:$C013BD3CC9BE45DE),(u:$BCB692B71366CC04)),
+    ((u:$40103C1F081B5AC4),(u:$BCB32B33FDA9113C)));
+  cCospiZeroCl: array[0..1] of Tb64u64 = (
+    (u:$BFF55D3C7E3CBFF9),(u:$3FCE1F50604FA0FF));
+
+  // Fast-path polynomial c[0..3] for |x| <= 2^-12 branch
+  cCospiFastC: array[0..3] of Tb64u64 = (
+    (u:$C013BD3CC9BE45DC),(u:$40103C1F081B0833),
+    (u:$BFF55D3C6FC9AF15),(u:$3FCE1D3FF2AE3F9A));
+
+  // as_sinpi_refine tables sh[3][2], ch[2][2]
+  cSinpiRefSh: array[0..2, 0..1] of Tb64u64 = (
+    ((u:$400921FB54442D18),(u:$3CA1A62633145C06)),
+    ((u:$BE94ABBCE625BE53),(u:$3B305511CBC65743)),
+    ((u:$3D0466BC6775AAE1),(u:$B8D9C3C168D990A0)));
+  cSinpiRefCh: array[0..1, 0..1] of Tb64u64 = (
+    ((u:$BE93BD3CC9BE45DE),(u:$BB3692B71366CC04)),
+    ((u:$3D103C1F081B5AC4),(u:$B9B32B33FDA9113C)));
+
+  // as_sinpi_refine scalar constants
+  cSinpiRefSllK: Tb64u64 = (u:$BB632D2CC920DCB4); // -0x1.32d2cc920dcb4p-73
+  cSinpiRefCll0: Tb64u64 = (u:$BB755D3C7E3CBFF9); // -0x1.55d3c7e3cbff9p-72
+  cSinpiRefCll1: Tb64u64 = (u:$39CE1F50604FA0FF); //  0x1.e1f50604fa0ffp-99
+  cSinpiRefScale: Tb64u64 = (u:$3C00000000000000); //  0x1p-63 (x = z*0x1p-63)
+  cSinpiRefXlow: Tb64u64 = (u:$3F30000000000000); //  0x1p-12 (mulddd factor)
+  cSinpiRefEr:   Tb64u64 = (u:$3840000000000000); //  0x1p-123
+
+  // Fast-path thresholds
+  cCospiAxT12:   UInt64  = $3F30000000000000;
+  cCospiAxTiny:  UInt64  = $3E2CCF6429BE6621;
+  cCospiEpsFast: Tb64u64 = (u:$3CFA000000000000); //  0x1.ap-48
+
+  // 1ulp constants
+  cCospiP55: Tb64u64 = (u:$3C80000000000000); //  0x1p-55
+
+  // Database for as_sinpi_refine exceptions
+  cSinpiDbIq: array[0..7] of Int32 = (903, 1029, 1078, 1217, 1025, 1026, 1033, 1235);
+  cSinpiDbX:  array[0..7] of Tb64u64 = (
+    (u:$BFDBDD02D1AD6000),(u:$BFCA4AD070549D00),(u:$3FCFBDB79CA3DA00),(u:$3FEC0CCEE4ADA200),
+    (u:$3FDB536647B1FE98),(u:$BFDDC93EAAD12A18),(u:$3FEE78F0E592B360),(u:$3FDF13412A48D800));
+  cSinpiDbR:  array[0..7] of Tb64u64 = (
+    (u:$3FEF72C906962631),(u:$3FEFFFC4D2C6CA51),(u:$3FEFE3C8219054C3),(u:$3FEE99FD53791BCF),
+    (u:$3FEFFFFC5DDD0738),(u:$3FEFFFF84B21C731),(u:$3FEFFF2270422604),(u:$3FEE55A7FA9A24C4));
+  cSinpiDbD:  array[0..7] of Tb64u64 = (
+    (u:$3C80000000000000),(u:$3C80000000000000),(u:$3C80000000000000),(u:$BC80000000000000),
+    (u:$3C80000000000000),(u:$3C80000000000000),(u:$BC80000000000000),(u:$BC80000000000000));
+
+  // sincosn tables (fast-path)
+  cSincosN1_Sn: array[0..32, 0..1] of Tb64u64 = (
+    ((u:$0000000000000000),(u:$0000000000000000)),
+    ((u:$3FA91F6600000000),(u:$BE1DE44FD832257A)),
+    ((u:$3FB917A6C0000000),(u:$BE0EB25EA0F138C7)),
+    ((u:$3FC2C81060000000),(u:$3E3D1CC27444C003)),
+    ((u:$3FC8F8B840000000),(u:$BE1CB2CFAA4DA337)),
+    ((u:$3FCF19F980000000),(u:$BE237A839542DEEF)),
+    ((u:$3FD2940630000000),(u:$BE12A60FA574A369)),
+    ((u:$3FD58F9A70000000),(u:$3E36AC7F73F84090)),
+    ((u:$3FD87DE2A0000000),(u:$3E3ABAA58B469891)),
+    ((u:$3FDB5D1010000000),(u:$BE387A8CFF5264EA)),
+    ((u:$3FDE2B5D40000000),(u:$BE3FE4271387C9DC)),
+    ((u:$3FE0738798000000),(u:$3E222FFED9697FAF)),
+    ((u:$3FE1C73B38000000),(u:$3E2AE68C86C9774A)),
+    ((u:$3FE30FF800000000),(u:$BE38F47E58F7E631)),
+    ((u:$3FE44CF328000000),(u:$BE37B7114F3FC4AF)),
+    ((u:$3FE57D6938000000),(u:$BE3B989B02EAE413)),
+    ((u:$3FE6A09E68000000),(u:$BE280C4336F74D05)),
+    ((u:$3FE7B5DF20000000),(u:$3E33557D76F0AC85)),
+    ((u:$3FE8BC8068000000),(u:$3E38A8BA05A743DA)),
+    ((u:$3FE9B3E048000000),(u:$BDD8F17E98771434)),
+    ((u:$3FEA9B6628000000),(u:$3E20EA1A3033EC62)),
+    ((u:$3FEB728348000000),(u:$BE37348E1378D3E6)),
+    ((u:$3FEC38B2F0000000),(u:$3E280BDB0D23E9D1)),
+    ((u:$3FECED7AF8000000),(u:$BE3E19C46879EDAF)),
+    ((u:$3FED906BD0000000),(u:$BE19AE573AEA067C)),
+    ((u:$3FEE212108000000),(u:$BE384BC8DA0298EE)),
+    ((u:$3FEE9F4158000000),(u:$BE239D225A27D387)),
+    ((u:$3FEF0A7EF8000000),(u:$3E3C9186B952C7AE)),
+    ((u:$3FEF6297D0000000),(u:$BDD1469FAA77A357)),
+    ((u:$3FEFA75580000000),(u:$BE1EEB5D2BD05465)),
+    ((u:$3FEFD88DA0000000),(u:$3E3E89292CF04139)),
+    ((u:$3FEFF621E0000000),(u:$3E3BCB6BEF1D421F)),
+    ((u:$3FF0000000000000),(u:$0000000000000000)));
+  cSincosN1_Sm: array[0..32, 0..1] of Tb64u64 = (
+    ((u:$0000000000000000),(u:$0000000000000000)),
+    ((u:$3F59220000000000),(u:$BE354466E349EE53)),
+    ((u:$3F6921F800000000),(u:$3E17D99497495D20)),
+    ((u:$3F72D97800000000),(u:$3E017CCB5E27CB43)),
+    ((u:$3F7921F000000000),(u:$3E2FCCE00E23572D)),
+    ((u:$3F7F6A6400000000),(u:$3E3F9A2A3C5885CF)),
+    ((u:$3F82D96C00000000),(u:$BE3E35ED1FA23D22)),
+    ((u:$3F85FDA000000000),(u:$3E1BD602F04014C8)),
+    ((u:$3F8921D200000000),(u:$BDD909C3DCCF0E28)),
+    ((u:$3F8C460000000000),(u:$BE0E1B7526EBF9F2)),
+    ((u:$3F8F6A2A00000000),(u:$BE32A8CD06AF94A2)),
+    ((u:$3F91472700000000),(u:$3E0B5AE26618769E)),
+    ((u:$3F92D93700000000),(u:$BE31073C40B25037)),
+    ((u:$3F946B4400000000),(u:$BE3F80C5F9200607)),
+    ((u:$3F95FD4D00000000),(u:$3E20FD5912EF3F57)),
+    ((u:$3F978F5300000000),(u:$3E377727C10D8CA5)),
+    ((u:$3F99215600000000),(u:$BE00B933040D8EB2)),
+    ((u:$3F9AB35500000000),(u:$BE33ABEC0D92AE48)),
+    ((u:$3F9C454F00000000),(u:$3E33394EC7229C28)),
+    ((u:$3F9DD74600000000),(u:$BE3CE6D5319D653E)),
+    ((u:$3F9F693700000000),(u:$3E28E8E7807F600B)),
+    ((u:$3FA07D9200000000),(u:$BDC9EEA00D71246D)),
+    ((u:$3FA1468600000000),(u:$BE325E9F40A5121A)),
+    ((u:$3FA20F7700000000),(u:$3E19D6238D09F231)),
+    ((u:$3FA2D86580000000),(u:$BE14D75465D2F213)),
+    ((u:$3FA3A15100000000),(u:$BE137BCA0781D73A)),
+    ((u:$3FA46A3980000000),(u:$BE20079E86EEC954)),
+    ((u:$3FA5331F00000000),(u:$BE3E222F8A75DE87)),
+    ((u:$3FA5FC0100000000),(u:$BE36B7995E4BB32D)),
+    ((u:$3FA6C4DF80000000),(u:$BDF41523E139C56B)),
+    ((u:$3FA78DBA80000000),(u:$3E32C3A342EB5F11)),
+    ((u:$3FA8569200000000),(u:$3E35DA89E0B235C0)),
+    ((u:$3FF0000000000000),(u:$0000000000000000)));
+  cSincosN1_Cm: array[0..32, 0..1] of Tb64u64 = (
+    ((u:$3FF0000000000000),(u:$0000000000000000)),
+    ((u:$3FEFFFFD88000000),(u:$3E061BB991AF64F1)),
+    ((u:$3FEFFFF620000000),(u:$3E2621D01D2A6063)),
+    ((u:$3FEFFFE9C8000000),(u:$3E38F17465DE1773)),
+    ((u:$3FEFFFD888000000),(u:$BE338BAB6D94C71D)),
+    ((u:$3FEFFFC250000000),(u:$3E16BB5DD7625BCD)),
+    ((u:$3FEFFFA730000000),(u:$BE3B439D8A459600)),
+    ((u:$3FEFFF8718000000),(u:$3E237CE2EEC7251B)),
+    ((u:$3FEFFF6218000000),(u:$BE2646D24A88970E)),
+    ((u:$3FEFFF3828000000),(u:$BE39BB848BDB041E)),
+    ((u:$3FEFFF0940000000),(u:$3E3E29DE85718CC2)),
+    ((u:$3FEFFED570000000),(u:$3E3CC695B5E89E49)),
+    ((u:$3FEFFE9CB8000000),(u:$BE3DA572F6A4BCCA)),
+    ((u:$3FEFFE5F08000000),(u:$BE30D43929B71F74)),
+    ((u:$3FEFFE1C68000000),(u:$3E0C32DDD89AA147)),
+    ((u:$3FEFFDD4D8000000),(u:$3E3FBC7A9242CCF3)),
+    ((u:$3FEFFD8860000000),(u:$3E1099A19765595D)),
+    ((u:$3FEFFD36F8000000),(u:$BE2DBAFF3C93CDC4)),
+    ((u:$3FEFFCE0A0000000),(u:$BE38EACC3AF7AC55)),
+    ((u:$3FEFFC8558000000),(u:$BE3996F62D2DF41D)),
+    ((u:$3FEFFC2520000000),(u:$BE3071603E8582DF)),
+    ((u:$3FEFFBBFF8000000),(u:$3E07E5454B8225E9)),
+    ((u:$3FEFFB55E8000000),(u:$BE3ED0128D24B027)),
+    ((u:$3FEFFAE6E0000000),(u:$3E25569984BD1A7A)),
+    ((u:$3FEFFA72F0000000),(u:$BDA08A362D33736D)),
+    ((u:$3FEFF9FA10000000),(u:$3DFA441BA9901FD5)),
+    ((u:$3FEFF97C40000000),(u:$3E304600A0A95596)),
+    ((u:$3FEFF8F988000000),(u:$BE3387D3A589FA3D)),
+    ((u:$3FEFF871D8000000),(u:$3E36DC0EF98B1C67)),
+    ((u:$3FEFF7E540000000),(u:$3E301907C4C59658)),
+    ((u:$3FEFF753B8000000),(u:$3E38DC8B1E83CCFF)),
+    ((u:$3FEFF6BD48000000),(u:$BE2C4BBB2C348040)),
+    ((u:$0000000000000000),(u:$0000000000000000)));
+
+  // sincosn2 tables (accurate-path)
+  cSincosN2_Sn: array[0..32, 0..1] of Tb64u64 = (
+    ((u:$0000000000000000),(u:$0000000000000000)),
+    ((u:$3FA91F65F10DD814),(u:$BC2912BD0D569A90)),
+    ((u:$3FB917A6BC29B42C),(u:$BC3E2718D26ED688)),
+    ((u:$3FC2C8106E8E613A),(u:$3C513000A89A11E0)),
+    ((u:$3FC8F8B83C69A60B),(u:$BC626D19B9FF8D82)),
+    ((u:$3FCF19F97B215F1B),(u:$BC642DEEF11DA2C4)),
+    ((u:$3FD294062ED59F06),(u:$BC75D28DA2C4612D)),
+    ((u:$3FD58F9A75AB1FDD),(u:$BC1EFDC0D58CF620)),
+    ((u:$3FD87DE2A6AEA963),(u:$BC672CEDD3D5A610)),
+    ((u:$3FDB5D1009E15CC0),(u:$3C65B362CB974183)),
+    ((u:$3FDE2B5D3806F63B),(u:$3C5E0D891D3C6841)),
+    ((u:$3FE073879922FFEE),(u:$BC8A5A014347406C)),
+    ((u:$3FE1C73B39AE68C8),(u:$3C8B25DD267F6600)),
+    ((u:$3FE30FF7FCE17035),(u:$BC6EFCC626F74A6F)),
+    ((u:$3FE44CF325091DD6),(u:$3C68076A2CFDC6B3)),
+    ((u:$3FE57D69348CECA0),(u:$BC875720992BFBB2)),
+    ((u:$3FE6A09E667F3BCD),(u:$BC8BDD3413B26456)),
+    ((u:$3FE7B5DF226AAFAF),(u:$BC70F537ACDF0AD7)),
+    ((u:$3FE8BC806B151741),(u:$BC82C5E12ED1336D)),
+    ((u:$3FE9B3E047F38741),(u:$BC830EE286712474)),
+    ((u:$3FEA9B66290EA1A3),(u:$3C39F630E8B6DAC8)),
+    ((u:$3FEB728345196E3E),(u:$BC8BC69F324E6D61)),
+    ((u:$3FEC38B2F180BDB1),(u:$BC76E0B1757C8D07)),
+    ((u:$3FECED7AF43CC773),(u:$BC5E7B6BB5AB58AE)),
+    ((u:$3FED906BCF328D46),(u:$3C7457E610231AC2)),
+    ((u:$3FEE212104F686E5),(u:$BC8014C76C126527)),
+    ((u:$3FEE9F4156C62DDA),(u:$3C8760B1E2E3F81E)),
+    ((u:$3FEF0A7EFB9230D7),(u:$3C752C7ADC6B4989)),
+    ((u:$3FEF6297CFF75CB0),(u:$3C7562172A361FD3)),
+    ((u:$3FEFA7557F08A517),(u:$BC87A0A8CA13571F)),
+    ((u:$3FEFD88DA3D12526),(u:$BC887DF6378811C7)),
+    ((u:$3FEFF621E3796D7E),(u:$BC6C57BC2E24AA15)),
+    ((u:$3FF0000000000000),(u:$0000000000000000)));
+  cSincosN2_Sm: array[0..31, 0..1] of Tb64u64 = (
+    ((u:$0000000000000000),(u:$0000000000000000)),
+    ((u:$3F5921FAAEE6472E),(u:$BBFEE52E284A9DF8)),
+    ((u:$3F6921F8BECCA4BA),(u:$3C02BA407BCAB5B2)),
+    ((u:$3F72D97822F996BC),(u:$3C13E5A15ED6AA3E)),
+    ((u:$3F7921F0FE670071),(u:$3BFAB967FE6B7A9B)),
+    ((u:$3F7F6A65F9A2A3C6),(u:$BC1DE8C48783F3AE)),
+    ((u:$3F82D96B0E509703),(u:$BC01E9131FF52DC9)),
+    ((u:$3F85FDA037AC05E1),(u:$BC2FF59BF4B574EE)),
+    ((u:$3F8921D1FCDEC784),(u:$3C29878EBE836D9D)),
+    ((u:$3F8C45FFE1E48AD9),(u:$3C04060E4BD32E79)),
+    ((u:$3F8F6A296AB997CB),(u:$BC2F2943D8FE7033)),
+    ((u:$3F9147270DAD7133),(u:$3C08769E00E01800)),
+    ((u:$3F92D936BBE30EFD),(u:$3C2B5F91EE371D64)),
+    ((u:$3F946B4381FCE81B),(u:$3C3FF9F89FB65BE3)),
+    ((u:$3F95FD4D21FAB226),(u:$BC20C0A91C37851C)),
+    ((u:$3F978F535DDC9F04),(u:$3C2B194AD9B1AA97)),
+    ((u:$3F992155F7A3667E),(u:$BBFB1D63091A0130)),
+    ((u:$3F9AB354B1504FCA),(u:$BC32AE47937CBDD3)),
+    ((u:$3F9C454F4CE53B1D),(u:$BC3D63D7FEF0E36C)),
+    ((u:$3F9DD7458C64AB3A),(u:$BC3D653DF3FCC281)),
+    ((u:$3F9F693731D1CF01),(u:$BBD3FE9BC66286C7)),
+    ((u:$3FA07D91FF984580),(u:$BC3AE248DA7A9007)),
+    ((u:$3FA14685DB42C17F),(u:$BC42890D277CB974)),
+    ((u:$3FA20F770CEB11C7),(u:$BC4EC1B9D46693B1)),
+    ((u:$3FA2D865759455CD),(u:$3C2686F65BA93AC0)),
+    ((u:$3FA3A150F6421AFC),(u:$3C3F8A318BA775FD)),
+    ((u:$3FA46A396FF86179),(u:$3C2136AC00FA2DA9)),
+    ((u:$3FA5331EC3BBA0EB),(u:$3C2442F2A9DAC128)),
+    ((u:$3FA5FC00D290CD43),(u:$3C4A2669A693A8E1)),
+    ((u:$3FA6C4DF7D7D5B84),(u:$BC339C56A9BD0A9B)),
+    ((u:$3FA78DBAA5874686),(u:$BC34A0EF4035C29C)),
+    ((u:$3FA856922BB513C1),(u:$3C491ADFD607CB2B)));
+  cSincosN2_Cm: array[0..31, 0..1] of Tb64u64 = (
+    ((u:$0000000000000000),(u:$0000000000000000)),
+    ((u:$3EB3BD3C88CDCA13),(u:$3B5874628D2B6835)),
+    ((u:$3ED3BD3BC5FC5AB4),(u:$BB48A1BEBF665CEF)),
+    ((u:$3EE634E1D173443D),(u:$3B6198FF5804D8DC)),
+    ((u:$3EF3BD38BAB6D94C),(u:$3B9C73BE2184804E)),
+    ((u:$3EFED7A51288A277),(u:$BB9BCD47BF19555B)),
+    ((u:$3F0634DA1CEC522D),(u:$BBA3FFF35C1BDB61)),
+    ((u:$3F0E39B20C7444E3),(u:$3BAAE49F0BE31E8C)),
+    ((u:$3F13BD2C8DA49511),(u:$3BA70DF810BCC0E2)),
+    ((u:$3F18FB66EE122F6C),(u:$3B9079FF34BFFA7E)),
+    ((u:$3F1ED7875885EA3A),(u:$BBA983278BAA11C2)),
+    ((u:$3F22A8C672D4942F),(u:$BBBE4938F661AA14)),
+    ((u:$3F2634BB4AE5ED49),(u:$3BCE64C904CC8156)),
+    ((u:$3F2A0FA1A872536E),(u:$3BBF7469ECC1331F)),
+    ((u:$3F2E3978F34889D9),(u:$3BC5EB897CDC1B0D)),
+    ((u:$3F31592043856DBD),(u:$3BC9865D9CDC3744)),
+    ((u:$3F33BCFBD9979A27),(u:$BBD595D548D9A586)),
+    ((u:$3F36484EDD7F9E4A),(u:$BBB91DF31AAA6F7F)),
+    ((u:$3F38FB18EACC3AF8),(u:$BBD4EAA508EEC2B7)),
+    ((u:$3F3BD55996F62D2E),(u:$BBA7C51F7D8F9F71)),
+    ((u:$3F3ED71071603E86),(u:$BBDF4827CCB50B62)),
+    ((u:$3F41001E81ABAB48),(u:$BBD12F4A2E3616D5)),
+    ((u:$3F42A86F68094692),(u:$3BE604E1F8F76C27)),
+    ((u:$3F44647AAA599ED1),(u:$BBE1A79A86FB8FF5)),
+    ((u:$3F46344004228D8B),(u:$3BE33736C96557C9)),
+    ((u:$3F4817BF2DDF22B3),(u:$3BEFC0555A81D729)),
+    ((u:$3F4A0EF7DCFFAFAB),(u:$3BE54D46B817BCA4)),
+    ((u:$3F4C19E9C3E9D2C5),(u:$BB970A980659E790)),
+    ((u:$3F4E389491F8833A),(u:$3BEC7313BEEAB883)),
+    ((u:$3F50357BF9BE0ECF),(u:$BBF965827F33D907)),
+    ((u:$3F515889C8DD385F),(u:$3BC98094FAB77B42)),
+    ((u:$3F52857389776587),(u:$BBFBFDFCE09AEA7B)));
+
+// ---------------------------------------------------------------------------
+// CospiSincosN — fast-path sin/cos table lookup (port of sincosn in cospi.c)
+// ---------------------------------------------------------------------------
+procedure CospiSincosN(s: Int32; out sh, sl, ch, cl: Double);
+var
+  j, is_, ic, jm: Int32;
+  ss, sc: Int32;
+  sbh, sbl, cbh, cbl: Double;
+  slh, sll, clh, cll: Double;
+  sb, cb: Double;
+  Ch_, Cl_, Sh_, Sl_: Double;
+  tch, tcl, tsh, tsl: Double;
+begin
+  j := s and $3FF;
+  if ((s shr 10) and 1) <> 0 then j := 1024 - j;
+  is_ := j shr 5;
+  ic  := $20 - is_;
+  jm  := j and $1F;
+  ss  := (s shr 11) and 1;
+  sc  := (UInt32(s + 1024) shr 11) and 1;
+
+  sbh := cSincosN1_Sn[is_, 0].f; sbl := cSincosN1_Sn[is_, 1].f;
+  cbh := cSincosN1_Sn[ic,  0].f; cbl := cSincosN1_Sn[ic,  1].f;
+  slh := cSincosN1_Sm[jm,  0].f; sll := cSincosN1_Sm[jm,  1].f;
+  clh := cSincosN1_Cm[jm,  0].f; cll := cSincosN1_Cm[jm,  1].f;
+
+  sb := sbh + sbl; cb := cbh + cbl;
+  Ch_ := cbh*clh - sbh*slh;
+  Cl_ := clh*cbl - slh*sbl + cb*cll - sb*sll;
+  Sh_ := sbh*clh + cbh*slh;
+  Sl_ := slh*cbl + clh*sbl + cb*sll + sb*cll;
+
+  tch := Ch_ + Cl_; tcl := (Ch_ - tch) + Cl_;
+  tsh := Sh_ + Sl_; tsl := (Sh_ - tsh) + Sl_;
+
+  if sc = 0 then begin ch := tch; cl := tcl; end
+  else             begin ch := -tch; cl := -tcl; end;
+  if ss = 0 then begin sh := tsh; sl := tsl; end
+  else             begin sh := -tsh; sl := -tsl; end;
+end;
+
+// ---------------------------------------------------------------------------
+// CospiSincosN2 — accurate-path sin/cos (port of sincosn2 in cospi.c)
+// ---------------------------------------------------------------------------
+procedure CospiSincosN2(s: Int32; out sh, sl, ch, cl: Double);
+var
+  j, is_, ic, jm: Int32;
+  ss, sc: Int32;
+  sbh, sbl, cbh, cbl: Double;
+  slh, sll, clh, cll: Double;
+  cch, ccl, ssh, ssl, csh, csl, sch, scl: Double;
+  tch, tcl, tsh, tsl, tcl2, tsl2: Double;
+begin
+  j := s and $3FF;
+  if ((s shr 10) and 1) <> 0 then j := 1024 - j;
+  is_ := j shr 5;
+  ic  := $20 - is_;
+  jm  := j and $1F;
+  ss  := (s shr 11) and 1;
+  sc  := (UInt32(s + 1024) shr 11) and 1;
+
+  sbh := cSincosN2_Sn[is_, 0].f; sbl := cSincosN2_Sn[is_, 1].f;
+  cbh := cSincosN2_Sn[ic,  0].f; cbl := cSincosN2_Sn[ic,  1].f;
+  slh := cSincosN2_Sm[jm,  0].f; sll := cSincosN2_Sm[jm,  1].f;
+  clh := cSincosN2_Cm[jm,  0].f; cll := cSincosN2_Cm[jm,  1].f;
+
+  cch := pcr_muldd(clh, cll, cbh, cbl, ccl);
+  ssh := pcr_muldd(slh, sll, sbh, sbl, ssl);
+  csh := pcr_muldd(clh, cll, sbh, sbl, csl);
+  sch := pcr_muldd(slh, sll, cbh, cbl, scl);
+
+  // tch = fasttwosum(ssh, cch, &tcl); tcl += ccl + ssl;
+  pcr_fasttwosum(tch, tcl, ssh, cch);
+  tcl := tcl + ccl + ssl;
+  // tsh = fasttwosum(-sch, csh, &tsl); tsl += csl - scl;
+  pcr_fasttwosum(tsh, tsl, -sch, csh);
+  tsl := tsl + csl - scl;
+
+  // tch = fasttwosum(cbh, -tch, &tcl2); tcl = cbl - tcl + tcl2;
+  pcr_fasttwosum(tch, tcl2, cbh, -tch);
+  tcl := cbl - tcl + tcl2;
+  // tsh = fasttwosum(sbh, -tsh, &tsl2); tsl = sbl - tsl + tsl2;
+  pcr_fasttwosum(tsh, tsl2, sbh, -tsh);
+  tsl := sbl - tsl + tsl2;
+
+  if sc = 0 then begin ch := tch; cl := tcl; end
+  else             begin ch := -tch; cl := -tcl; end;
+  if ss = 0 then begin sh := tsh; sl := tsl; end
+  else             begin sh := -tsh; sl := -tsl; end;
+end;
+
+// ---------------------------------------------------------------------------
+// CospiAsZero — as_cospi_zero refinement (|x| near 0 slow path)
+// ---------------------------------------------------------------------------
+function CospiAsZero(x: Double): Double;
+var
+  x2, dx2, fl, fh: Double;
+  chp, clp, thp, tlp: Double;
+  y0, y1, y2: Double;
+  s_tmp, z_tmp: Double;
+  t_u, w_u: Tb64u64;
+begin
+  x2  := x * x;
+  dx2 := pcr_fma(x, x, -x2);
+
+  fl := x2 * (cCospiZeroCl[0].f + x2 * cCospiZeroCl[1].f);
+
+  // polydd(x2, dx2, 2, ch, &fl) seeded
+  chp := cCospiZeroCh[1,0].f + fl;
+  clp := ((cCospiZeroCh[1,0].f - chp) + fl) + cCospiZeroCh[1,1].f;
+  // i = 0
+  chp := pcr_muldd(x2, dx2, chp, clp, clp);
+  thp := chp + cCospiZeroCh[0,0].f;
+  tlp := (cCospiZeroCh[0,0].f - thp) + chp;
+  chp := thp;
+  clp := clp + tlp + cCospiZeroCh[0,1].f;
+
+  fh := chp; fl := clp;
+  fh := pcr_muldd(x2, dx2, fh, fl, fl);
+
+  // y0 = fasttwosum(1, fh, &y1);
+  pcr_fasttwosum(y0, y1, Double(1.0), fh);
+  // y1 = fasttwosum(y1, fl, &y2); — inlined, may violate |y1|>=|fl|? fasttwosum form
+  s_tmp := y1 + fl;
+  z_tmp := s_tmp - y1;
+  y2 := fl - z_tmp;
+  y1 := s_tmp;
+
+  t_u.f := y1;
+  if (t_u.u and (UInt64($FFFFFFFFFFFFFFFF) shr 12)) = 0 then
+  begin
+    w_u.f := y2;
+    if ((w_u.u xor t_u.u) shr 63) <> 0 then
+      Dec(t_u.u)
+    else
+      Inc(t_u.u);
+    y1 := t_u.f;
+  end;
+  Result := y0 + y1;
+end;
+
+// ---------------------------------------------------------------------------
+// CospiSinpiRefine — as_sinpi_refine (accurate path for large args)
+// ---------------------------------------------------------------------------
+function CospiSinpiRefine(iq: Int32; z: Double): Double;
+var
+  x, x2, dx2: Double;
+  sll, slh, cll, clh: Double;
+  chp, clp, thp, tlp: Double;
+  sbh, sbl, cbh, cbl: Double;
+  csh, csl, sch, scl: Double;
+  tsh, tsl, tsl2: Double;
+  iqm: Int32;
+  sgn, dbx: Double;
+  i: Int32;
+  t_u: Tb64u64;
+begin
+  x   := z * cSinpiRefScale.f;              // x = z * 2^-63
+  x2  := x * x;
+  dx2 := pcr_fma(x, x, -x2);
+
+  // sll = -0x1.32d2cc920dcb4p-73 * x2
+  sll := cSinpiRefSllK.f * x2;
+
+  // polydd(x2, dx2, 3, sh, &sll) seeded
+  chp := cSinpiRefSh[2,0].f + sll;
+  clp := ((cSinpiRefSh[2,0].f - chp) + sll) + cSinpiRefSh[2,1].f;
+  // i = 1
+  chp := pcr_muldd(x2, dx2, chp, clp, clp);
+  thp := chp + cSinpiRefSh[1,0].f;
+  tlp := (cSinpiRefSh[1,0].f - thp) + chp;
+  chp := thp;
+  clp := clp + tlp + cSinpiRefSh[1,1].f;
+  // i = 0
+  chp := pcr_muldd(x2, dx2, chp, clp, clp);
+  thp := chp + cSinpiRefSh[0,0].f;
+  tlp := (cSinpiRefSh[0,0].f - thp) + chp;
+  chp := thp;
+  clp := clp + tlp + cSinpiRefSh[0,1].f;
+  slh := chp; sll := clp;
+
+  // slh = mulddd(slh, sll, x*0x1p-12, &sll)
+  slh := pcr_mulddd_pd(slh, sll, x * cSinpiRefXlow.f, sll);
+
+  // cll = x2*(-0x1.55d3c7e3cbff9p-72 + 0x1.e1f50604fa0ffp-99 * x2)
+  cll := x2 * (cSinpiRefCll0.f + cSinpiRefCll1.f * x2);
+
+  // polydd(x2, dx2, 2, ch, &cll) seeded
+  chp := cSinpiRefCh[1,0].f + cll;
+  clp := ((cSinpiRefCh[1,0].f - chp) + cll) + cSinpiRefCh[1,1].f;
+  // i = 0
+  chp := pcr_muldd(x2, dx2, chp, clp, clp);
+  thp := chp + cSinpiRefCh[0,0].f;
+  tlp := (cSinpiRefCh[0,0].f - thp) + chp;
+  chp := thp;
+  clp := clp + tlp + cSinpiRefCh[0,1].f;
+  clh := chp; cll := clp;
+
+  // clh = muldd_acc(clh, cll, x2, dx2, &cll)
+  clh := pcr_muldd(clh, cll, x2, dx2, cll);
+
+  // sincosn2(iq, &sbh, &sbl, &cbh, &cbl)
+  CospiSincosN2(iq, sbh, sbl, cbh, cbl);
+
+  // csh = muldd_acc(clh, cll, sbh, sbl, &csl)
+  csh := pcr_muldd(clh, cll, sbh, sbl, csl);
+  // sch = muldd_acc(slh, sll, cbh, cbl, &scl)
+  sch := pcr_muldd(slh, sll, cbh, cbl, scl);
+  // tsh = fasttwosum(sch, csh, &tsl); tsl += csl + scl
+  pcr_fasttwosum(tsh, tsl, sch, csh);
+  tsl := tsl + csl + scl;
+  // tsh = fasttwosum(sbh, tsh, &tsl2); tsl = sbl + tsl + tsl2
+  pcr_fasttwosum(tsh, tsl2, sbh, tsh);
+  tsl := sbl + tsl + tsl2;
+
+  // Exception database probe
+  t_u.f := tsl;
+  if ((t_u.u or (UInt64($FFF) shl 52)) = UInt64($FFFFFFFFFFFFFFFF))
+     or ((t_u.u shl 12) = 0) then
+  begin
+    if iq > 2048 then sgn := -Double(1.0) else sgn := Double(1.0);
+    iqm := iq and $7FF;
+    for i := 0 to 7 do
+    begin
+      dbx := cSinpiDbX[i].f;
+      if ((x = dbx) and (iqm = cSinpiDbIq[i]))
+         or ((x = -dbx) and (iqm = 2048 - cSinpiDbIq[i])) then
+      begin
+        Result := sgn * cSinpiDbR[i].f + sgn * cSinpiDbD[i].f;
+        Exit;
+      end;
+    end;
+  end;
+  Result := tsh + tsl;
+end;
+
+// ---------------------------------------------------------------------------
+// pcr_cospi — entry point
+// ---------------------------------------------------------------------------
+function pcr_cospi(x: Double): Double;
+var
+  ix: Tb64u64;
+  ax: UInt64;
+  e, s_shift, si: Int32;
+  m: Int64;
+  iq_u: UInt64;
+  iq: Int32;
+  x2, x4, eps, p, lb, ub: Double;
+  z, z2, fs, fc, er, r: Double;
+  sh, sl, ch_, cl_: Double;
+  k: Int64;
+begin
+  ix.f := x;
+  ax   := ix.u and (UInt64($FFFFFFFFFFFFFFFF) shr 1);
+
+  if ax = 0 then begin Result := Double(1.0); Exit; end;
+
+  e := Int32(ax shr 52);
+  m := Int64((ix.u and (UInt64($FFFFFFFFFFFFFFFF) shr 12)) or (UInt64(1) shl 52));
+  s_shift := 1063 - e;
+
+  if s_shift < 0 then
+  begin
+    // |x| >= 2^41
+    if e = $7FF then
+    begin
+      if (ix.u shl 12) = 0 then
+      begin
+        Result := cNaNDoublePos.f;
+        Exit;
+      end;
+      Result := x + x; // NaN
+      Exit;
+    end;
+    s_shift := -s_shift - 1; // 2^(41+s) <= |x| < 2^(42+s)
+    if s_shift > 11 then begin Result := Double(1.0); Exit; end;
+    iq_u := (UInt64(m) shl s_shift) + 1024;
+    if (iq_u and 2047) = 0 then begin Result := Double(0.0); Exit; end;
+    CospiSincosN(Int32(iq_u), sh, sl, ch_, cl_);
+    Result := sh + sl;
+    Exit;
+  end;
+
+  if ax <= cCospiAxT12 then
+  begin
+    // |x| <= 2^-12
+    if ax <= cCospiAxTiny then
+    begin
+      Result := Double(1.0) - cCospiP55.f;
+      Exit;
+    end;
+    x2 := x * x; x4 := x2 * x2;
+    eps := x2 * cCospiEpsFast.f;
+    p := x2 * ((cCospiFastC[0].f + x2 * cCospiFastC[1].f)
+               + x4 * (cCospiFastC[2].f + x2 * cCospiFastC[3].f));
+    lb := (p - eps) + Double(1.0);
+    ub := (p + eps) + Double(1.0);
+    if lb = ub then begin Result := lb; Exit; end;
+    Result := CospiAsZero(x);
+    Exit;
+  end;
+
+  // exact-zero detection: si = e - 1011; if (m << si) == 2^63 return 0.0
+  si := e - 1011;
+  if (si >= 0) and (si < 64)
+     and ((UInt64(m) shl si) = UInt64($8000000000000000)) then
+  begin
+    Result := Double(0.0);
+    Exit;
+  end;
+
+  iq_u := (UInt64(Int64(m) shr s_shift) + 2048) and 8191;
+  iq_u := (iq_u + 1) shr 1;
+  iq := Int32(iq_u);
+
+  k := Int64(UInt64(m) shl (e - 1000));
+  z := k; z2 := z * z;
+  fs := cCospiSn[0].f + z2 * (cCospiSn[1].f + z2 * cCospiSn[2].f);
+  fc := cCospiCn[0].f + z2 * cCospiCn[1].f;
+  CospiSincosN(iq, sh, sl, ch_, cl_);
+  er := z * cSinpiRefEr.f;  // z * 2^-123
+  r  := sl + sh * (z2 * fc) + ch_ * (z * fs);
+  lb := (r - er) + sh;
+  ub := (r + er) + sh;
+  if lb = ub then begin Result := lb; Exit; end;
+
+  Result := CospiSinpiRefine(iq, z);
+end;
+
+// ---------------------------------------------------------------------------
 // Stubs — delegate to C reference until each function is ported.
 // Replace each stub body with the real Pascal port as phases 1-5 progress.
 // ---------------------------------------------------------------------------
@@ -2023,7 +2623,7 @@ function  pcr_atanpi(x: Double): Double;  begin Result := cr_atanpi(x);  end;
 // pcr_cbrt — ported above
 function  pcr_cos(x: Double): Double;     begin Result := cr_cos(x);     end;
 function  pcr_cosh(x: Double): Double;    begin Result := cr_cosh(x);    end;
-function  pcr_cospi(x: Double): Double;   begin Result := cr_cospi(x);   end;
+// pcr_cospi — ported above
 function  pcr_erf(x: Double): Double;     begin Result := cr_erf(x);     end;
 function  pcr_erfc(x: Double): Double;    begin Result := cr_erfc(x);    end;
 function  pcr_exp(x: Double): Double;     begin Result := cr_exp(x);     end;

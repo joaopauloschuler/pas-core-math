@@ -16,7 +16,7 @@ Before starting, check the existing functions and notes at:
 
 ## Status summary
 
-- **6 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 in progress — 1.01 rsqrt, 1.02 cbrt, 1.03 atan, 1.04 log2, 1.05 acos, 1.06 tanh done)
+- **7 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 in progress — 1.01 rsqrt, 1.02 cbrt, 1.03 atan, 1.04 log2, 1.05 acos, 1.06 tanh, 1.07 cospi done)
 - Target file: `src/pascoremath64.pas`
 - **Phase 0 fully complete** (tasks 0.1–0.10): infrastructure, helpers, and test harness ready
 - libcoremath64.so built from core-math/src/binary64/; test programs compile once pcr_* functions added
@@ -476,7 +476,7 @@ Port in this order. All functions live in `pascoremath64.pas`, named `pcr_<name>
 - [X] **1.04** `log2`    — 313 lines  *(uses clzll + dd)*
 - [X] **1.05** `acos`    — 354 lines  *(dd + fenv-free; no dint — all accurate-path refinement is double-double)*
 - [X] **1.06** `tanh`    — 355 lines  *(no dint — pure double-double; task list hint "dint + dd" was incorrect)*
-- [ ] **1.07** `cospi`   — 356 lines  *(uses dint + dd)*
+- [X] **1.07** `cospi`   — 356 lines  *(no dint — pure double-double + 3 × 33-entry lookup tables; task-list hint "dint + dd" was incorrect)*
 - [ ] **1.08** `asin`    — 366 lines  *(uses dint + dd)*
 - [ ] **1.09** `cosh`    — 377 lines  *(uses dint + dd)*
 - [ ] **1.10** `exp10`   — 379 lines  *(uses dint + dd)*
@@ -588,6 +588,64 @@ anyway — they are the shortest files and good warm-up exercises.
   hardware-FMA builds should close most of the gap, but the
   reciprocal-division pattern likely keeps tanh below the other
   Phase-1 functions.
+
+**cospi implementation notes (task 1.07 completed):**
+
+- "uses dint + dd" hint was wrong — cospi.c uses **no** TDInt64. The
+  accurate path is pure double-double with a `sincosn2` table lookup.
+  Pattern now confirmed across acos/tanh/cospi: always re-check the C
+  source before budgeting dint for Phase 1 entries; the tasklist hints
+  are unreliable.
+
+- Three 33-entry × 2-pair sin/cos tables for fast path (`Sn`, `Sm`,
+  `Cm`), plus three for accurate path (`sincosn2`: `Sn` 33-entry,
+  `Sm`/`Cm` 32-entry). Extracted programmatically with a Python script
+  (re + float.fromhex + IEEE-754 pack) into `Tb64u64` arrays — avoided
+  the ~400 hex-float hand-copy risk flagged by tanh notes.
+
+- `polydd` in cospi.c is the seeded variant (starts with `ch = c[n-1][0]
+  + *l`), same pattern as atan/log2/acos refine paths. Inline the loop
+  rather than routing through `pcr_polydd` (which seeds from the leading
+  pair only).
+
+- `mulddd(xh, xl, ch, *l)` (scalar × double-double, no cl term) maps
+  directly to `pcr_mulddd_pd` in pascoremathhelperfuncs. `muldd_acc` is
+  `pcr_muldd`. No extra helpers needed.
+
+- Two `sincosn` variants: fast-path (`sincosn`) and accurate-path
+  (`sincosn2`). Different tables; do **not** share. The fast form
+  computes Ch/Cl/Sh/Sl via plain multiplies + `tch = Ch+Cl` extraction;
+  the accurate form uses four `pcr_muldd` calls + two `fasttwosum`s.
+
+- `copysign(1.0, sgn[sc])*tch` where `sgn = {+0.0, -0.0}` — translate
+  to `if sc = 0 then tch else -tch`. No bitwise-OR trick needed; `tch`
+  can have arbitrary sign from the fast-path subtraction, so a bit-OR
+  would be wrong (same trap documented in note 16 for atan).
+
+- `iq = ((m>>s) + 2048)&8191; iq = (iq+1)>>1` for fast path → Int32.
+  In the large-arg branch, `iq = ((m<<s) + 1024)` can exceed Int32 if
+  raw (uint64_t), but after `& 2047`-check it safely fits. The C uses
+  plain `int` for the helper parameter anyway.
+
+- Exact-zero detection uses `si = e - 1011; if (m<<si) == 2^63 return
+  0.0`. Guard `si < 64` in Pascal to avoid UB on the shift — C has
+  the same issue but only for large e. For binary64 with e <= 2046,
+  si <= 1035, so the extra guard is a no-op on valid inputs but prevents
+  FPC shift-count warnings/UB.
+
+- NaN return for `cr_cospi(±Inf)`: use `cNaNDoublePos.f` (positive quiet
+  NaN). The C code calls `__builtin_nan("inf")` which produces a
+  positive NaN; using `cNaNDouble` (raw `0.0/0.0`) would give a
+  negative NaN and fail the sink-XOR invariant.
+
+- 10^8 random ULP test: 0 mismatches. 200M-input sink-XOR: MATCH.
+  Benchmark: Pascal **188.1 Mops/s** vs C 164.5 Mops/s — **Pascal is
+  faster than C here** (non-AVX2 build). The fast-path is dominated by
+  a 33-entry table lookup + ~6 FMAs + one ULP-bracket test, which
+  FPC's non-inlining emulated FMA actually handles at similar cost to
+  the C hardware-FMA path, while Pascal's simpler epilogue edges
+  ahead. Accurate refinement is rarely triggered (Ziv-test usually
+  passes).
 
 **acos implementation notes (task 1.05 completed):**
 
