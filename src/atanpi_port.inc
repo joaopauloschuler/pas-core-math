@@ -103,13 +103,6 @@ const
     ((u:$40C27F67F799CCBD),(u:$3FDFFF730800F741),(u:$3C7FFFFFFFFFFFFF)),
     ((u:$4083F91B5B198CDD),(u:$3FDFF7D71D1D656B),(u:$B91C90DDE6F07A40)));
 
-// Hardware FMA (AVX2) — for AtanpiSmall's subnormal-result fmas where
-// Dekker emulation isn't correctly rounded.
-function AtanpiHwFma(a, b, c: Double): Double; assembler;
-asm
-  vfmadd213sd xmm0, xmm1, xmm2
-end;
-
 // --- atanpi asymptotic: |x| > 0x1.bep20 ---
 function AtanpiAsympt(x: Double): Double;
 var h, m, l, yh, yl: Double;
@@ -173,9 +166,9 @@ begin
   if Abs(x) = cAtanpiSmallIn.f then
   begin
     if x > Double(0.0) then
-      Result := AtanpiHwFma(-cAtanpiP600.f, cAtanpiP600.f,  cAtanpiSmallOut.f)
+      Result := pcr_fma(-cAtanpiP600.f, cAtanpiP600.f,  cAtanpiSmallOut.f)
     else
-      Result := AtanpiHwFma( cAtanpiP600.f, cAtanpiP600.f, -cAtanpiSmallOut.f);
+      Result := pcr_fma( cAtanpiP600.f, cAtanpiP600.f, -cAtanpiSmallOut.f);
     Exit;
   end;
   v.f := x;
@@ -186,16 +179,16 @@ begin
     begin
       v.u := ((e - UInt64(2)) shl 52) or UInt64($B824198B94A89);
       if x > Double(0.0) then
-        Result := AtanpiHwFma( cAtanpiP600.f, cAtanpiP600.f, v.f)
+        Result := pcr_fma( cAtanpiP600.f, cAtanpiP600.f, v.f)
       else
-        Result := AtanpiHwFma(-cAtanpiP600.f, cAtanpiP600.f, v.f);
+        Result := pcr_fma(-cAtanpiP600.f, cAtanpiP600.f, v.f);
       Exit;
     end;
   end;
   h := x * cAtanpiOneOverPiH.f;
-  corr := AtanpiHwFma(x * cAtanpiPp106.f, cAtanpiOneOverPiH.f, -h * cAtanpiPp106.f);
-  corr := AtanpiHwFma(x * cAtanpiPp106.f, cAtanpiOneOverPiL.f, corr);
-  Result := AtanpiHwFma(corr, cAtanpiPm106.f, h);
+  corr := pcr_fma(x * cAtanpiPp106.f, cAtanpiOneOverPiH.f, -h * cAtanpiPp106.f);
+  corr := pcr_fma(x * cAtanpiPp106.f, cAtanpiOneOverPiL.f, corr);
+  Result := pcr_fma(corr, cAtanpiPm106.f, h);
 end;
 
 // --- atanpi refine (slow path) ---

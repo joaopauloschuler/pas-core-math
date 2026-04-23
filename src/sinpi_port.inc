@@ -241,14 +241,6 @@ begin
   Result := tsh + tsl;
 end;
 
-// Hardware FMA (AVX2) — used for the tiny-x scale-up branch, where the
-// Dekker pcr_fma_pascal emulation is not correctly rounded for subnormal
-// results. System V AMD64: xmm0, xmm1, xmm2 -> xmm0.
-function SinpiHwFma(a, b, c: Double): Double; assembler;
-asm
-  vfmadd213sd xmm0, xmm1, xmm2
-end;
-
 // Arithmetic shift right for Int64 — FPC's `shr` is logical, which corrupts
 // sign-extension. Sinpi's algorithm signs-extends the mantissa for negative x
 // then shifts (cospi doesn't, because it keeps m positive; cos is even).
@@ -343,11 +335,11 @@ begin
         // emulation is not correctly rounded for subnormal outputs.
         t_scale := x * cSinpi2p106.f;
         zh := ph * t_scale;
-        zl := SinpiHwFma(ph, t_scale, -zh) + pl * t_scale;
+        zl := pcr_fma(ph, t_scale, -zh) + pl * t_scale;
         r  := zh + zl;
         rs := r * cSinpi2pm106.f;
         rt := rs * cSinpi2p106.f;
-        Result := SinpiHwFma((zh - rt) + zl, cSinpi2pm106.f, rs);
+        Result := pcr_fma((zh - rt) + zl, cSinpi2pm106.f, rs);
         Exit;
       end;
       zh := ph * x;
