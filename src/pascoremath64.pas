@@ -20,6 +20,7 @@ function pcr_acos(x: Double): Double;
 function pcr_tanh(x: Double): Double;
 function pcr_cospi(x: Double): Double;
 function pcr_asin(x: Double): Double;
+function pcr_exp(x: Double): Double;
 
 // ── Stub functions (delegate to C reference until ported) ────────────────────
 // pcr_acos declared in ported section above
@@ -37,7 +38,7 @@ function  pcr_cosh(x: Double): Double; inline;
 // pcr_cospi declared in ported section above
 function  pcr_erf(x: Double): Double; inline;
 function  pcr_erfc(x: Double): Double; inline;
-function  pcr_exp(x: Double): Double; inline;
+// pcr_exp declared in ported section above
 function  pcr_exp10(x: Double): Double; inline;
 function  pcr_exp10m1(x: Double): Double; inline;
 function  pcr_exp2(x: Double): Double; inline;
@@ -1512,7 +1513,9 @@ end;
 
 const
   // t0[64][2]: (lo, hi) pair; hi ~ 2^(i0/64) on the coarse grid.
-  cTanhT0: array[0..63, 0..1] of Tb64u64 = (
+  // cExpT0: shared by exp/exp2/exp10/expm1/tanh/sinh families.
+  // Each entry is a double-double approximation of 2^(i/64) (lo, hi).
+  cExpT0: array[0..63, 0..1] of Tb64u64 = (
     ((u:$0000000000000000),(u:$3FF0000000000000)),
     ((u:$BC719083535B085E),(u:$3FF02C9A3E778061)),
     ((u:$3C8D73E2A475B466),(u:$3FF059B0D3158574)),
@@ -1579,7 +1582,8 @@ const
     ((u:$3C874853F3A5931E),(u:$3FFFA7C1819E90D8)));
 
   // t1[64][2]: fine grid, (lo, hi) pair.
-  cTanhT1: array[0..63, 0..1] of Tb64u64 = (
+  // cExpT1: shared by exp/exp2/tanh families. Double-double approx of 2^(i/4096).
+  cExpT1: array[0..63, 0..1] of Tb64u64 = (
     ((u:$0000000000000000),(u:$3FF0000000000000)),
     ((u:$3C9AE8E38C59C72A),(u:$3FF000B175EFFDC7)),
     ((u:$BC57B5D0D58EA8F4),(u:$3FF00162F3904052)),
@@ -1875,8 +1879,8 @@ begin
   ie := SarInt64(Int64(jt.u shl 13), 52);
   sp.u := UInt64(Int64(1023) + ie) shl 52;
 
-  t0h := cTanhT0[i0, 1].f;
-  t1h := cTanhT1[i1, 1].f;
+  t0h := cExpT0[i0, 1].f;
+  t1h := cExpT1[i1, 1].f;
   th  := t0h * t1h;
 
   if aix < cTanhAixMed then
@@ -1918,8 +1922,8 @@ begin
     end;
 
     // 0.25 <= |x| < 3.683 — fast path with Ziv test
-    t0l := cTanhT0[i0, 0].f;
-    t1l := cTanhT1[i1, 0].f;
+    t0l := cExpT0[i0, 0].f;
+    t1l := cExpT1[i1, 0].f;
     tl  := t0h * t1l + t1h * t0l + pcr_fma(t0h, t1h, -th);
     th  := th * sp.f;
     tl  := tl * sp.f;
@@ -1971,8 +1975,8 @@ begin
     ub  := one - (rh - e);
     if lb = ub then begin Result := lb; Exit; end;
 
-    t0l := cTanhT0[i0, 0].f;
-    t1l := cTanhT1[i1, 0].f;
+    t0l := cExpT0[i0, 0].f;
+    t1l := cExpT1[i1, 0].f;
     tl  := t0h * t1l + t1h * t0l + pcr_fma(t0h, t1h, -th);
     th  := th * sp.f;
     tl  := tl * sp.f;
@@ -2859,6 +2863,284 @@ begin
 end;
 
 // ---------------------------------------------------------------------------
+// pcr_exp — correctly-rounded binary64 exponential.
+// Ported from core-math/src/binary64/exp/exp.c by Alexei Sibidanov.
+// Reuses cExpT0 and cExpT1 (also used by tanh and the rest of the exp family).
+// ---------------------------------------------------------------------------
+
+const
+  cExpS:        Tb64u64 = (u:$40B71547652B82FE); //  2^12/log(2)
+  cExpL2H:      Tb64u64 = (u:$3F262E42FF000000); //  log(2) hi (29-bit exact)
+  cExpL2L:      Tb64u64 = (u:$3D0718432A1B0E26); //  log(2) lo
+  cExpL2LL:     Tb64u64 = (u:$3999FF0342542FC3); //  log(2) low-low (refine)
+  cExpFastCh2:  Tb64u64 = (u:$3FC55555557E54FF); //  fast-path c2
+  cExpFastCh3:  Tb64u64 = (u:$3FA55555553A12F4); //  fast-path c3
+  cExpEpsFast:  Double  = 1.64e-19;              //  ub/lb bracket epsilon
+
+  // Thresholds (compared against ix.u or aix = ix.u & 0x7fff..)
+  cExpTinyAix:    UInt64 = $3C90000000000000; // |x| <= 0x1p-54 → 1+x
+  cExpHugeAix:    UInt64 = $40862E42FEFA39F0; // |x| >= ln(DBL_MAX rounded)
+  cExpUnderAix:   UInt64 = $40874910D52D3052; // x <= -1.74910...p+9 → underflow
+  cExpSubnormalU: UInt64 = $C086232BDD7ABCD2; // ix.u > this (signed-bit set) → subnormal branch
+  cExpAccTinyExp: UInt64 = $3C9;              // (ix>>52)&0x7ff < this → 1+x in refine
+  cExpHugeMul:    Tb64u64 = (u:$7FE0000000000000); // 0x1p+1023
+  cExpTinyMul:    Tb64u64 = (u:$0010000000000000); // 0x1p-1022
+
+  // Accurate-path polynomial ch[7][2] (hi, lo)
+  cExpAccCh: array[0..6, 0..1] of Tb64u64 = (
+    ((u:$3FF0000000000000),(u:$0000000000000000)),
+    ((u:$3FE0000000000000),(u:$39C712F72ECEC2CF)),
+    ((u:$3FC5555555555555),(u:$3C65555555554D07)),
+    ((u:$3FA5555555555555),(u:$3C455194D28275DA)),
+    ((u:$3F81111111111111),(u:$3C012FAA0E1C0F7B)),
+    ((u:$3F56C16C16DA6973),(u:$BBF4BA45AB25D2A3)),
+    ((u:$3F2A01A019EB7F31),(u:$BBC9091D845ECD36)));
+
+  // 51-entry exception database (sorted by ix.u of x).
+  cExpDb: array[0..50] of UInt64 = (
+    UInt64($3CAFFFFFFFFFFFFF), UInt64($3F1BA07D73250DE7), UInt64($3F76A4D1AF9CC989),
+    UInt64($3F95A75293A5DCDA), UInt64($3FA42EA46949B3C7), UInt64($3FA7C8BB0CF5D160),
+    UInt64($3FC0948D39A41695), UInt64($3FCA065FEFAE814F), UInt64($3FCF6E4C3CED7C72),
+    UInt64($3FD1A0408712E00A), UInt64($3FDBCAB27D05ABDE), UInt64($3FE005AE04256BAB),
+    UInt64($401273C188AA7B14), UInt64($40183D4BCDEBB3F4), UInt64($40308F51434652C3),
+    UInt64($4031D5C2DAEBE367), UInt64($403C44CE0D716A1A), UInt64($404E07E71BFCF06F),
+    UInt64($404F7216C4B435C9), UInt64($40654CD1FEA7663A), UInt64($407D6479EBA7C971),
+    UInt64($BF1664716B68A409), UInt64($BF2A2FEFEFD580DF), UInt64($BF3CE3F638D0C742),
+    UInt64($BF3CEFF32831E2C2), UInt64($BF433ACCAE78B371), UInt64($BF4D792B60084F92),
+    UInt64($BF77FB235D76CCE7), UInt64($BF81FF9B8E8B38BE), UInt64($BF854511E930898C),
+    UInt64($BF95C5ED0EC83666), UInt64($BF98C56FF5326197), UInt64($BF9A4187F2CA71F9),
+    UInt64($BFBA8F783D749A8F), UInt64($BFBBD44FDAED819F), UInt64($BFBDAF693D64FADA),
+    UInt64($BFC290EA09E36479), UInt64($BFC8AEB636F3CE35), UInt64($BFCD3F3799439415),
+    UInt64($BFCEA16274B0109B), UInt64($BFE22E24FA3D5CF9), UInt64($BFE85068C07FBBF6),
+    UInt64($BFEBDC7955D1482C), UInt64($BFF2A9CAD9998262), UInt64($BFFCC37EF7DE7501),
+    UInt64($C0002393D5976769), UInt64($C0065061DAF79A78), UInt64($C02E8BDBFCD9144E),
+    UInt64($C038F80E06F3A04C), UInt64($C0559F038076039C), UInt64($C06981587AD4542F));
+
+// As-ldexp by raw exponent bits.
+function ExpAsLdexp(x: Double; i: Int64): Double; inline;
+var u: Tb64u64;
+begin
+  u.f := x;
+  u.u := u.u + (UInt64(i) shl 52);
+  Result := u.f;
+end;
+
+// Strip top 12 bits (sign+exponent) — used to build subnormal result.
+function ExpAsToDenormal(x: Double): Double; inline;
+var u: Tb64u64;
+begin
+  u.f := x;
+  u.u := u.u and (UInt64($000FFFFFFFFFFFFF));
+  Result := u.f;
+end;
+
+// as_exp_database (sorted binary search; on hit, ulp-corrects f via signs hash).
+function ExpDatabase(x, f: Double): Double;
+var
+  ix: Tb64u64;
+  a, b, m: Int32;
+  jf, dr, r: Tb64u64;
+  s: UInt64;
+  s2: array[0..1] of UInt64;
+  t: UInt64;
+  k: Int64;
+begin
+  Result := f;
+  ix.f := x;
+  s2[0] := UInt64($57F5FE2E5BDE4075);
+  s2[1] := UInt64($0000003C1F16B8ED);
+  s := UInt64(333811522313371);
+  a := 0; b := High(cExpDb); m := (a + b) div 2;
+  while a <= b do
+  begin
+    if cExpDb[m] < ix.u then a := m + 1
+    else if cExpDb[m] = ix.u then
+    begin
+      jf.f := f;
+      dr.u := ((s shr m) shl 63) or UInt64($3C90000000000000);
+      t := (s2[m shr 5] shr ((m shl 1) and 63)) and 3;
+      for k := -1 to 1 do
+      begin
+        r.u := jf.u + UInt64(k);
+        if (r.u and 3) = t then
+        begin
+          Result := r.f + dr.f;
+          Exit;
+        end;
+      end;
+      Exit;
+    end
+    else b := m - 1;
+    m := (a + b) div 2;
+  end;
+end;
+
+// as_exp_accurate: refinement when fast bracket fails.
+function ExpRefine(x: Double): Double;
+var
+  ix, ixs: Tb64u64;
+  t, dx, dxl, dxll, dxh, fh, fl, e: Double;
+  th, tl, t0h, t0l, t1h, t1l: Double;
+  jt, i0, i1, ie: Int64;
+  ch_v, cl_v: Double;
+  i: Int32;
+  v: Tb64u64;
+  d_kind: Int64;
+begin
+  ix.f := x;
+  if ((ix.u shr 52) and $7FF) < cExpAccTinyExp then
+  begin
+    Result := Double(1.0) + x;
+    Exit;
+  end;
+  t  := pcr_roundeven(x * cExpS.f);
+  jt := Trunc(t);
+  i0 := (jt shr 6) and $3F;
+  i1 := jt and $3F;
+  ie := jt shr 12;
+  t0h := cExpT0[i0, 1].f;  t0l := cExpT0[i0, 0].f;
+  t1h := cExpT1[i1, 1].f;  t1l := cExpT1[i1, 0].f;
+  th := pcr_muldd(t0h, t0l, t1h, t1l, tl);
+
+  dx   := x - cExpL2H.f * t;
+  dxl  := cExpL2L.f * t;
+  dxll := cExpL2LL.f * t + pcr_fma(cExpL2L.f, t, -dxl);
+  dxh  := dx + dxl;
+  dxl  := (dx - dxh) + dxl + dxll;
+
+  // opolydd unrolled (n=7, in/out l in cl_v)
+  ch_v := cExpAccCh[6, 0].f;  cl_v := cExpAccCh[6, 1].f;
+  for i := 5 downto 0 do
+  begin
+    ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+    // th_p = ch + c[i][0]; tl_p = (c[i][0] - th_p) + ch
+    fh := ch_v + cExpAccCh[i, 0].f;
+    fl := (cExpAccCh[i, 0].f - fh) + ch_v;
+    ch_v := fh;
+    cl_v := cl_v + fl + cExpAccCh[i, 1].f;
+  end;
+  fh := ch_v;  fl := cl_v;
+
+  fh := pcr_muldd(dxh, dxl, fh, fl, fl);
+
+  if ix.u > cExpSubnormalU then
+  begin
+    // x < -0x1.6232bdd7abcd2p+9 — subnormal branch
+    ixs.u := UInt64(1 - ie) shl 52;
+    fh := pcr_muldd(fh, fl, th, tl, fl);
+    // fastsum(th, tl, fh, fl, &fl): sh = fasttwosum(th, fh, &sl); fl = (tl+fl)+sl
+    pcr_fasttwosum(ch_v, cl_v, th, fh);
+    fl := (tl + fl) + cl_v;
+    fh := ch_v;
+    pcr_fasttwosum(fh, e, ixs.f, fh);
+    fl := fl + e;
+    Result := ExpAsToDenormal(fh + fl);
+  end
+  else
+  begin
+    if th = Double(1.0) then
+    begin
+      pcr_fasttwosum(fh, e, th, fh);
+      pcr_fasttwosum(fl, e, e, fl);
+      v.f := fl;
+      if (v.u and UInt64($000FFFFFFFFFFFFF)) = 0 then
+      begin
+        ixs.f := e;
+        // C: d = ((sign(ix) XOR sign(v)) ? -1 : 1); ix.u += d (mod 2^64)
+        if (v.u shr 63) <> (ixs.u shr 63) then v.u := v.u - 1 else v.u := v.u + 1;
+        fl := v.f;
+        d_kind := 0; // suppress hint
+      end;
+    end
+    else
+    begin
+      fh := pcr_muldd(fh, fl, th, tl, fl);
+      pcr_fasttwosum(ch_v, cl_v, th, fh);
+      fl := (tl + fl) + cl_v;
+      fh := ch_v;
+    end;
+    pcr_fasttwosum(fh, fl, fh, fl);
+    v.f := fl;
+    // d = (ix.u + 2) & (~0>>12)  (clear top 12 bits)
+    if ((v.u + 2) and UInt64($000FFFFFFFFFFFFF)) <= 2 then
+      fh := ExpDatabase(x, fh);
+    Result := ExpAsLdexp(fh, ie);
+  end;
+end;
+
+function pcr_exp(x: Double): Double;
+var
+  ix: Tb64u64;
+  aix: UInt64;
+  t, dx, dx2, p, fh, fl, tx, ub, lb, eps, e: Double;
+  th, tl, t0h, t0l, t1h, t1l: Double;
+  jt, i0, i1, ie: Int64;
+  ixs: Tb64u64;
+begin
+  ix.f := x;
+  aix := ix.u and UInt64($7FFFFFFFFFFFFFFF);
+  if aix <= cExpTinyAix then
+  begin
+    Result := Double(1.0) + x;
+    Exit;
+  end;
+  if aix >= cExpHugeAix then
+  begin
+    if aix > UInt64($7FF0000000000000) then begin Result := x + x; Exit; end;
+    if aix = UInt64($7FF0000000000000) then
+    begin
+      if (ix.u shr 63) <> 0 then Result := Double(0.0)
+      else Result := x;
+      Exit;
+    end;
+    if (ix.u shr 63) = 0 then
+    begin
+      Result := cExpHugeMul.f * cExpHugeMul.f;
+      Exit;
+    end;
+    if aix >= cExpUnderAix then
+    begin
+      Result := cExpTinyMul.f * cExpTinyMul.f;
+      Exit;
+    end;
+  end;
+  t  := pcr_roundeven(x * cExpS.f);
+  jt := Trunc(t);
+  i0 := (jt shr 6) and $3F;
+  i1 := jt and $3F;
+  ie := jt shr 12;
+  t0h := cExpT0[i0, 1].f;  t0l := cExpT0[i0, 0].f;
+  t1h := cExpT1[i1, 1].f;  t1l := cExpT1[i1, 0].f;
+  th := pcr_muldd(t0h, t0l, t1h, t1l, tl);
+
+  dx  := (x - cExpL2H.f * t) + cExpL2L.f * t;
+  dx2 := dx * dx;
+  p   := (Double(1.0) + dx * Double(0.5)) + dx2 * (cExpFastCh2.f + dx * cExpFastCh3.f);
+  fh  := th;
+  tx  := th * dx;
+  fl  := tl + tx * p;
+  eps := cExpEpsFast;
+
+  if ix.u > cExpSubnormalU then
+  begin
+    ixs.u := UInt64(1 - ie) shl 52;
+    pcr_fasttwosum(fh, e, ixs.f, fh);
+    fl := fl + e;
+    ub := fh + (fl + eps);
+    lb := fh + (fl - eps);
+    if ub <> lb then begin Result := ExpRefine(x); Exit; end;
+    Result := ExpAsToDenormal(lb);
+  end
+  else
+  begin
+    ub := fh + (fl + eps);
+    lb := fh + (fl - eps);
+    if ub <> lb then begin Result := ExpRefine(x); Exit; end;
+    Result := ExpAsLdexp(lb, ie);
+  end;
+end;
+
+// ---------------------------------------------------------------------------
 // Stubs — delegate to C reference until each function is ported.
 // Replace each stub body with the real Pascal port as phases 1-5 progress.
 // ---------------------------------------------------------------------------
@@ -2877,7 +3159,7 @@ function  pcr_cosh(x: Double): Double;    begin Result := cr_cosh(x);    end;
 // pcr_cospi — ported above
 function  pcr_erf(x: Double): Double;     begin Result := cr_erf(x);     end;
 function  pcr_erfc(x: Double): Double;    begin Result := cr_erfc(x);    end;
-function  pcr_exp(x: Double): Double;     begin Result := cr_exp(x);     end;
+// pcr_exp — ported above
 function  pcr_exp10(x: Double): Double;   begin Result := cr_exp10(x);   end;
 function  pcr_exp10m1(x: Double): Double; begin Result := cr_exp10m1(x); end;
 function  pcr_exp2(x: Double): Double;    begin Result := cr_exp2(x);    end;
