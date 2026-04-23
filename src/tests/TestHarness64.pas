@@ -26,6 +26,7 @@ var
   DiagMax: Int32;
   StartTick: UInt64;
   Filter: string = '';
+  SamplePct: Double = 100.0;  // percentage of SAMPLES_* to actually run; --pct <n>
 
 // Fast xorshift64 PRNG (period 2^64 - 1)
 var RngState: UInt64 = $6E0BEEF1CAFE7A5E;  // arbitrary seed; override with --seed
@@ -127,7 +128,7 @@ begin
   end;
 
   // Random sampling
-  for i := 1 to SAMPLES_UNI do
+  for i := 1 to Int64(Round(SAMPLES_UNI * SamplePct / 100.0)) do
   begin
     bits := Xorshift64;
     v.u := bits;
@@ -165,7 +166,7 @@ begin
   mismatches := 0;
   diagShown := 0;
   maxUlp := 0;
-  for i := 1 to SAMPLES_BIV do
+  for i := 1 to Int64(Round(SAMPLES_BIV * SamplePct / 100.0)) do
   begin
     vx.u := Xorshift64;
     vy.u := Xorshift64;
@@ -183,7 +184,7 @@ begin
       end;
     end;
   end;
-  ReportResult(name, SAMPLES_BIV, mismatches, maxUlp);
+  ReportResult(name, Int64(Round(SAMPLES_BIV * SamplePct / 100.0)), mismatches, maxUlp);
 end;
 
 // ---- sincos test ----
@@ -208,7 +209,7 @@ begin
     if not BitsMatch(cc, pc) then Inc(mismatches);
     Inc(tested);
   end;
-  for i := 1 to SAMPLES_UNI do
+  for i := 1 to Int64(Round(SAMPLES_UNI * SamplePct / 100.0)) do
   begin
     v.u := Xorshift64;
     cr_sincos(v.f, @cs, @cc);
@@ -245,7 +246,9 @@ begin
     else if (ParamStr(i) = '--func') and (i < ParamCount) then
       Filter := LowerCase(ParamStr(i + 1))
     else if (ParamStr(i) = '--seed') and (i < ParamCount) then
-      RngState := StrToQWordDef(ParamStr(i + 1), RngState);
+      RngState := StrToQWordDef(ParamStr(i + 1), RngState)
+    else if (ParamStr(i) = '--pct') and (i < ParamCount) then
+      SamplePct := StrToFloatDef(ParamStr(i + 1), 100.0);
     Inc(i);
   end;
 end;

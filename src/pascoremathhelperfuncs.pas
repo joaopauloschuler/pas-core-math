@@ -16,6 +16,7 @@ uses
 // Pure-asm body uses System V AMD64 ABI (params in xmm0/1/2).
 function pcr_fmaf(x, y, z: Single): Single; {$IFNDEF AVX2} inline; {$ENDIF}
 function pcr_fma(x, y, z: Double): Double; {$IFNDEF AVX2} inline; {$ENDIF}
+function pcr_fma_pascal( a,b,c: Double ):Double; inline;
 
 // Absolute value
 function pcr_fabsf(x: Single): Single; inline;
@@ -142,7 +143,7 @@ type
 
 function split( x: Double ):DW;
 const
-  K: Double = 134217729.0;
+  K: Double = Double(134217729.0);
 var
   splittedx: DW;
   gamma: Double;
@@ -181,8 +182,8 @@ end;
 
 function IsNot1or3timesPowerOf2( x: Double ):Boolean;
 const
-  P: Double = 2251799813685249.0;
-  Q: Double = 2251799813685248.0;
+  P: Double = Double(2251799813685249.0);
+  Q: Double = Double(2251799813685248.0);
 var
   Delta: Double;
 begin
@@ -190,28 +191,326 @@ begin
   Result := ( Delta<>x );
 end;
 
-function pcr_fma_pascal( a,b,c: Double ):Double; inline;
-var
-  x, s, v: DW;
+// Boldo-Melquiond intermediates: after this, a*b + c = s.h + v.h + v.l exactly.
+procedure pcr_fma_decompose(a, b, c: Double; out sh, vh, vl: Double);
+var x, s, v: DW;
 begin
-  x := DekkerProd( a,b );
-  s := TwoSum( x.h,c );
-  v := TwoSum( x.l,s.l );
-  if( ( IsNot1or3timesPowerOf2( v.h ) ) or ( v.l=0 ) ) then
-  begin
-    Result := s.h + v.h;
-  end
+  x := DekkerProd(a, b);
+  s := TwoSum(x.h, c);
+  v := TwoSum(x.l, s.l);
+  sh := s.h; vh := v.h; vl := v.l;
+end;
+
+function pcr_fma_pascal_core( a,b,c: Double ):Double;
+var
+  sh, vh, vl: Double;
+begin
+  pcr_fma_decompose(a, b, c, sh, vh, vl);
+  if IsNot1or3timesPowerOf2(vh) or (vl = 0) then
+    Result := sh + vh
+  else if (UInt8(vl < 0) xor UInt8(vh < 0)) <> 0 then
+    Result := sh + (0.875 * vh)
   else
+    Result := sh + (1.125 * vh);
+end;
+
+// FMA via integer mantissa arithmetic — the fallback used whenever the Dekker
+// product in the Boldo-Melquiond core would be lossy, i.e. whenever a*b
+// rounded to double would be subnormal. Handles both subnormal and normal
+// outputs; the subnormal-output case arises when c is also subnormal-scale
+// (atanpi's AtanpiSmall path), and the normal-output case arises when c is
+// a small normal dominating the subnormal product.
+//
+// Algorithm:
+//   1. Extract (sign, 53-bit integer mantissa, binary exp) from a, b, c.
+//   2. Compute mp = ma * mb as an exact TUInt128 (106 bits).
+//   3. Align mp and mc at a common fine scale 2^(ec - G). mc is left-shifted
+//      by G; mp is shifted by (ep - ec + G) — right-shift collects a sticky
+//      bit for bits dropped below the common scale.
+//   4. Add or subtract (by relative signs).
+//   5. Normalize the 128-bit integer back to a double: find the leading bit,
+//      determine biased exponent, right-shift to 53-bit mantissa with round
+//      and sticky, apply round-to-nearest-even, rebuild the IEEE bit pattern.
+function pcr_fma_integer(a, b, c: Double): Double;
+const
+  G = 20;  // guard bits below scale 2^ec — fits comfortably in TUInt128
+  EXP_MASK_D  : UInt64 = $7FF0000000000000;
+  MANT_MASK_D : UInt64 = $000FFFFFFFFFFFFF;
+  IMPLICIT_D  : UInt64 = $0010000000000000;
+  SIGN_MASK_D : UInt64 = $8000000000000000;
+var
+  va, vb, vc, vr: Tb64u64;
+  ma, mb, mc: UInt64;
+  ea, eb, ec, ep: Int32;
+  sa, sb, sc, sp, sr: Boolean;
+  aNaN, aZ, bNaN, bZ, cNaN, cZ: Boolean;
+  mp, mc_wide, sum: TUInt128;
+  shift_p, shift_c: Integer;
+  sticky_extra: Boolean;
+
+  procedure ExtractParts(u: UInt64; out m: UInt64; out e: Int32; out s: Boolean; out isNanInf, isZero: Boolean);
+  var b: UInt64;
   begin
-    if( ( UInt8( v.l<0 ) xor UInt8( v.h<0 ) )<>0 ) then
-    begin
-      Result := s.h + ( 0.875*v.h );
-    end
-    else
-    begin
-      Result := s.h + ( 1.125*v.h );
+    s := (u and SIGN_MASK_D) <> 0;
+    b := (u and EXP_MASK_D) shr 52;
+    isNanInf := b = $7FF;
+    if b = 0 then begin
+      m := u and MANT_MASK_D;
+      isZero := m = 0;
+      e := -1074;
+    end else begin
+      m := (u and MANT_MASK_D) or IMPLICIT_D;
+      isZero := False;
+      e := Int32(b) - 1023 - 52;
     end;
   end;
+
+  procedure RShiftCollectSticky(var x: TUInt128; sh: Integer; var sticky: Boolean);
+  begin
+    if sh <= 0 then Exit;
+    if sh >= 128 then begin
+      if (x.lo <> 0) or (x.hi <> 0) then sticky := True;
+      x.lo := 0; x.hi := 0;
+      Exit;
+    end;
+    if sh < 64 then begin
+      if (x.lo and ((UInt64(1) shl sh) - 1)) <> 0 then sticky := True;
+      x.lo := (x.lo shr sh) or (x.hi shl (64 - sh));
+      x.hi := x.hi shr sh;
+    end else if sh = 64 then begin
+      if x.lo <> 0 then sticky := True;
+      x.lo := x.hi;
+      x.hi := 0;
+    end else begin
+      if (x.lo <> 0) or ((x.hi and ((UInt64(1) shl (sh - 64)) - 1)) <> 0) then sticky := True;
+      x.lo := x.hi shr (sh - 64);
+      x.hi := 0;
+    end;
+  end;
+
+  function U128GE(const x, y: TUInt128): Boolean;
+  begin
+    if x.hi <> y.hi then Result := x.hi > y.hi
+    else Result := x.lo >= y.lo;
+  end;
+
+  function FallbackCore: Double;
+  begin Result := pcr_fma_pascal_core(a, b, c); end;
+
+  // Round 128-bit |sum| (at scale 2^(ec - G)) to a double with sign sr,
+  // using sticky_extra as an additional below-the-guard sticky bit.
+  function FinalizeDouble: Double;
+  var
+    k: Integer;           // leading-bit position of sum (0..127)
+    e_unbiased: Int32;    // unbiased exponent of the result
+    shift_right: Integer; // bits to shift out to form 53-bit mantissa
+    keep_bits: Integer;   // bits of sum that survive the shift
+    round_bit, sticky_bit: Boolean;
+    lost_mask: UInt64;
+    out_mant: UInt64;
+    final_biased: Int32;
+    r: Tb64u64;
+  begin
+    if (sum.hi = 0) and (sum.lo = 0) then begin
+      // Exact zero (ignoring sticky_extra which represents <1-ulp residue).
+      if not sticky_extra then begin
+        r.u := 0;
+        if sr then r.u := r.u or SIGN_MASK_D;
+        Result := r.f; Exit;
+      end;
+      // Sub-guard positive residue with empty top: magnitude < 2^-1074, rounds to zero.
+      // In round-to-nearest-even, magnitude 0..ulp/2 rounds to 0.
+      r.u := 0;
+      if sr then r.u := r.u or SIGN_MASK_D;
+      Result := r.f; Exit;
+    end;
+
+    // Leading bit k (0-indexed).
+    if sum.hi <> 0 then k := 127 - pcr_clzll(sum.hi)
+    else                k := 63  - pcr_clzll(sum.lo);
+
+    // Value = sum * 2^(ec - G) has magnitude in [2^(k + ec - G), 2^(k + 1 + ec - G)).
+    e_unbiased  := k + ec - G;
+    final_biased := e_unbiased + 1023;
+
+    if final_biased >= 1 then begin
+      // Normal result: mantissa needs to be 53-bit with leading 1 at bit 52.
+      shift_right := k - 52;
+    end else begin
+      // Subnormal result: target grid is 2^-1074, so bit alignment = -1074 - (ec - G) = G - ec - 1074.
+      // (This equals shift_right we'd want to apply so sum shr shift_right lands on the subnormal grid.)
+      shift_right := G - ec - 1074;
+      if shift_right < 0 then shift_right := 0;
+    end;
+
+    // Extract round/sticky bits from the bits about to be shifted out.
+    if shift_right <= 0 then begin
+      round_bit  := False;
+      sticky_bit := sticky_extra;
+      keep_bits  := 0;
+    end else begin
+      keep_bits := shift_right;
+      // round_bit = bit (keep_bits - 1) of sum
+      if keep_bits <= 64 then
+        round_bit := ((sum.lo shr (keep_bits - 1)) and 1) <> 0
+      else
+        round_bit := ((sum.hi shr (keep_bits - 1 - 64)) and 1) <> 0;
+      // sticky_bit = OR of bits [0 .. keep_bits-2]
+      sticky_bit := sticky_extra;
+      if keep_bits - 1 > 0 then begin
+        if keep_bits - 1 <= 64 then begin
+          lost_mask := (UInt64(1) shl (keep_bits - 1)) - 1;
+          if (sum.lo and lost_mask) <> 0 then sticky_bit := True;
+        end else begin
+          if sum.lo <> 0 then sticky_bit := True;
+          lost_mask := (UInt64(1) shl (keep_bits - 1 - 64)) - 1;
+          if (sum.hi and lost_mask) <> 0 then sticky_bit := True;
+        end;
+      end;
+    end;
+
+    // Shift right by shift_right to get the to-be-rounded mantissa in sum.lo.
+    if shift_right > 0 then begin
+      if shift_right < 64 then begin
+        sum.lo := (sum.lo shr shift_right) or (sum.hi shl (64 - shift_right));
+        sum.hi := sum.hi shr shift_right;
+      end else if shift_right = 64 then begin
+        sum.lo := sum.hi;
+        sum.hi := 0;
+      end else begin
+        if shift_right >= 128 then begin sum.lo := 0; sum.hi := 0; end
+        else begin
+          sum.lo := sum.hi shr (shift_right - 64);
+          sum.hi := 0;
+        end;
+      end;
+    end;
+
+    if sum.hi <> 0 then begin Result := FallbackCore; Exit; end;  // should not happen
+    out_mant := sum.lo;
+
+    // Round-to-nearest-even.
+    if round_bit and (sticky_bit or ((out_mant and 1) <> 0)) then
+      out_mant := out_mant + 1;
+
+    if final_biased >= 1 then begin
+      // Normal. Rounding may have bumped mantissa from (1<<53)-1 to (1<<53), promoting exponent.
+      if (out_mant shr 53) <> 0 then begin
+        out_mant := out_mant shr 1;
+        Inc(final_biased);
+      end;
+      if final_biased >= 2047 then begin
+        // Overflow -> infinity
+        r.u := UInt64($7FF) shl 52;
+      end else begin
+        r.u := (UInt64(final_biased) shl 52) or (out_mant and MANT_MASK_D);
+      end;
+    end else begin
+      // Subnormal result. If rounding promoted to 2^52, it became smallest normal.
+      if (out_mant shr 52) <> 0 then
+        r.u := UInt64($0010000000000000)          // smallest normal
+      else
+        r.u := out_mant;                          // subnormal mantissa
+    end;
+    if sr then r.u := r.u or SIGN_MASK_D;
+    Result := r.f;
+  end;
+
+begin
+  va.f := a; vb.f := b; vc.f := c;
+
+  ExtractParts(va.u, ma, ea, sa, aNaN, aZ);
+  ExtractParts(vb.u, mb, eb, sb, bNaN, bZ);
+  ExtractParts(vc.u, mc, ec, sc, cNaN, cZ);
+  if aNaN or bNaN or cNaN then begin Result := FallbackCore; Exit; end;
+  if aZ or bZ then begin Result := c; Exit; end;
+  if cZ then begin
+    // a*b in subnormal range with c=0: result IS a*b, potentially subnormal.
+    // Rare for our callers; defer to core.
+    Result := FallbackCore; Exit;
+  end;
+
+  mp := Mulu64u64(ma, mb);
+  ep := ea + eb;
+  sp := sa xor sb;
+
+  // Align both at scale 2^(ec - G). mc gets a pure left-shift by G bits.
+  // mp shifts by (ep - ec + G): may be positive (left) or negative (right + sticky).
+  shift_p := ep - ec + G;
+  sticky_extra := False;
+  if shift_p > 0 then begin
+    // mp is up to 106 bits. Require shift_p + 106 <= 128 -> shift_p <= 22.
+    if shift_p > 22 then begin Result := FallbackCore; Exit; end;
+    ShlU128(mp, shift_p);
+  end else if shift_p < 0 then
+    RShiftCollectSticky(mp, -shift_p, sticky_extra);
+
+  shift_c := G;
+  mc_wide.lo := mc;
+  mc_wide.hi := 0;
+  if shift_c > 0 then ShlU128(mc_wide, shift_c);  // mc is 53-bit, 53+G <= 128 for G<=75
+
+  if sp = sc then begin
+    AddU128(sum, mp, mc_wide);
+    sr := sp;
+  end else begin
+    if U128GE(mp, mc_wide) then begin
+      SubU128(sum, mp, mc_wide);
+      sr := sp;
+    end else begin
+      // Subtrahend (mp) has lost tail bits represented by sticky_extra. True
+      // value = mc_wide - (mp_stored + epsilon) = (sum - epsilon) where
+      // epsilon ∈ [0, 1) in our integer units at scale 2^(ec-G).
+      // Model this as (sum - 1) + (1 - epsilon): sum-1 is the integer part and
+      // (1 - epsilon) ∈ (0, 1) lives below the LSB, so it only contributes a
+      // sticky bit at finalization. Decrement sum by 1 with borrow; sticky
+      // stays True.
+      SubU128(sum, mc_wide, mp);
+      sr := sc;
+      if sticky_extra then begin
+        if sum.lo = 0 then begin
+          sum.lo := UInt64($FFFFFFFFFFFFFFFF);
+          if sum.hi = 0 then begin
+            // sum was exactly 0 before the borrow; that means mc_wide == mp
+            // in the TUInt128 part and epsilon > 0, so true value is negative
+            // of sign sc i.e. sign = sp. Magnitude is epsilon at scale 2^(ec-G),
+            // less than half a subnormal-ulp. Round-to-nearest-even gives +/-0.
+            sum.lo := 0;
+            sum.hi := 0;
+            sr := sp;
+            sticky_extra := False;  // already consumed
+          end else begin
+            sum.hi := sum.hi - 1;
+          end;
+        end else begin
+          sum.lo := sum.lo - 1;
+        end;
+        // sticky_extra remains True → FinalizeDouble will OR it into sticky_bit.
+      end;
+    end;
+  end;
+
+  Result := FinalizeDouble;
+end;
+
+function pcr_fma_pascal( a,b,c: Double ):Double; inline;
+const
+  cFmaDblMin: Tb64u64 = (u:$0010000000000000);  // 2^-1022 = DBL_MIN
+var
+  ab: Double;
+begin
+  // Boldo-Melquiond's Dekker product rounds a*b to a double; when that rounded
+  // value is subnormal the low word can no longer recover the discarded bits
+  // and the whole algorithm loses precision. Redirect those cases to the
+  // integer-mantissa path.
+  ab := a * b;
+  if (ab <> 0.0) and (Abs(ab) < cFmaDblMin.f) and
+     (ab = ab) and (ab - ab = 0.0) then
+  begin
+    Result := pcr_fma_integer(a, b, c);
+    Exit;
+  end;
+  Result := pcr_fma_pascal_core(a, b, c);
 end;
 
 // =============================================================================

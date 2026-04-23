@@ -158,6 +158,12 @@ if [ -f "$SOFILE64" ]; then
   fpc $FPC_FLAGS "$SCRIPT_DIR/FixedTest64.pas" && \
     echo "FixedTest64 compiled -> $BIN_DIR/FixedTest64" || \
     echo "FixedTest64 skipped (functions not yet ported)"
+
+  echo
+  echo "Compiling FmaCompare64.pas ..."
+  fpc $FPC_FLAGS "$SCRIPT_DIR/FmaCompare64.pas" && \
+    echo "FmaCompare64 compiled -> $BIN_DIR/FmaCompare64" || \
+    echo "FmaCompare64 skipped"
 else
   echo
   echo "Skipping binary64 test programs (libcoremath64.so not present)."
