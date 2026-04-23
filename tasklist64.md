@@ -16,7 +16,7 @@ Before starting, check the existing functions and notes at:
 
 ## Status summary
 
-- **12 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 in progress — 1.01 rsqrt, 1.02 cbrt, 1.03 atan, 1.04 log2, 1.05 acos, 1.06 tanh, 1.07 cospi, 1.08 asin, 1.10 exp10, 1.11 exp2, 1.12 exp, 2.01 expm1 done)
+- **13 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 in progress — 1.01 rsqrt, 1.02 cbrt, 1.03 atan, 1.04 log2, 1.05 acos, 1.06 tanh, 1.07 cospi, 1.08 asin, 1.09 cosh, 1.10 exp10, 1.11 exp2, 1.12 exp, 2.01 expm1 done)
 - Target file: `src/pascoremath64.pas`
 - **Phase 0 fully complete** (tasks 0.1–0.10): infrastructure, helpers, and test harness ready
 - libcoremath64.so built from core-math/src/binary64/; test programs compile once pcr_* functions added
@@ -578,7 +578,11 @@ Port in this order. All functions live in `pascoremath64.pas`, named `pcr_<name>
 - [X] **1.06** `tanh`    — 355 lines  *(pure dd)*
 - [X] **1.07** `cospi`   — 356 lines  *(pure dd + 3 × 33-entry lookup tables)*
 - [X] **1.08** `asin`    — 366 lines  *(pure dd; reuses acos tables)*
-- [ ] **1.09** `cosh`    — 377 lines  *(pure dd — verified; earlier "dint + dd" hint was wrong)*
+- [X] **1.09** `cosh`    — 377 lines  *(pure dd — verified; earlier "dint + dd" hint was wrong)*
+  - **Port notes (2026-04-23):** `src/cosh_port.inc` reuses `cExpT0`/`cExpT1` (byte-identical to cosh's t0[]/t1[]) and `TanhExpAccurate` — which matches cosh's `as_exp_accurate` exactly (same `ch[3][2]` via `cTanhExpCh`, same `cTanhExpP0/P1/P2` polynomial seed, same `cTanhL2hA/L2lA/L2llA` log(2) triple-split). Huge reuse win — no new exp-family tables needed. Cosh-specific content: fast-path `c[5]` for |x|<0.125, `as_cosh_zero` ch[4][2]+cl[4], `as_cosh_database` 21-entry table, main-path `ch[4]`.
+    - **Signed-shift traps.** `int64_t il = ((uint64_t)jt.u<<14)>>40` is **unsigned** (logical) shifts — use `Int64((jt.u shl 14) shr 40)`. But `jl = -il; (jl>>6)&0x3f` and `jl>>12` use **arithmetic** right shifts — route through `SarInt64`. Easy to get wrong.
+    - **`(1022 + je_)` exponent cast.** `je_` may be very negative for large |x| (e.g. je ≈ -1025 at |x| ≈ 711), making `(1022 + je_)` negative. `UInt64(...) shl 52` wraps cleanly and the bogus `sm.u` is never consumed in that branch — faithful port, no guard needed.
+    - **Results:** 100M random-input TestHarness64: 0 mismatches. 200M Benchmark64: sink=MATCH. Pascal 24.8 Mops/s vs C 111.2 Mops/s (~22%, non-AVX2 with software FMA; many `pcr_fma` calls in fast path + two `TanhExpAccurate` calls in the slow path dominate).
 - [X] **1.10** `exp10`   — 379 lines  *(pure dd; reuses cExpT0/cExpT1)*
 - [X] **1.11** `exp2`    — 384 lines  *(pure dd; reuses cExpT0/cExpT1)*
 - [X] **1.12** `exp`     — 386 lines  *(pure dd; shared cExpT0/cExpT1 extracted for family)*
