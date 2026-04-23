@@ -16,7 +16,7 @@ Before starting, check the existing functions and notes at:
 
 ## Status summary
 
-- **11 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 in progress — 1.01 rsqrt, 1.02 cbrt, 1.03 atan, 1.04 log2, 1.05 acos, 1.06 tanh, 1.07 cospi, 1.08 asin, 1.10 exp10, 1.11 exp2, 1.12 exp done)
+- **12 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 in progress — 1.01 rsqrt, 1.02 cbrt, 1.03 atan, 1.04 log2, 1.05 acos, 1.06 tanh, 1.07 cospi, 1.08 asin, 1.10 exp10, 1.11 exp2, 1.12 exp, 2.01 expm1 done)
 - Target file: `src/pascoremath64.pas`
 - **Phase 0 fully complete** (tasks 0.1–0.10): infrastructure, helpers, and test harness ready
 - libcoremath64.so built from core-math/src/binary64/; test programs compile once pcr_* functions added
@@ -850,7 +850,7 @@ are pure double-double. `clzll` is used only by `asinpi`, `log`, and `log10`.
 `fegetround` is used only by `asinpi`. (Verified by grep; original annotations
 here were wrong.)
 
-- [ ] **2.01** `expm1`   — 436 lines  *(pure dd)*
+- [X] **2.01** `expm1`   — 436 lines  *(pure dd; reuses cExpT0/cExpT1 + cExpAccCh, own cExpm1Tz table)*
 - [ ] **2.02** `acosh`   — 451 lines  *(pure dd)*
 - [ ] **2.03** `atanh`   — 479 lines  *(pure dd)*
 - [ ] **2.04** `atanpi`  — 479 lines  *(pure dd)*

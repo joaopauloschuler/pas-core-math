@@ -23,6 +23,7 @@ function pcr_asin(x: Double): Double;
 function pcr_exp(x: Double): Double;
 function pcr_exp2(x: Double): Double;
 function pcr_exp10(x: Double): Double;
+function pcr_expm1(x: Double): Double;
 
 // ── Stub functions (delegate to C reference until ported) ────────────────────
 // pcr_acos declared in ported section above
@@ -45,7 +46,7 @@ function  pcr_erfc(x: Double): Double; inline;
 function  pcr_exp10m1(x: Double): Double; inline;
 // pcr_exp2 declared in ported section above
 function  pcr_exp2m1(x: Double): Double; inline;
-function  pcr_expm1(x: Double): Double; inline;
+// pcr_expm1 declared in ported section above
 function  pcr_lgamma(x: Double): Double; inline;
 function  pcr_log(x: Double): Double; inline;
 function  pcr_log10(x: Double): Double; inline;
@@ -2999,7 +3000,7 @@ begin
   jt := Trunc(t);
   i0 := (jt shr 6) and $3F;
   i1 := jt and $3F;
-  ie := jt shr 12;
+  ie := SarInt64(jt, 12);
   t0h := cExpT0[i0, 1].f;  t0l := cExpT0[i0, 0].f;
   t1h := cExpT1[i1, 1].f;  t1l := cExpT1[i1, 0].f;
   th := pcr_muldd(t0h, t0l, t1h, t1l, tl);
@@ -3110,7 +3111,7 @@ begin
   jt := Trunc(t);
   i0 := (jt shr 6) and $3F;
   i1 := jt and $3F;
-  ie := jt shr 12;
+  ie := SarInt64(jt, 12);
   t0h := cExpT0[i0, 1].f;  t0l := cExpT0[i0, 0].f;
   t1h := cExpT1[i1, 1].f;  t1l := cExpT1[i1, 0].f;
   th := pcr_muldd(t0h, t0l, t1h, t1l, tl);
@@ -3500,7 +3501,7 @@ begin
   jt := Trunc(t);
   i0 := (jt shr 6) and $3F;
   i1 := jt and $3F;
-  ie := jt shr 12;
+  ie := SarInt64(jt, 12);
   t0h := cExpT0[i0, 1].f;  t0l := cExpT0[i0, 0].f;
   t1h := cExpT1[i1, 1].f;  t1l := cExpT1[i1, 0].f;
   th := pcr_muldd(t0h, t0l, t1h, t1l, tl);
@@ -3605,7 +3606,7 @@ begin
   jt := Trunc(t);
   i0 := (jt shr 6) and $3F;
   i1 := jt and $3F;
-  ie := jt shr 12;
+  ie := SarInt64(jt, 12);
   t0h := cExpT0[i0, 1].f;  t0l := cExpT0[i0, 0].f;
   t1h := cExpT1[i1, 1].f;  t1l := cExpT1[i1, 0].f;
   th := pcr_muldd(t0h, t0l, t1h, t1l, tl);
@@ -3639,6 +3640,410 @@ begin
 end;
 
 // ---------------------------------------------------------------------------
+// pcr_expm1 — correctly-rounded binary64 e^x - 1.
+// Ported from core-math/src/binary64/expm1/expm1.c. For |x|>=0.25 reuses
+// cExpT0/cExpT1 and the cExpAccCh / cExpFastCh* polynomials. The small-x
+// branch (|x|<0.25) carries its own tz table and polynomials.
+// ---------------------------------------------------------------------------
+
+const
+  // tz[i+32] for i in [-32, 32]. Each entry is (lo, hi) for 2^(i/128) - 1
+  // approximation used by the small-x fast path.
+  cExpm1Tz: array[0..64, 0..1] of Tb64u64 = (
+    ((u:$BC6797D4686C5393),(u:$BFCC5041854DF7D4)),
+    ((u:$BC8EA1CB9D163339),(u:$BFCB881A23AEBB48)),
+    ((u:$3C8F483A3E8CD60F),(u:$BFCABE60E1F21838)),
+    ((u:$3C7DFFD920F493DB),(u:$BFC9F3129931FAB0)),
+    ((u:$BC851BFDBB129094),(u:$BFC9262C1C3430A0)),
+    ((u:$3C8CD3E5225E2206),(u:$BFC857AA375DB4E4)),
+    ((u:$3C5E3A6BDAECE8F9),(u:$BFC78789B0A5E0C0)),
+    ((u:$BC8DAF2AE0C2D3D4),(u:$BFC6B5C7478983D8)),
+    ((u:$BC7FD36226FADD44),(u:$BFC5E25FB4FDE210)),
+    ((u:$3C7D887CD0341AB0),(u:$BFC50D4FAB639758)),
+    ((u:$BC8676A52A1A618B),(u:$BFC43693D679612C)),
+    ((u:$3C79776B420AD283),(u:$BFC35E28DB4ECD9C)),
+    ((u:$3C73D5FD7D70A5ED),(u:$BFC2840B5836CF68)),
+    ((u:$3C5A94AD2C8FA0BF),(u:$BFC1A837E4BA3760)),
+    ((u:$3C26AD4C353465B0),(u:$BFC0CAAB118A1278)),
+    ((u:$BC78BBA170E59B65),(u:$BFBFD6C2D0E3D910)),
+    ((u:$BC8E1E0A76CB0685),(u:$BFBE14AED893EEF0)),
+    ((u:$3C8FE131F55E75F8),(u:$BFBC4F1331D22D40)),
+    ((u:$BC8B5BEEE8BCEE31),(u:$BFBA85E8C62D9C10)),
+    ((u:$BC77FE9B02C25E9B),(u:$BFB8B92870FA2B58)),
+    ((u:$BC832AE7BDAF1116),(u:$BFB6E8CAFF341FE8)),
+    ((u:$3C7A6CFE58CBD73B),(u:$BFB514C92F634788)),
+    ((u:$3C68798DE3138A56),(u:$BFB33D1BB17DF2E8)),
+    ((u:$BC3589321A7EF10B),(u:$BFB161BB26CBB590)),
+    ((u:$BC78D0E700FCFB65),(u:$BFAF0540438FD5C0)),
+    ((u:$3C8473EF07D5DD3B),(u:$BFAB3F864C080000)),
+    ((u:$BC838E62149C16E2),(u:$BFA7723950130400)),
+    ((u:$BC508BB6309BD394),(u:$BFA39D4A1A77E050)),
+    ((u:$BC8BAD3FD501A227),(u:$BF9F8152AEE94500)),
+    ((u:$3C63D27AC39ED253),(u:$BF97B88F290230E0)),
+    ((u:$BC8B60BBD08AAC55),(u:$BF8FC055004416C0)),
+    ((u:$BC4A00D03B3359DE),(u:$BF7FE0154AAEED80)),
+    ((u:$0000000000000000),(u:$0000000000000000)),
+    ((u:$3C8861931C15E39B),(u:$3F80100AB00222C0)),
+    ((u:$3C77AB864B3E9045),(u:$3F90202AD5778E40)),
+    ((u:$3C74E5659D75E95B),(u:$3F984890D9043740)),
+    ((u:$3C78E0BD083ABA81),(u:$3FA040AC0224FD90)),
+    ((u:$3C345CC1CF959B1B),(u:$3FA465509D383EB0)),
+    ((u:$BC8EB6980CE14DA7),(u:$3FA89246D053D180)),
+    ((u:$3C77324137D6C342),(u:$3FACC79F4F5613A0)),
+    ((u:$BC45272FF30EED1B),(u:$3FB082B577D34ED8)),
+    ((u:$BC81280F19DACE1C),(u:$3FB2A5DD543CCC50)),
+    ((u:$BC8D550AF31C8EC3),(u:$3FB4CD4FC989CD68)),
+    ((u:$3C87923B72AA582D),(u:$3FB6F91575870690)),
+    ((u:$BC776C2E732457F1),(u:$3FB92937074E0CD8)),
+    ((u:$3C881F5C92A5200F),(u:$3FBB5DBD3F681220)),
+    ((u:$3C8E8AC7A4D3206C),(u:$3FBD96B0EFF0E790)),
+    ((u:$BC712DB6F4BBE33B),(u:$3FBFD41AFCBA45E8)),
+    ((u:$BC58C4A5DF1EC7E5),(u:$3FC10B022DB7AE68)),
+    ((u:$BC6BD4B1C37EA8A2),(u:$3FC22E3B09DC54D8)),
+    ((u:$3C85AEB9860044D0),(u:$3FC353BC9FB00B20)),
+    ((u:$BC64C26602C63FDA),(u:$3FC47B8B853AAFEC)),
+    ((u:$BC87F644C1F9D314),(u:$3FC5A5AC59B963CC)),
+    ((u:$3C8F5AA8EC61FC2D),(u:$3FC6D223C5B10638)),
+    ((u:$3C27AB912C69FFEB),(u:$3FC800F67B00D7B8)),
+    ((u:$BC5B3564BC0EC9CD),(u:$3FC9322934F54148)),
+    ((u:$3C86A7062465BE33),(u:$3FCA65C0B85AC1A8)),
+    ((u:$BC885718D2FF1BF4),(u:$3FCB9BC1D3910094)),
+    ((u:$BC8045CB0C685E08),(u:$3FCCD4315E9E0834)),
+    ((u:$BC16E7FB859D5055),(u:$3FCE0F143B41A554)),
+    ((u:$3C851BBDEE020603),(u:$3FCF4C6F5508EE5C)),
+    ((u:$3C6E17611AFC42C5),(u:$3FD04623D0B0F8C8)),
+    ((u:$BC71C5B2E8735A43),(u:$3FD0E7510FD7C564)),
+    ((u:$BC825FE139C4CFFD),(u:$3FD189C1ECAEB084)),
+    ((u:$BC789843C4964554),(u:$3FD22D78F0FA061A)));
+
+  // Fast path small-x c[6]
+  cExpm1FastC: array[0..5] of Tb64u64 = (
+    (u:$3F80000000000000),(u:$3F00000000000000),
+    (u:$3E755555555551AD),(u:$3DE555555555599C),
+    (u:$3D511111AD1AD69D),(u:$3CB6C16C168B1FB5));
+
+  // Accurate small-x cl[6]
+  cExpm1AccCl: array[0..5] of Tb64u64 = (
+    (u:$3DA93974A8CA5354),(u:$3D6AE7F3E71E4908),
+    (u:$3D2AE7F357341648),(u:$3CE952C7F96664CB),
+    (u:$3CA686F8CE633AAE),(u:$3C62F49B2FBFB5B6));
+
+  // Accurate small-x ch[11][2]
+  cExpm1AccCh: array[0..10, 0..1] of Tb64u64 = (
+    ((u:$3FC5555555555555),(u:$3C65555555555554)),
+    ((u:$3FA5555555555555),(u:$3C45555555555123)),
+    ((u:$3F81111111111111),(u:$3C01111111118167)),
+    ((u:$3F56C16C16C16C17),(u:$BBEF49F49E220CEA)),
+    ((u:$3F2A01A01A01A01A),(u:$3B6A019EFF6F919C)),
+    ((u:$3EFA01A01A01A01A),(u:$3B39FCFF48A75B41)),
+    ((u:$3EC71DE3A556C734),(u:$BB6C14F73758CD7F)),
+    ((u:$3E927E4FB7789F5C),(u:$3B3DFCE97931018F)),
+    ((u:$3E5AE64567F544E3),(u:$3AFC513DA9E4C9C5)),
+    ((u:$3E21EED8EFF8D831),(u:$3ACCA00AF84F2B60)),
+    ((u:$3DE6124613A86E8F),(u:$3A8F27AC6000898F)));
+
+  cExpm1Db: array[0..37] of UInt64 = (
+    UInt64($3FBE923C188EA79B), UInt64($3FD1A0408712E00A), UInt64($3FD1C38132777B26),
+    UInt64($3FD27F4980D511FF), UInt64($3FD8172A0E02F90E), UInt64($3FD8BBE2FB45C151),
+    UInt64($3FDBCAB27D05ABDE), UInt64($3FE005AE04256BAB), UInt64($3FEACCFBE46B4EF0),
+    UInt64($3FED086543694C5A), UInt64($401273C188AA7B14), UInt64($40183D4BCDEBB3F4),
+    UInt64($40308F51434652C3), UInt64($4031D5C2DAEBE367), UInt64($403C44CE0D716A1A),
+    UInt64($4042EE70220FB1C5), UInt64($40489D56A0C38E6F), UInt64($4057A60EE15E3E9D),
+    UInt64($4061F0DA93354198), UInt64($40654CD1FEA7663A), UInt64($406556C678D5E976),
+    UInt64($4072DA9E5E6AF0B0), UInt64($4079E7B643238A14), UInt64($407D6479EBA7C971),
+    UInt64($4080BC04AF1B09F5), UInt64($BFBAB86CB1743B75), UInt64($BFD119AAE6072D39),
+    UInt64($BFD175693A03B590), UInt64($BFD474D4DE7C14BB), UInt64($BFD789D025948EFA),
+    UInt64($BFD82B5DFAF59B4C), UInt64($BFD9D871E078EBCE), UInt64($BFE1397ADD4538AC),
+    UInt64($BFE22E24FA3D5CF9), UInt64($BFEDC2B5DF1F7D3D), UInt64($BFF0A54D87783D6F),
+    UInt64($BFF2A9CAD9998262), UInt64($BFFE42A2ABB1BF0F));
+
+  cExpm1Quarter:  UInt64 = $3FD0000000000000; // |x| < this → small-x branch
+  cExpm1TinyAix:  UInt64 = $3CA0000000000000; // |x| < 2^-53 → fma path
+  cExpm1HugeAix:  UInt64 = $40862E42FEFA39F0; // |x| >= ln(huge) → over/underflow handling
+  cExpm1UnderIxA: UInt64 = $C0425E4F7B2737FA; // ix.u >= → soft underflow approx
+  cExpm1UnderIxB: UInt64 = $C042B708872320E2; // ix.u >= → return -1 + 2^-55
+  cExpm1Eps0:     Tb64u64 = (u:$3BEA000000000000); //  0x1.ap-65
+  cExpm1EpsAdd:   Tb64u64 = (u:$3970000000000000); //  0x1p-104
+
+  // Soft-underflow approx constants
+  cExpm1UA: Tb64u64 = (u:$40425E4F7B2737FA); // 0x1.25e4f7b2737fap+5
+  cExpm1UB: Tb64u64 = (u:$3CC8486612173C69); // 0x1.8486612173c69p-51
+  cExpm1UC: Tb64u64 = (u:$3C971547652B82FE); // 0x1.71547652b82fep-54
+  cExpm1UD: Tb64u64 = (u:$BFEFFFFFFFFFFFFF); // -0x1.fffffffffffffp-1
+
+function Expm1Database(x, f: Double): Double;
+var
+  ix, jf, dr, r: Tb64u64;
+  s: UInt64;
+  s2: array[0..1] of UInt64;
+  t: UInt64;
+  a, b, m: Int32;
+  k: Int64;
+begin
+  Result := f;
+  ix.f := x;
+  s2[0] := UInt64($76F58B0D65BD5553);
+  s2[1] := UInt64($0000000000000C06);
+  s := UInt64($300E81651C);
+  a := 0; b := High(cExpm1Db); m := (a + b) div 2;
+  while a <= b do
+  begin
+    if cExpm1Db[m] < ix.u then a := m + 1
+    else if cExpm1Db[m] = ix.u then
+    begin
+      jf.f := f;
+      dr.u := ((s shr m) shl 63) or
+              ((((jf.u shr 52) and $7FF) - 54) shl 52);
+      t := (s2[m shr 5] shr ((m shl 1) and 63)) and 3;
+      for k := -1 to 1 do
+      begin
+        r.u := jf.u + UInt64(k);
+        if (r.u and 3) = t then
+        begin
+          Result := r.f + dr.f;
+          Exit;
+        end;
+      end;
+      Exit;
+    end
+    else b := m - 1;
+    m := (a + b) div 2;
+  end;
+end;
+
+function Expm1RefineSmall(x: Double): Double;
+var
+  fl, fh, hx, x2h, x2l, v0, v1, v2, e: Double;
+  ch_v, cl_v, fh_t, fl_t: Double;
+  i: Int32;
+  v_u, v2_u: Tb64u64;
+  delta: UInt64;
+begin
+  // fl seed = polynomial in cl[6]
+  fl := x*(cExpm1AccCl[0].f + x*(cExpm1AccCl[1].f + x*(cExpm1AccCl[2].f
+       + x*(cExpm1AccCl[3].f + x*(cExpm1AccCl[4].f + x*cExpm1AccCl[5].f)))));
+
+  // opolyddd(x, 11, ch, &fl)
+  pcr_fasttwosum(ch_v, fl, cExpm1AccCh[10, 0].f, fl);
+  cl_v := cExpm1AccCh[10, 1].f + fl;
+  for i := 9 downto 0 do
+  begin
+    ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
+    // fastsum(c[i][0], c[i][1], ch, cl, &cl)
+    pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh[i, 0].f, ch_v);
+    cl_v := (cExpm1AccCh[i, 1].f + cl_v) + fl_t;
+    ch_v := fh_t;
+  end;
+  fl := cl_v;
+  fh := pcr_mulddd_pd(ch_v, fl, x, fl);
+  fh := pcr_mulddd_pd(fh, fl, x, fl);
+  fh := pcr_mulddd_pd(fh, fl, x, fl);
+
+  hx := Double(0.5) * x;
+  x2h := x * hx;
+  x2l := pcr_fma(x, hx, -x2h);
+
+  // fastsum(x2h, x2l, fh, fl, &fl)
+  pcr_fasttwosum(fh_t, fl_t, x2h, fh);
+  fl := (x2l + fl) + fl_t;
+  fh := fh_t;
+
+  pcr_fasttwosum(v0, v2, x, fh);
+  pcr_fasttwosum(v1, v2, v2, fl);
+  pcr_fasttwosum(v0, v1, v0, v1);
+  pcr_fasttwosum(v1, v2, v1, v2);
+
+  v_u.f := v1;
+  if (v_u.u and UInt64($000FFFFFFFFFFFFF)) = 0 then
+  begin
+    if (v_u.u shl 1) = 0 then
+    begin
+      Result := Expm1Database(x, v0);
+      Exit;
+    end;
+    v2_u.f := v2;
+    // d = ((sign(v1) ^ sign(v2)) ? -1 : +1)
+    if (v_u.u shr 63) <> (v2_u.u shr 63) then delta := UInt64($FFFFFFFFFFFFFFFF)
+    else delta := UInt64(1);
+    v_u.u := v_u.u + delta;
+    v1 := v_u.f;
+  end;
+  Result := v0 + v1;
+  e := 0; // suppress hint
+end;
+
+function Expm1RefineLarge(x: Double): Double;
+var
+  ix, off, v: Tb64u64;
+  t, dx, dxl, dxll, dxh, fh, fl, e, th, tl, t0h, t0l, t1h, t1l: Double;
+  ch_v, cl_v, fh_t, fl_t: Double;
+  jt, i0, i1, ie: Int64;
+  i: Int32;
+begin
+  ix.f := x;
+  t  := pcr_roundeven(x * cExpS.f);
+  jt := Trunc(t);
+  i0 := (jt shr 6) and $3F;
+  i1 := jt and $3F;
+  ie := SarInt64(jt, 12);
+  t0h := cExpT0[i0, 1].f;  t0l := cExpT0[i0, 0].f;
+  t1h := cExpT1[i1, 1].f;  t1l := cExpT1[i1, 0].f;
+  th := pcr_muldd(t0h, t0l, t1h, t1l, tl);
+
+  dx   := x - cExpL2H.f * t;
+  dxl  := cExpL2L.f * t;
+  dxll := cExpL2LL.f * t + pcr_fma(cExpL2L.f, t, -dxl);
+  dxh  := dx + dxl;
+  dxl  := (dx - dxh) + dxl + dxll;
+
+  ch_v := cExpAccCh[6, 0].f;  cl_v := cExpAccCh[6, 1].f;
+  for i := 5 downto 0 do
+  begin
+    ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+    fh_t := ch_v + cExpAccCh[i, 0].f;
+    fl_t := (cExpAccCh[i, 0].f - fh_t) + ch_v;
+    ch_v := fh_t;
+    cl_v := cl_v + fl_t + cExpAccCh[i, 1].f;
+  end;
+  fh := ch_v; fl := cl_v;
+  fh := pcr_muldd(dxh, dxl, fh, fl, fl);
+  fh := pcr_muldd(fh, fl, th, tl, fl);
+
+  pcr_fasttwosum(fh_t, fl_t, th, fh);
+  fl := (tl + fl) + fl_t;
+  fh := fh_t;
+
+  off.u := UInt64(2048 + 1023 - ie) shl 52;
+  if ie < 53 then
+    pcr_fasttwosum(fh, e, off.f, fh)
+  else if ie < 104 then
+    pcr_fasttwosum(fh, e, fh, off.f)
+  else
+    e := Double(0.0);
+  fl := fl + e;
+  pcr_fasttwosum(fh, fl, fh, fl);
+  v.f := fl;
+  if ((v.u + 8) and UInt64($000FFFFFFFFFFFFF)) <= 8 then
+    fh := Expm1Database(x, fh);
+  Result := ExpAsLdexp(fh, ie);
+end;
+
+function Expm1Refine(x: Double): Double;
+begin
+  if Abs(x) < Double(0.25) then
+    Result := Expm1RefineSmall(x)
+  else
+    Result := Expm1RefineLarge(x);
+end;
+
+function pcr_expm1(x: Double): Double;
+var
+  ix, off: Tb64u64;
+  aix: UInt64;
+  sx, fx, z, z2, th, tl, fh, fl, eps, ub, lb, e0, rh, rl: Double;
+  t, t0h, t0l, t1h, t1l, dx, dx2, p, tx: Double;
+  jt, i0, i1, ie: Int64;
+  i_idx: Int64;
+  e: Double;
+  ch_v: Double;
+begin
+  ix.f := x;
+  aix := ix.u and UInt64($7FFFFFFFFFFFFFFF);
+  if aix < cExpm1Quarter then
+  begin
+    if aix < cExpm1TinyAix then
+    begin
+      // For |x| < 2^-53, expm1(x) rounds to x: the increment 2^-54*|x|
+      // is at most 0.5 ULP(x) (specifically m/4 ULP for normal x with
+      // m in [1,2)) so round-to-nearest never changes the bits. The C
+      // code calls fma to set the inexact flag; we omit that since the
+      // numerical result is identical and the emulated pcr_fma rounds
+      // some subnormals incorrectly.
+      Result := x;
+      Exit;
+    end;
+    sx := Double(128.0) * x;
+    fx := pcr_roundeven(sx);
+    z  := sx - fx;
+    z2 := z * z;
+    i_idx := Trunc(fx);
+    th := cExpm1Tz[i_idx + 32, 1].f;
+    tl := cExpm1Tz[i_idx + 32, 0].f;
+    fh := z * cExpm1FastC[0].f;
+    fl := z2 * ((cExpm1FastC[1].f + z * cExpm1FastC[2].f)
+              + z2 * (cExpm1FastC[3].f + z * (cExpm1FastC[4].f + z * cExpm1FastC[5].f)));
+    e0 := cExpm1Eps0.f;
+    eps := z2 * e0 + cExpm1EpsAdd.f;
+    pcr_fasttwosum(rh, rl, th, fh);
+    rl := rl + tl + fl;
+    fh := pcr_muldd(th, tl, fh, fl, fl);
+    pcr_fasttwosum(ch_v, ub, rh, fh);
+    fl := (rl + fl) + ub;
+    fh := ch_v;
+    ub := fh + (fl + eps);
+    lb := fh + (fl - eps);
+    if ub <> lb then begin Result := Expm1Refine(x); Exit; end;
+    Result := lb;
+    Exit;
+  end;
+
+  if aix >= cExpm1HugeAix then
+  begin
+    if aix > UInt64($7FF0000000000000) then begin Result := x + x; Exit; end;
+    if aix = UInt64($7FF0000000000000) then
+    begin
+      if (ix.u shr 63) <> 0 then Result := -Double(1.0) else Result := x;
+      Exit;
+    end;
+    if (ix.u shr 63) = 0 then
+    begin
+      Result := cExpHugeMul.f * cExpHugeMul.f;
+      Exit;
+    end;
+  end;
+  if ix.u >= cExpm1UnderIxA then
+  begin
+    if ix.u >= cExpm1UnderIxB then
+    begin
+      Result := -Double(1.0) + cExp10UnderLo.f;
+      Exit;
+    end;
+    Result := (cExpm1UA.f + x + cExpm1UB.f) * cExpm1UC.f + cExpm1UD.f;
+    Exit;
+  end;
+
+  t  := pcr_roundeven(x * cExpS.f);
+  jt := Trunc(t);
+  i0 := (jt shr 6) and $3F;
+  i1 := jt and $3F;
+  ie := SarInt64(jt, 12);
+  t0h := cExpT0[i0, 1].f;  t0l := cExpT0[i0, 0].f;
+  t1h := cExpT1[i1, 1].f;  t1l := cExpT1[i1, 0].f;
+  th := pcr_muldd(t0h, t0l, t1h, t1l, tl);
+
+  dx  := (x - cExpL2H.f * t) + cExpL2L.f * t;
+  dx2 := dx * dx;
+  p   := (Double(1.0) + dx * Double(0.5)) + dx2 * (cExpFastCh2.f + dx * cExpFastCh3.f);
+  fh := th;
+  tx := th * dx;
+  fl := tl + tx * p;
+  eps := cExpEpsFast * th;
+
+  off.u := UInt64(2048 + 1023 - ie) shl 52;
+  if ie < 53 then
+    pcr_fasttwosum(fh, e, off.f, fh)
+  else if ie < 75 then
+    pcr_fasttwosum(fh, e, fh, off.f)
+  else
+    e := Double(0.0);
+  fl := fl + e;
+  ub := fh + (fl + eps);
+  lb := fh + (fl - eps);
+  if ub <> lb then begin Result := Expm1Refine(x); Exit; end;
+  Result := ExpAsLdexp(lb, ie);
+end;
+
+// ---------------------------------------------------------------------------
 // Stubs — delegate to C reference until each function is ported.
 // Replace each stub body with the real Pascal port as phases 1-5 progress.
 // ---------------------------------------------------------------------------
@@ -3662,7 +4067,7 @@ function  pcr_erfc(x: Double): Double;    begin Result := cr_erfc(x);    end;
 function  pcr_exp10m1(x: Double): Double; begin Result := cr_exp10m1(x); end;
 // pcr_exp2 — ported above
 function  pcr_exp2m1(x: Double): Double;  begin Result := cr_exp2m1(x);  end;
-function  pcr_expm1(x: Double): Double;   begin Result := cr_expm1(x);   end;
+// pcr_expm1 — ported above
 function  pcr_lgamma(x: Double): Double;  begin Result := cr_lgamma(x);  end;
 function  pcr_log(x: Double): Double;     begin Result := cr_log(x);     end;
 function  pcr_log10(x: Double): Double;   begin Result := cr_log10(x);   end;
