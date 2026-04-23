@@ -898,8 +898,9 @@ Validate `AddDInt`, `MulDInt`, `DIntFromD`, and `DToD` exhaustively before start
     - Shared primitives `CosReduce` / `CosReduce2` / `CosReduceFast` / `CosEvalPS` / `CosEvalPC` / `CosEvalPSfast` / `CosEvalPCfast` live in `src/cos_port.inc` and will be reused by 4.02/4.04/4.05. `MulDInt21` / `NormalizeDInt` were added to `pascoremathtypes.pas`.
     - **Hex-float encoding trap:** `0x1.mmm...p-N` → biased exp = `1023 - N` (not `1023 - N + 2`). The `cCosCL = -0x1.6b01ec5417056p-57` constant had exp field `$3C8` (→ `p-55`) instead of `$3C6`. Only cos(1.0) exposed it (other fast-path tests happened to round to the same bits despite 4× too-large `l` after reduction). Always double-check `Tb64u64` literals against `printf("%a", v)` of the C source.
     - **Pascal case-insensitivity trap:** `X: TDInt64` local conflicts with `x: Double` parameter (renamed local to `Xd`).
-- [ ] **4.02** `sin`     — 2089 lines *(dint + clzll + fenv)*
+- [X] **4.02** `sin`     — 2089 lines *(dint + clzll + fenv)*
   - Reference: same shared reduction as 4.01, plus `pascoremath32.pas:5752` (`sinf_add_sign`), `:5763` (`sinf_db`), `:5806` (`sinf_big`).
+  - **Port notes (2026-04-23):** wrapped around the cos_port shared primitives; only SinFast/SinAccurate/pcr_sin in `src/sin_port.inc`. **Tiny-path pitfall:** C does `fma(x, -2^-54, x)` for `|x| <= 0x1.7137449123ef6p-26`. Per the C comment, this rounds to `x` for all inputs in that range — but `pcr_fma_pascal` (the Dekker emulation used in non-AVX2 builds) is NOT correctly rounded for subnormal or minimum-normal inputs, producing `x-ulp` instead of `x`. Fix: return `x` directly in the tiny branch (bit-exact per the C comment; we lose the INEXACT flag raise but gain bit-exact matching).
 - [ ] **4.03** `log2p1`  — 2162 lines *(**dint** + dd — listed here due to line count; no fenv, no clzll)*
 - [ ] **4.04** `sincos`  — 2252 lines *(dint + clzll + fenv, out-parameter API)*
   - Reference: same shared reduction as 4.01, plus `pascoremath32.pas:6146` (`sincosf_database`) and `:6221` (`sincosf_big`) for the combined-output pattern.
