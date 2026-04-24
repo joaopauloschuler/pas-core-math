@@ -41,7 +41,7 @@ function  pcr_acospi(x: Double): Double; inline;
 function  pcr_asinh(x: Double): Double; inline;
 function  pcr_asinpi(x: Double): Double; inline;
 // pcr_atan declared in ported section above
-function  pcr_atanh(x: Double): Double; inline;
+function  pcr_atanh(x: Double): Double;
 // pcr_atanpi declared in ported section above
 // pcr_cbrt declared in ported section above
 // pcr_cos declared in ported section above
@@ -4061,6 +4061,7 @@ end;
 {$I tanpi_port.inc}
 {$I sinh_port.inc}
 {$I acosh_port.inc}
+{$I atanh_port.inc}
 
 // ---------------------------------------------------------------------------
 // Stubs — delegate to C reference until each function is ported.
@@ -4073,7 +4074,7 @@ function  pcr_acospi(x: Double): Double;  begin Result := cr_acospi(x);  end;
 function  pcr_asinh(x: Double): Double;   begin Result := cr_asinh(x);   end;
 function  pcr_asinpi(x: Double): Double;  begin Result := cr_asinpi(x);  end;
 // pcr_atan — ported above
-function  pcr_atanh(x: Double): Double;   begin Result := cr_atanh(x);   end;
+// pcr_atanh — ported above
 // pcr_atanpi — ported above
 // pcr_cbrt — ported above
 // pcr_cos — ported above
