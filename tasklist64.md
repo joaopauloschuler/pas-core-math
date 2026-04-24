@@ -35,6 +35,25 @@ functions use pure double-double refinement with small ad-hoc tables — no
 `TDInt64` path at all. The binary32 and binary64 ports are therefore structurally
 similar: dint is concentrated in the trig/log-family slow paths, not universal.
 
+**Further correction (2026-04-24, after porting 16 functions).** Beyond `TDInt64`,
+three more extended-precision substrates are needed by the remaining work:
+
+- **TInt64 (192-bit) — 2 of 41**: `atan2` and `atan2pi` `#include "tint.h"` and
+  use `tint_t` (h/m/l uint64 limbs + ex + sgn) in their refine paths. Port
+  `core-math/src/binary64/atan2/tint.h` (543 lines) into `pascoremathtypes.pas`
+  before attempting 2.07 or 2.11.
+- **TUInt128 (emulated 128-bit unsigned) — 3 of 41**: `asinpi` (38 uses),
+  `hypot` (3 uses), plus `pow` (via qint). FPC has no native `__int128`; build
+  two-uint64 helpers with add/mul/shift/compare. Only a small subset is needed
+  for each site — do not port wholesale.
+- **TQInt64 (256-bit) — 1 of 41**: `pow` only, already tracked as Phase 5.
+
+Additionally, **fenv/MXCSR exception-state preservation** is needed by
+`atan2`, `atan2pi`, `asinpi`, `hypot`, and `tgamma` — previously counted only
+for the Phase-4 trig slot. Patterns: `feholdexcept`/`feupdateenv` wrappers
+around the accurate path, or `_mm_getcsr`/`_mm_setcsr` around narrowing
+operations that may raise spurious UNDERFLOW/INEXACT.
+
 The double-double helpers (`fasttwosum`, `muldd`) *are* near-universal, appearing
 in 33 of the 41 functions.
 
@@ -920,11 +939,15 @@ here were wrong.)
     - **Local muldd/mulddd helpers needed**: `pcr_muldd` does an extra fasttwosum-normalize at the end (output is normalized to `s = ahhh + ahhl, l = ahhl - (s - ahhh)`); the C log1p `muldd`/`mulddd` returns the unnormalized `(ahhh, (alhh+ahlh)+ahhl)`. Refine-path muldd grouping must be `(cl*xh + ch*xl) + fma(...)`. Local `Log1pMuldd`/`Log1pMulddd` helpers in the inc.
     - **Seeded polydd**: C's `polydd(xh, xl, n, c, *l)` takes an incoming `*l` seed; first iteration is `ch = fasttwosum(c[n-1][0], *l, l), cl = c[n-1][1] + *l`. `pcr_polydd` does not support seed — inline the loop (same pattern as log2 refine).
     - **Special-case branch order**: x = -1 returns -Inf via `Double(-1.0) / Double(0.0)`. Under FPC's default mask, this raises EZeroDivide unless wrapped, but the test harness inputs don't hit -1 exactly via random sampling, and sink-XOR on the real range matches.
-- [ ] **2.07** `atan2`   — 586 lines  *(pure dd, bivariate)*
-- [ ] **2.08** `erf`     — 710 lines  *(pure dd; no dint — earlier "dint only" annotation was wrong)*
-- [ ] **2.09** `asinpi`  — 798 lines  *(clzll + fenv + dd; no dint)*
+- [ ] **2.07** `atan2`   — 586 lines  *(**TInt64 (192-bit)** + dd + fenv, bivariate — NOT pure dd)*
+  - **Dependency discovery (2026-04-24):** `atan2.c` `#include "tint.h"` and the refine/accurate path uses `tint_t` (192-bit: h/m/l uint64 limbs + ex + sgn, with `u128` helpers). Prior tasklist annotation "pure dd" was wrong. Blocker: port `tint.h` (543 lines) into `pascoremathtypes.pas` as `TInt64` with `cp_tint`, `mul_tint`, `add_tint`, `div_tint`, `div_tint_d`, `tint_tod`, plus u128-equivalent helpers. Also uses `fenv_t`/`feholdexcept`/`fetestexcept`/`feupdateenv` for underflow/overflow exception tracking around `y/x` computation. Shared with 2.11 `atan2pi` — same tables layout (P[30], Q[30] tint_t rationals).
+- [ ] **2.08** `erf`     — 710 lines  *(pure dd; no dint, no fenv, no u128 — verified 2026-04-24)*
+  - Tables: `C[94][13]` (fast path, 94 rows × 13 doubles) + `C2[47][27]` (accurate path, 47 rows × 27 doubles). Total ~1500 table entries. Auto-extract via python (pattern from 2.06 log1p). Five hardcoded exception-point triples in `cr_erf_accurate`. Input range `|x| > 0x1.7afb48dc96626p+2` rounds to ±1 (saturates). Tiny branch: `|x| < 2^-61` uses `2/sqrt(pi) * x` scaled by 2^106 to avoid subnormal. **Cleanest candidate of remaining Phase-2 tasks.**
+- [ ] **2.09** `asinpi`  — 798 lines  *(dd + fenv + clzll + **u128** — NOT just "clzll + fenv + dd")*
+  - **Dependency discovery (2026-04-24):** 38 uses of `u128`/`__int128` in the accurate path. FPC has no native 128-bit integer; need emulated `TUInt128` (two-uint64) with add/mul/shift/compare. Also 4 clzll call sites and fenv exception tracking (`fegetexceptflag`, `fesetexceptflag`).
 - [ ] **2.10** `log`     — 832 lines  *(**dint** + clzll + dd — first real dint user in the sequence)*
-- [ ] **2.11** `atan2pi` — 866 lines  *(pure dd, bivariate; no dint)*
+- [ ] **2.11** `atan2pi` — 866 lines  *(**TInt64 (192-bit)** + dd + fenv, bivariate — NOT pure dd)*
+  - **Dependency discovery (2026-04-24):** same tint_t dependency as 2.07 atan2 (shares tint.h). Port 2.07 first (or tint infrastructure separately) before attempting.
 - [ ] **2.12** `log10`   — 882 lines  *(**dint** + clzll + dd)*
 
 ---
@@ -932,18 +955,20 @@ here were wrong.)
 ## Phase 3 — Hard (1022–1577 lines)
 
 Of the Phase-3 functions, **only `log10p1` uses `TDInt64`**; the other seven are
-pure double-double. `hypot` uses `clzll` but not dint or fenv. `lgamma` uses
-`clzll` (2 call sites) but not dint. (Verified by grep.)
+pure double-double. `hypot` uses `clzll` + fenv + **u128** (not just clzll).
+`lgamma` uses `clzll` (2 call sites) but not dint. `tgamma` has one fenv call.
+(Verified 2026-04-24 by precise grep.)
 
 - [ ] **3.01** `exp2m1`  — 1022 lines *(pure dd; no dint)*
-- [ ] **3.02** `tgamma`  — 1096 lines *(pure dd; no dint)*
+- [ ] **3.02** `tgamma`  — 1096 lines *(pure dd + 1 fenv call)*
 - [ ] **3.03** `acospi`  — 1099 lines *(pure dd; no dint)*
 - [ ] **3.04** `exp10m1` — 1153 lines *(pure dd; no dint)*
 - [ ] **3.05** `erfc`    — 1247 lines *(pure dd; no dint)*
 - [ ] **3.06** `lgamma`  — 1452 lines *(clzll + dd; no dint)*
   - Reference: `pascoremath32.pas:3197` (`lgamma_as_sinpi`) and `:3211` (`lgamma_as_ln`) — existing `Double`-precision auxiliary functions used by `pcr_lgammaf`. Mirror their shape when porting; the coefficient tables (`c_nz1`/`c_nz2`/`c_nz3`, `rn_md`/`rd_md`) will be re-derived from `binary64/lgamma/lgamma.c`.
 - [ ] **3.07** `log10p1` — 1577 lines *(**dint** + dd — only Phase-3 dint user)*
-- [ ] **3.08** `hypot`   — 283 lines  *(clzll + dd; no dint, no fenv — listed here due to historical grouping, not complexity)*
+- [ ] **3.08** `hypot`   — 283 lines  *(clzll + dd + fenv + **u128** — NOT pure dd)*
+  - **Dependency discovery (2026-04-24):** `as_hypot_hard` uses `u128` for 128-bit squaring comparisons in the Newton-refinement loop. Uses `_mm_getcsr`/`_mm_setcsr` (or `fegetexceptflag`/`fesetexceptflag`) to preserve the SSE MXCSR exception state across the computation. Also `as_hypot_denorm` uses 64×64→128 multiplication implicit in `u64 m2 = bm*bm` after shifting — needs `UInt128` for the `lm2 >> -ls` subnormal path. FPC has no native 128-bit; emulate with two-uint64 or ASM. Prior "no u128, no fenv" annotation was wrong.
 
 ---
 
