@@ -32,6 +32,7 @@ function pcr_tan(x: Double): Double;
 function pcr_cosh(x: Double): Double;
 function pcr_sinh(x: Double): Double;
 function pcr_log1p(x: Double): Double;
+function pcr_erf(x: Double): Double;
 procedure pcr_sincos(x: Double; out s, c: Double);
 
 // ── Stub functions (delegate to C reference until ported) ────────────────────
@@ -48,7 +49,7 @@ function  pcr_atanh(x: Double): Double;
 // pcr_cos declared in ported section above
 // pcr_cosh declared in ported section above
 // pcr_cospi declared in ported section above
-function  pcr_erf(x: Double): Double; inline;
+// pcr_erf declared in ported section above
 function  pcr_erfc(x: Double): Double; inline;
 // pcr_exp declared in ported section above
 // pcr_exp10 declared in ported section above
@@ -4065,6 +4066,7 @@ end;
 {$I atanh_port.inc}
 {$I asinh_port.inc}
 {$I log1p_port.inc}
+{$I erf_port.inc}
 
 // ---------------------------------------------------------------------------
 // Stubs — delegate to C reference until each function is ported.
@@ -4083,7 +4085,7 @@ function  pcr_asinpi(x: Double): Double;  begin Result := cr_asinpi(x);  end;
 // pcr_cos — ported above
 // pcr_cosh — ported above
 // pcr_cospi — ported above
-function  pcr_erf(x: Double): Double;     begin Result := cr_erf(x);     end;
+// pcr_erf — ported above
 function  pcr_erfc(x: Double): Double;    begin Result := cr_erfc(x);    end;
 // pcr_exp — ported above
 // pcr_exp10 — ported above
