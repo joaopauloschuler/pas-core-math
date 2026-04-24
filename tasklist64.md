@@ -16,7 +16,7 @@ Before starting, check the existing functions and notes at:
 
 ## Status summary
 
-- **13 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 in progress — 1.01 rsqrt, 1.02 cbrt, 1.03 atan, 1.04 log2, 1.05 acos, 1.06 tanh, 1.07 cospi, 1.08 asin, 1.09 cosh, 1.10 exp10, 1.11 exp2, 1.12 exp, 2.01 expm1 done)
+- **14 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 in progress — 1.01 rsqrt, 1.02 cbrt, 1.03 atan, 1.04 log2, 1.05 acos, 1.06 tanh, 1.07 cospi, 1.08 asin, 1.09 cosh, 1.10 exp10, 1.11 exp2, 1.12 exp, 1.13 tanpi, 2.01 expm1 done)
 - Target file: `src/pascoremath64.pas`
 - **Phase 0 fully complete** (tasks 0.1–0.10): infrastructure, helpers, and test harness ready
 - libcoremath64.so built from core-math/src/binary64/; test programs compile once pcr_* functions added
@@ -586,7 +586,12 @@ Port in this order. All functions live in `pascoremath64.pas`, named `pcr_<name>
 - [X] **1.10** `exp10`   — 379 lines  *(pure dd; reuses cExpT0/cExpT1)*
 - [X] **1.11** `exp2`    — 384 lines  *(pure dd; reuses cExpT0/cExpT1)*
 - [X] **1.12** `exp`     — 386 lines  *(pure dd; shared cExpT0/cExpT1 extracted for family)*
-- [ ] **1.13** `tanpi`   — 388 lines  *(pure dd — verified)*
+- [X] **1.13** `tanpi`   — 388 lines  *(pure dd — verified)*
+  - **Port notes (2026-04-24):** `src/tanpi_port.inc` + `src/tanpi_const.inc` (auto-generated via `tmp/tanpi_gen.py`). Tanpi is standalone — confirmed no table overlap with sinpi/cospi/tan. Three structural branches: |x| >= 2^46 (integer/half-integer folding via T[][2] table only), 2^-12 <= |x| < 2^46 (polynomial + T[iq] addition formula), and |x| < 2^-12 (mulddd by pi). 200M Benchmark64: sink=MATCH, **Pascal 46.2 Mops/s vs C 43.0 Mops/s (faster)**. 20M random TestHarness64: 0 mismatches. Sharp edges:
+    - **Shared post-processing** between fast and refine paths: `TanpiApply(iq, ms, th, tl)` handles the `iq==32` near-pole branch (`-1/tan` via Newton) vs the T[iq] double-double tangent-addition formula. Factoring saves ~30 lines.
+    - **`fasttwosub(x, y, &e)` ≠ `pcr_fasttwosum(s, t, x, -y)`** — the natural form is `s=x-y; e=(x-s)-y`. Inline it rather than negating.
+    - **Subnormal scale-up path (|x| < 2^-916) works with `pcr_mulddd_pd`** — unlike sinpi, tanpi's tiny-path uses mulddd (double × dd) rather than Dekker, so it is correctly rounded via the existing helper. Forced-underflow logic uses `Abs(res) < 2.2250738585072014e-308`.
+    - **`z = k` as int64->double conversion** works for the significand-low-bits trick (Pascal converts Int64 to Double via the `:=` assignment; no cast needed). Guard `(UInt64(k) shl 1) = 0` to catch both k=0 and k=INT_MIN.
 - [X] **1.14** `sinpi`   — 400 lines  *(pure dd — verified)*
   - **Port notes (2026-04-23):** `src/sinpi_port.inc` reuses CospiSincosN/CospiSincosN2 and cSinpiRef*/cSincosN*_* tables already present for cospi. New content: SinpiAsZero (4+3-coefficient polynomial, different arity from cospi's 2+2), SinpiRefine (same math as CospiSinpiRefine but with sinpi's 4-entry exception db vs cospi's 8), entry point. Three sharp edges to watch:
     - **FPC `shr` on Int64 is LOGICAL, not arithmetic** — cospi keeps m positive so never notices, but sinpi sign-extends m via `m = ((m0^sgn)-sgn)`. Use the explicit `SinpiSar` helper (or `if m<0 then m := -Int64(m0)` branch).

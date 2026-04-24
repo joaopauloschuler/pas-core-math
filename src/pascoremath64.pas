@@ -66,7 +66,7 @@ function  pcr_sinh(x: Double): Double; inline;
 // pcr_sinpi declared in ported section above
 // pcr_tan declared in ported section above
 // pcr_tanh declared in ported section above
-function  pcr_tanpi(x: Double): Double; inline;
+function  pcr_tanpi(x: Double): Double;
 function  pcr_tgamma(x: Double): Double; inline;
 function  pcr_atan2(y, x: Double): Double; inline;
 function  pcr_atan2pi(y, x: Double): Double; inline;
@@ -4057,6 +4057,7 @@ end;
 {$I sinpi_port.inc}
 {$I atanpi_port.inc}
 {$I cosh_port.inc}
+{$I tanpi_port.inc}
 
 // ---------------------------------------------------------------------------
 // Stubs — delegate to C reference until each function is ported.
@@ -4094,7 +4095,7 @@ function  pcr_log2p1(x: Double): Double;  begin Result := cr_log2p1(x);  end;
 function  pcr_sinh(x: Double): Double;    begin Result := cr_sinh(x);    end;
 // pcr_sinpi — ported above
 // pcr_tan — ported above
-function  pcr_tanpi(x: Double): Double;   begin Result := cr_tanpi(x);   end;
+// pcr_tanpi — ported above
 function  pcr_tgamma(x: Double): Double;  begin Result := cr_tgamma(x);  end;
 function  pcr_atan2(y, x: Double): Double;  begin Result := cr_atan2(y, x);   end;
 function  pcr_atan2pi(y, x: Double): Double; begin Result := cr_atan2pi(y, x); end;
