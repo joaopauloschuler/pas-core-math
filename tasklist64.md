@@ -16,7 +16,7 @@ Before starting, check the existing functions and notes at:
 
 ## Status summary
 
-- **14 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 in progress — 1.01 rsqrt, 1.02 cbrt, 1.03 atan, 1.04 log2, 1.05 acos, 1.06 tanh, 1.07 cospi, 1.08 asin, 1.09 cosh, 1.10 exp10, 1.11 exp2, 1.12 exp, 1.13 tanpi, 2.01 expm1 done)
+- **15 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 in progress — 1.01 rsqrt, 1.02 cbrt, 1.03 atan, 1.04 log2, 1.05 acos, 1.06 tanh, 1.07 cospi, 1.08 asin, 1.09 cosh, 1.10 exp10, 1.11 exp2, 1.12 exp, 1.13 tanpi, 1.14 sinpi, 1.15 sinh, 2.01 expm1, 2.04 atanpi done — note 4.01 cos / 4.02 sin / 4.04 sincos / 4.05 tan also done in Phase 4)
 - Target file: `src/pascoremath64.pas`
 - **Phase 0 fully complete** (tasks 0.1–0.10): infrastructure, helpers, and test harness ready
 - libcoremath64.so built from core-math/src/binary64/; test programs compile once pcr_* functions added
@@ -597,7 +597,36 @@ Port in this order. All functions live in `pascoremath64.pas`, named `pcr_<name>
     - **FPC `shr` on Int64 is LOGICAL, not arithmetic** — cospi keeps m positive so never notices, but sinpi sign-extends m via `m = ((m0^sgn)-sgn)`. Use the explicit `SinpiSar` helper (or `if m<0 then m := -Int64(m0)` branch).
     - **Hex-float bit-pack errors** — hand-encoded constants are error-prone; use `tmp/enc.py` (or equivalent) to mechanically generate. Caught 10+ wrong constants this way; `0x1.466bc67754b46p+1` packs to `$400466BC67754B46`, not `$4004466BC67754B4` (13 mantissa hex digits, not 12).
     - **Subnormal tiny-path fma** — pcr_fma_pascal's Dekker emulation is not correctly rounded for subnormal outputs. The scale-up branch ( `|x| < 2^-970`) uses a helper `SinpiHwFma` (inline `vfmadd213sd`) for its two FMAs to get correctly-rounded subnormals.
-- [ ] **1.15** `sinh`    — 418 lines  *(pure dd — verified)*
+- [X] **1.15** `sinh`    — 418 lines  *(pure dd — verified)*
+  - **Port notes (2026-04-24):** `src/sinh_port.inc` is a near-siblings port of cosh.
+    Reuses wholesale: `cExpT0`/`cExpT1`, `TanhExpAccurate`, `cTanhL2hA`/`cTanhL2lA`,
+    `cCoshS`/`cCoshMagic`/`cCoshMagicH`/`cCoshMask26`, `cCoshMainCh0..3` (sinh's
+    main-path `ch[4]` is byte-identical to cosh's), `cCoshAxMed`/`cCoshAxBig`/
+    `cCoshAxBigBr`/`cCoshAxHuge`/`cCoshOvf`/`cCoshTinyAdj`, plus the two
+    bracket-epsilon constants `cCoshErrMed` (= `0x1.202p-63`, sinh med branch)
+    and `cCoshErrSml` (= `0x1.c0ap-62`, sinh small branch) which turn out to be
+    byte-identical across cosh and sinh. New constants: sinh-specific fast-path
+    polynomial `cSinhFastC0..4`, `as_sinh_zero` `cSinhZeroCh[5][2]`/`cSinhZeroCl0..2`,
+    large-branch bracket `cSinhErrLrg = 0x1.1b6p-63`, thresholds `cSinhAxTiny =
+    0.25` and `cSinhAxTinier = 0x1.7137449123ef7p-26`, and a 51-entry
+    `cSinhDb` (vs cosh's 21). 100M random TestHarness64: 0 mismatches. 200M
+    Benchmark64: sink=MATCH. **Pascal 143.5 Mops/s vs C 48.3 Mops/s (~3× faster,
+    AVX2 build)**. Sharp edges:
+    - **Tiny branch** (|x| < 0x1.7137449123ef7p-26): return `x` directly
+      rather than `fma(x, 2^-55, x)` — in round-to-nearest sinh(x) = x exactly
+      for this range, but emulated `pcr_fma_pascal` mis-rounds for subnormals.
+      Same workaround as sin/tan/atan.
+    - **Sign-of-zero**: x = 0 short-circuits via the tiny branch (`Result := x`),
+      which preserves the sign of ±0.
+    - **Sign application order**: in the bracket-fail refine path of the
+      `|x| > ~36.736801` branch, signs are applied to `th`/`tl` AFTER
+      `TanhExpAccurate` but BEFORE the bit-extract for the database trigger —
+      mirrors cosh's structure but on a subtraction (sinh does `th - qh` where
+      cosh does `th + qh`).
+    - **Merge-path bit extract** uses the positive `rh`/`rl` (via fasttwosum)
+      BEFORE applying `sgn`, because the database key-test depends on
+      magnitude only (ml = low 52 bits near zero, eh-el = exponent gap).
+      Got this right by copy-matching cosh's structure.
 
 Note: `rsqrt` and `cbrt` technically include `fegetround` calls, but they are simple
 rounding-mode branches, not the multi-path Ziv structure seen in sin/cos. Start with them
