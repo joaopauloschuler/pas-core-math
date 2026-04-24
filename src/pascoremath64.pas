@@ -35,7 +35,7 @@ procedure pcr_sincos(x: Double; out s, c: Double);
 
 // ── Stub functions (delegate to C reference until ported) ────────────────────
 // pcr_acos declared in ported section above
-function  pcr_acosh(x: Double): Double; inline;
+function  pcr_acosh(x: Double): Double;
 function  pcr_acospi(x: Double): Double; inline;
 // pcr_asin declared in ported section above
 function  pcr_asinh(x: Double): Double; inline;
@@ -4060,13 +4060,14 @@ end;
 {$I cosh_port.inc}
 {$I tanpi_port.inc}
 {$I sinh_port.inc}
+{$I acosh_port.inc}
 
 // ---------------------------------------------------------------------------
 // Stubs — delegate to C reference until each function is ported.
 // Replace each stub body with the real Pascal port as phases 1-5 progress.
 // ---------------------------------------------------------------------------
 // pcr_acos — ported above
-function  pcr_acosh(x: Double): Double;   begin Result := cr_acosh(x);   end;
+// pcr_acosh — ported above
 function  pcr_acospi(x: Double): Double;  begin Result := cr_acospi(x);  end;
 // pcr_asin — ported above
 function  pcr_asinh(x: Double): Double;   begin Result := cr_asinh(x);   end;

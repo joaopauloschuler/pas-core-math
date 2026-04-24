@@ -16,7 +16,7 @@ Before starting, check the existing functions and notes at:
 
 ## Status summary
 
-- **15 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 in progress — 1.01 rsqrt, 1.02 cbrt, 1.03 atan, 1.04 log2, 1.05 acos, 1.06 tanh, 1.07 cospi, 1.08 asin, 1.09 cosh, 1.10 exp10, 1.11 exp2, 1.12 exp, 1.13 tanpi, 1.14 sinpi, 1.15 sinh, 2.01 expm1, 2.04 atanpi done — note 4.01 cos / 4.02 sin / 4.04 sincos / 4.05 tan also done in Phase 4)
+- **16 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 in progress — 1.01 rsqrt, 1.02 cbrt, 1.03 atan, 1.04 log2, 1.05 acos, 1.06 tanh, 1.07 cospi, 1.08 asin, 1.09 cosh, 1.10 exp10, 1.11 exp2, 1.12 exp, 1.13 tanpi, 1.14 sinpi, 1.15 sinh, 2.01 expm1, 2.02 acosh, 2.04 atanpi done — note 4.01 cos / 4.02 sin / 4.04 sincos / 4.05 tan also done in Phase 4)
 - Target file: `src/pascoremath64.pas`
 - **Phase 0 fully complete** (tasks 0.1–0.10): infrastructure, helpers, and test harness ready
 - libcoremath64.so built from core-math/src/binary64/; test programs compile once pcr_* functions added
@@ -455,7 +455,12 @@ Extend `build.sh` (or add `build64.sh`) to compile all four binary64 programs.
 
 **Use `src/hexfloat.pas` for all hex-float constants.** Never retype a hex float by
 hand — binary64 tables are 2× the size of binary32's, and transcription error risk
-scales with table length.
+scales with table length. **Lesson from 2.02 acosh port (April 2026):** two tiny
+log(2)-triple constants (`l21`, `l22`) were transcribed by hand and both landed
+with wrong exponent fields; the bug produced 7 incorrect results per 1M random
+inputs in the refine path. Always round-trip hex-float constants through Python's
+`float.fromhex` / `struct.pack('<d', ...)` before pasting bit patterns into
+`Tb64u64` tables.
 
 ---
 
@@ -893,7 +898,7 @@ are pure double-double. `clzll` is used only by `asinpi`, `log`, and `log10`.
 here were wrong.)
 
 - [X] **2.01** `expm1`   — 436 lines  *(pure dd; reuses cExpT0/cExpT1 + cExpAccCh, own cExpm1Tz table)*
-- [ ] **2.02** `acosh`   — 451 lines  *(pure dd)*
+- [X] **2.02** `acosh`   — 451 lines  *(pure dd — verified)*
 - [ ] **2.03** `atanh`   — 479 lines  *(pure dd)*
 - [X] **2.04** `atanpi`  — 479 lines  *(pure dd)*
   - **Port notes (2026-04-23):** `src/atanpi_port.inc` reuses atan's `cAtanAHi/ALo`, `cAtanC0/1/2`, `cAtanIdHi/Lo/Lo2/Lo3`, `cAtanPhiScale`, `cAtanRefCh*`/`Cl*`, `cAtanCh*`/`Ch2*`, `cAtanPiHalfH/L`, `cAtanEFactor`, `cAtanFmaUb`. New content: 1/π dd pair, `ONE_OVER_3PI`, thresholds (0x1.bep20, 0x1.c7p-27, 2^-54), 20-entry tiny-exception table, 56-entry refine-exception table, `AtanpiAsympt` / `AtanpiTiny` / `AtanpiSmall` / `AtanpiRefine` / `pcr_atanpi`. At the end of the fast path and of refine, multiply the atan-space (ah, al) by (1/πH, 1/πL) via `pcr_muldd` (a fasttwosum normalize precedes the fast-path multiply). Fast-path error bound is `h * 0x1.41p-52` (not atan's `0x3.fp-52`); the refine is triggered with the *atan-space* estimate `ub0 = (al + h*0x3.fp-52) + ah`, computed before the 1/π multiply. Benchmark: Pascal 46.8 Mops/s vs C 49.8 Mops/s (94%). One sharp edge:
