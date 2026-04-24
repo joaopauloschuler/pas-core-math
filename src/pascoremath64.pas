@@ -31,6 +31,7 @@ function pcr_atanpi(x: Double): Double;
 function pcr_tan(x: Double): Double;
 function pcr_cosh(x: Double): Double;
 function pcr_sinh(x: Double): Double;
+function pcr_log1p(x: Double): Double;
 procedure pcr_sincos(x: Double; out s, c: Double);
 
 // ── Stub functions (delegate to C reference until ported) ────────────────────
@@ -59,7 +60,7 @@ function  pcr_lgamma(x: Double): Double; inline;
 function  pcr_log(x: Double): Double; inline;
 function  pcr_log10(x: Double): Double; inline;
 function  pcr_log10p1(x: Double): Double; inline;
-function  pcr_log1p(x: Double): Double; inline;
+// pcr_log1p declared in ported section above
 // pcr_log2 declared in ported section above
 function  pcr_log2p1(x: Double): Double; inline;
 // pcr_sin declared in ported section above
@@ -4063,6 +4064,7 @@ end;
 {$I acosh_port.inc}
 {$I atanh_port.inc}
 {$I asinh_port.inc}
+{$I log1p_port.inc}
 
 // ---------------------------------------------------------------------------
 // Stubs — delegate to C reference until each function is ported.
@@ -4093,7 +4095,7 @@ function  pcr_lgamma(x: Double): Double;  begin Result := cr_lgamma(x);  end;
 function  pcr_log(x: Double): Double;     begin Result := cr_log(x);     end;
 function  pcr_log10(x: Double): Double;   begin Result := cr_log10(x);   end;
 function  pcr_log10p1(x: Double): Double; begin Result := cr_log10p1(x); end;
-function  pcr_log1p(x: Double): Double;   begin Result := cr_log1p(x);   end;
+// pcr_log1p — ported above
 // pcr_log2 — ported above
 function  pcr_log2p1(x: Double): Double;  begin Result := cr_log2p1(x);  end;
 // pcr_sin — ported above
