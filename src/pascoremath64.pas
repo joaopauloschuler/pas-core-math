@@ -38,7 +38,7 @@ procedure pcr_sincos(x: Double; out s, c: Double);
 function  pcr_acosh(x: Double): Double;
 function  pcr_acospi(x: Double): Double; inline;
 // pcr_asin declared in ported section above
-function  pcr_asinh(x: Double): Double; inline;
+function  pcr_asinh(x: Double): Double;
 function  pcr_asinpi(x: Double): Double; inline;
 // pcr_atan declared in ported section above
 function  pcr_atanh(x: Double): Double;
@@ -4062,6 +4062,7 @@ end;
 {$I sinh_port.inc}
 {$I acosh_port.inc}
 {$I atanh_port.inc}
+{$I asinh_port.inc}
 
 // ---------------------------------------------------------------------------
 // Stubs — delegate to C reference until each function is ported.
@@ -4071,7 +4072,7 @@ end;
 // pcr_acosh — ported above
 function  pcr_acospi(x: Double): Double;  begin Result := cr_acospi(x);  end;
 // pcr_asin — ported above
-function  pcr_asinh(x: Double): Double;   begin Result := cr_asinh(x);   end;
+// pcr_asinh — ported above
 function  pcr_asinpi(x: Double): Double;  begin Result := cr_asinpi(x);  end;
 // pcr_atan — ported above
 // pcr_atanh — ported above
