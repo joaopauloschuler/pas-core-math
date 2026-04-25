@@ -69,6 +69,10 @@ procedure AddDInt(out r: TDInt64; const a, b: TDInt64);
 procedure MulDInt(out r: TDInt64; const a, b: TDInt64);
 // Multiply two TDInt64 values, assuming b.lo = 0 (error bounded by 2 ulp_128)
 procedure MulDInt21(out r: TDInt64; const a, b: TDInt64);
+// Multiply a TDInt64 by a signed 64-bit integer (ported from mul_dint_2 in
+// core-math/src/binary64/log/dint.h). Caller must ensure |b| fits the dint
+// range — currently safe for log/log10 where |b| <= 1074.
+procedure MulDIntInt(out r: TDInt64; b: Int64; const a: TDInt64);
 // Normalize X so that X.hi has its most significant bit set (if X <> 0).
 // Used by the 2*pi range-reduction routines (sin/cos/tan/sincos).
 procedure NormalizeDInt(var X: TDInt64);
@@ -462,6 +466,67 @@ begin
   r.lo  := hi.lo;
   r.ex  := rex_a + rex_b + Int64(ex) - 1;
   r.sgn := rsgn;
+end;
+
+// Ported from mul_dint_2 in core-math/src/binary64/log/dint.h.
+// Multiplies a dint by an Int64; result has same convention as input.
+procedure MulDIntInt(out r: TDInt64; b: Int64; const a: TDInt64);
+var
+  c: UInt64;
+  t, l, sum: TUInt128;
+  m: Integer;
+  carry: Boolean;
+begin
+  if b = 0 then begin
+    CpDInt(r, DINT_ZERO);
+    Exit;
+  end;
+  if b < 0 then begin
+    c := UInt64(-b);
+    r.sgn := Byte(a.sgn xor 1);
+  end else begin
+    c := UInt64(b);
+    r.sgn := a.sgn;
+  end;
+
+  // t = a.hi * c (128-bit)
+  t := Mulu64u64(a.hi, c);
+  if t.hi <> 0 then m := clzll64(t.hi)
+  else m := 64;
+
+  // t <<= m
+  ShlU128(t, m);
+
+  // l = a.lo * c
+  l := Mulu64u64(a.lo, c);
+  // l = (l << (m-1)) >> 63  -- round bit alignment.
+  // m >= 1 in all reachable cases (a.hi != 0).
+  if m >= 1 then ShlU128(l, m - 1);
+  ShrU128(l, 63);
+
+  // t = l + t (track carry)
+  sum.lo := l.lo + t.lo;
+  carry  := sum.lo < l.lo;
+  sum.hi := l.hi + t.hi + UInt64(carry);
+  carry  := (sum.hi < l.hi) or ((sum.hi = l.hi) and carry);
+  t := sum;
+
+  if carry then begin
+    // round-half-to-even on the bottom bit, then shift right 1 and set MSB
+    if (t.lo and 1) <> 0 then begin
+      // t += 1 (with carry-out into bit 128 ignored — already overflowed)
+      Inc(t.lo);
+      if t.lo = 0 then Inc(t.hi);
+    end;
+    // t >>= 1
+    t.lo := (t.lo shr 1) or (t.hi shl 63);
+    t.hi := (t.hi shr 1) or (UInt64(1) shl 63);
+    Dec(m);
+  end;
+
+  r.hi := t.hi;
+  r.lo := t.lo;
+  r.ex := a.ex + 64 - Int64(m);
 end;
 
 // Ported from normalize() in core-math/src/binary64/cos/cos.c:
