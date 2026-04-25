@@ -333,3 +333,137 @@ begin
   MulDInt(r, cPowT22[i1], r);
   r.ex := r.ex + M;
 end;
+
+// --- 5.02i: qint very-slow path — q_3 / p_3 / log_3 / exp_3 ---------------
+
+// Mirrors q_3 (pow.c:246). |y| < 2^-12.52, returns r ≈ exp(y) as TQInt64.
+// QInt convention here matches C (no ex offset).
+procedure PowQ3(out r: TQInt64; const y: TQInt64);
+begin
+  // Q_3[0]: 64-bit coefficient
+  MulQInt11(r, y, cPowQ3_0);
+  AddQInt22(r, cPowQ3_1, r);
+
+  // Q_3[2..6]: 128-bit coefficients
+  MulQInt22(r, y, r); AddQInt22(r, cPowQ3_2, r);
+  MulQInt22(r, y, r); AddQInt22(r, cPowQ3_3, r);
+  MulQInt22(r, y, r); AddQInt22(r, cPowQ3_4, r);
+  MulQInt22(r, y, r); AddQInt22(r, cPowQ3_5, r);
+  MulQInt22(r, y, r); AddQInt22(r, cPowQ3_6, r);
+
+  // Q_3[7..11]: full 256-bit, use mul_qint_33 + add_qint
+  MulQInt33(r, y, r); AddQInt(r, cPowQ3_7,  r);
+  MulQInt33(r, y, r); AddQInt(r, cPowQ3_8,  r);
+  MulQInt33(r, y, r); AddQInt(r, cPowQ3_9,  r);
+  MulQInt33(r, y, r); AddQInt(r, cPowQ3_10, r);
+  MulQInt33(r, y, r); AddQInt(r, cPowQ3_11, r);
+
+  // Q_3[12..14]: full mul_qint + add_qint
+  MulQInt(r, y, r); AddQInt(r, cPowQ3_12, r);
+  MulQInt(r, y, r); AddQInt(r, cPowQ3_13, r);
+  MulQInt(r, y, r); AddQInt(r, cPowQ3_14, r);
+end;
+
+// Mirrors p_3 (pow.c:481). |z| <= 2^-13 with z having only the upper limb set.
+// Returns r ≈ log(1+z) (with the leading +z absorbed by the polynomial — C
+// note: "the polynomial has zero constant coefficient, we multiply by z").
+procedure PowP3(out r: TQInt64; const z: TQInt64);
+begin
+  // P_3[0..1]: degree 18..17
+  MulQInt11(r, cPowP3_0, z);
+  AddQInt22(r, cPowP3_1, r);
+
+  // P_3[2..3]: degree 16..15
+  MulQInt11(r, r, z); AddQInt22(r, cPowP3_2, r);
+  MulQInt11(r, r, z); AddQInt22(r, cPowP3_3, r);
+
+  // P_3[4..7]: degree 14..11
+  MulQInt21(r, r, z); AddQInt22(r, cPowP3_4, r);
+  MulQInt21(r, r, z); AddQInt22(r, cPowP3_5, r);
+  MulQInt21(r, r, z); AddQInt22(r, cPowP3_6, r);
+  MulQInt21(r, r, z); AddQInt22(r, cPowP3_7, r);
+
+  // P_3[8..13]: degree 10..5, full 256-bit accuracy
+  MulQInt31(r, r, z); AddQInt(r, cPowP3_8,  r);
+  MulQInt31(r, r, z); AddQInt(r, cPowP3_9,  r);
+  MulQInt31(r, r, z); AddQInt(r, cPowP3_10, r);
+  MulQInt31(r, r, z); AddQInt(r, cPowP3_11, r);
+  MulQInt31(r, r, z); AddQInt(r, cPowP3_12, r);
+  MulQInt31(r, r, z); AddQInt(r, cPowP3_13, r);
+
+  // P_3[14..17]: degree 4..1
+  MulQInt41(r, r, z); AddQInt(r, cPowP3_14, r);
+  MulQInt41(r, r, z); AddQInt(r, cPowP3_15, r);
+  MulQInt41(r, r, z); AddQInt(r, cPowP3_16, r);
+  MulQInt41(r, r, z); AddQInt(r, cPowP3_17, r);
+
+  // Final multiplication by z (polynomial has zero constant term).
+  MulQInt41(r, r, z);
+end;
+
+// Mirrors log_3 (pow.c:802). Returns r ≈ log(x) with relative error < 2^-250.74.
+procedure PowLog3(out r: TQInt64; const xIn: TQInt64);
+var
+  xLoc, z, p: TQInt64;
+  E: Int64;
+  i, j: UInt32;
+begin
+  xLoc := xIn;
+  E := xLoc.ex;
+
+  if xLoc.r0 > UInt64($B504F333F9DE6484) then begin
+    Inc(E);
+    i := UInt32(xLoc.r0 shr (63 + 1 - 7));
+  end else
+    i := UInt32(xLoc.r0 shr (63 - 7));
+
+  xLoc.ex := xLoc.ex - E;
+
+  MulQInt(z, xLoc, cPowInverse31[i - 90]);  // exact
+
+  // Second lookup index: j = z.r0 >> (63 - 13 - z.ex). QInt matches C convention,
+  // so the C formula transcribes directly.
+  j := UInt32(z.r0 shr (63 - 13 - z.ex));
+
+  MulQInt(z, z, cPowInverse32[j - 8128]);  // exact
+
+  AddQInt(z, QINT_M_ONE, z);  // z := z - 1; exact (Sterbenz)
+
+  // E * log(2)
+  MulQIntInt(r, E, QINT_LOG2);
+
+  PowP3(p, z);
+  AddQInt(p, cPowLogInv32[j - 8128], p);
+  AddQInt(p, cPowLogInv31[i - 90],  p);
+  AddQInt(r, p, r);
+end;
+
+// Mirrors exp_3 (pow.c:1132). Returns r ≈ exp(x) with relative error < 2^-241.10.
+// Caller guarantees |x| < 744.45.
+procedure PowExp3(out r: TQInt64; const xIn: TQInt64);
+var
+  xLoc, Kq, y: TQInt64;
+  kInt, M, i2, i1: Int64;
+begin
+  xLoc := xIn;
+
+  // Round-to-integer multiplier; mul_qint_11 ignores the low limb of x (OK).
+  MulQInt11(Kq, xLoc, QINT_LOG2_INV);
+  kInt := QIntToI(Kq);
+
+  // Reconstruct -kInt*log(2)/2^12 to full accuracy.
+  MulQIntInt(Kq, kInt, QINT_LOG2);
+  Kq.ex := Kq.ex - 12;
+  Kq.sgn := Byte(Kq.sgn = 0);
+
+  AddQInt(y, xLoc, Kq);  // exact (Sterbenz)
+
+  M  := PowAsr12(kInt);
+  i2 := (kInt shr 6) and $3F;
+  i1 := kInt and $3F;
+
+  PowQ3(r, y);
+  MulQInt(r, cPowT13[i2], r);
+  MulQInt(r, cPowT23[i1], r);
+  r.ex := r.ex + M;
+end;

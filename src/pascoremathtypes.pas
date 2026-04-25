@@ -163,6 +163,11 @@ procedure MulQInt21(out r: TQInt64; const a, b: TQInt64);
 procedure MulQInt11(out r: TQInt64; const a, b: TQInt64);
 // Multiply integer b by qint a (error < 2 ulps); ported from mul_qint_2
 procedure MulQIntInt(out r: TQInt64; b: Int64; const a: TQInt64);
+// Truncate a TQInt64 to a signed 64-bit integer (rounding toward zero).
+// Ported from qint_toi in core-math/src/binary64/pow/pow.h. QInt convention
+// here matches C exactly (ex of QINT_ONE is 0), so the C formula
+// `hh >> (63 - ex)` applies as-is.
+function QIntToI(const a: TQInt64): Int64;
 
 const
   cNaNSingle: Single = 0.0/0.0;       // x86 indefinite: 0xFFC00000 (negative quiet NaN)
@@ -1939,6 +1944,19 @@ begin
     r.r0 := t3.hi; r.r1 := t3.lo;
     r.r2 := t2.hi; r.r3 := t2.lo;
   end;
+end;
+
+// Ported from qint_toi in pow.h. Truncates toward zero. ex < 0 → 0.
+function QIntToI(const a: TQInt64): Int64;
+var
+  r: UInt64;
+begin
+  if a.ex < 0 then begin
+    QIntToI := 0;
+    Exit;
+  end;
+  r := a.r0 shr (63 - a.ex);
+  if a.sgn = 1 then QIntToI := -Int64(r) else QIntToI := Int64(r);
 end;
 
 end.
