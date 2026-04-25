@@ -9,82 +9,50 @@ unit pascoremath64;
 
 interface
 
-uses Math, pascoremathtypes, pascoremathhelperfuncs, ccoremath64;
+uses Math, pascoremathtypes, pascoremathhelperfuncs;
 
 // ── Ported functions ──────────────────────────────────────────────────────────
-function pcr_rsqrt(x: Double): Double;
-function pcr_cbrt(x: Double): Double;
-function pcr_atan(x: Double): Double;
-function pcr_log2(x: Double): Double;
-function pcr_acos(x: Double): Double;
-function pcr_tanh(x: Double): Double;
-function pcr_cospi(x: Double): Double;
-function pcr_asin(x: Double): Double;
-function pcr_exp(x: Double): Double;
-function pcr_exp2(x: Double): Double;
-function pcr_exp10(x: Double): Double;
-function pcr_expm1(x: Double): Double;
-function pcr_cos(x: Double): Double;
-function pcr_sin(x: Double): Double;
-function pcr_sinpi(x: Double): Double;
-function pcr_atanpi(x: Double): Double;
-function pcr_tan(x: Double): Double;
-function pcr_cosh(x: Double): Double;
-function pcr_sinh(x: Double): Double;
-function pcr_log1p(x: Double): Double;
-function pcr_log(x: Double): Double;
-function pcr_log10(x: Double): Double;
-function pcr_log10p1(x: Double): Double;
-function pcr_log2p1(x: Double): Double;
-function pcr_erf(x: Double): Double;
-function pcr_erfc(x: Double): Double;
-function pcr_exp2m1(x: Double): Double;
-function pcr_exp10m1(x: Double): Double;
+function  pcr_rsqrt(x: Double): Double;
+function  pcr_cbrt(x: Double): Double;
+function  pcr_atan(x: Double): Double;
+function  pcr_log2(x: Double): Double;
+function  pcr_acos(x: Double): Double;
+function  pcr_tanh(x: Double): Double;
+function  pcr_cospi(x: Double): Double;
+function  pcr_asin(x: Double): Double;
+function  pcr_exp(x: Double): Double;
+function  pcr_exp2(x: Double): Double;
+function  pcr_exp10(x: Double): Double;
+function  pcr_expm1(x: Double): Double;
+function  pcr_cos(x: Double): Double;
+function  pcr_sin(x: Double): Double;
+function  pcr_sinpi(x: Double): Double;
+function  pcr_atanpi(x: Double): Double;
+function  pcr_tan(x: Double): Double;
+function  pcr_cosh(x: Double): Double;
+function  pcr_sinh(x: Double): Double;
+function  pcr_log1p(x: Double): Double;
+function  pcr_log(x: Double): Double;
+function  pcr_log10(x: Double): Double;
+function  pcr_log10p1(x: Double): Double;
+function  pcr_log2p1(x: Double): Double;
+function  pcr_erf(x: Double): Double;
+function  pcr_erfc(x: Double): Double;
+function  pcr_exp2m1(x: Double): Double;
+function  pcr_exp10m1(x: Double): Double;
 procedure pcr_sincos(x: Double; out s, c: Double);
-function pcr_acospi(x: Double): Double;
-function pcr_asinpi(x: Double): Double;
-
-// ── Stub functions (delegate to C reference until ported) ────────────────────
-// pcr_acos declared in ported section above
+function  pcr_acospi(x: Double): Double;
+function  pcr_asinpi(x: Double): Double;
 function  pcr_acosh(x: Double): Double;
-// pcr_acospi declared in ported section above
-// pcr_asin declared in ported section above
 function  pcr_asinh(x: Double): Double;
-// pcr_asinpi declared in ported section above
-// pcr_atan declared in ported section above
 function  pcr_atanh(x: Double): Double;
-// pcr_atanpi declared in ported section above
-// pcr_cbrt declared in ported section above
-// pcr_cos declared in ported section above
-// pcr_cosh declared in ported section above
-// pcr_cospi declared in ported section above
-// pcr_erf declared in ported section above
-// pcr_erfc declared in ported section above
-// pcr_exp declared in ported section above
-// pcr_exp10 declared in ported section above
-// pcr_exp10m1 declared in ported section above
-// pcr_exp2 declared in ported section above
-// pcr_exp2m1 declared in ported section above
-// pcr_expm1 declared in ported section above
-function  pcr_lgamma(x: Double): Double; inline;
-// pcr_log declared in ported section above
-// pcr_log10 declared in ported section above
-// pcr_log10p1 declared in ported section above
-// pcr_log1p declared in ported section above
-// pcr_log2 declared in ported section above
-// pcr_log2p1 declared in ported section above
-// pcr_sin declared in ported section above
-// pcr_sinh declared in ported section above
-// pcr_sinpi declared in ported section above
-// pcr_tan declared in ported section above
-// pcr_tanh declared in ported section above
 function  pcr_tanpi(x: Double): Double;
+function  pcr_lgamma(x: Double): Double; inline;
 function  pcr_tgamma(x: Double): Double; inline;
 function  pcr_atan2(y, x: Double): Double;
 function  pcr_atan2pi(y, x: Double): Double;
 function  pcr_hypot(x, y: Double): Double; inline;
 function  pcr_pow(x, y: Double): Double; inline;
-// pcr_sincos declared in ported section above
 
 implementation
 
@@ -4097,43 +4065,11 @@ end;
 // Replace each stub body with the real Pascal port as phases 1-5 progress.
 // ---------------------------------------------------------------------------
 // pcr_acos — ported above
-// pcr_acosh — ported above
-// pcr_acospi — ported above
-// pcr_asin — ported above
-// pcr_asinh — ported above
-// pcr_asinpi — ported above
-// pcr_atan — ported above
-// pcr_atanh — ported above
-// pcr_atanpi — ported above
-// pcr_cbrt — ported above
-// pcr_cos — ported above
-// pcr_cosh — ported above
-// pcr_cospi — ported above
-// pcr_erf — ported above
-// pcr_erfc — ported above
-// pcr_exp — ported above
-// pcr_exp10 — ported above
-// pcr_exp10m1 — ported above
-// pcr_exp2 — ported above
-// pcr_exp2m1 — ported above
-// pcr_expm1 — ported above
-function  pcr_lgamma(x: Double): Double;  begin Result := pcr_lgamma_pas(x); end;
-// pcr_log — ported above
-// pcr_log10 — ported above
-// pcr_log10p1 — ported above
-// pcr_log1p — ported above
-// pcr_log2 — ported above
-// pcr_log2p1 — ported above
-// pcr_sin — ported above
-// pcr_sinh — ported above
-// pcr_sinpi — ported above
-// pcr_tan — ported above
-// pcr_tanpi — ported above
-function  pcr_tgamma(x: Double): Double;  begin Result := pcr_tgamma_pas(x); end;
-function  pcr_atan2(y, x: Double): Double;  begin Result := pcr_atan2_pas(y, x); end;
-function  pcr_atan2pi(y, x: Double): Double; begin Result := pcr_atan2pi_pas(y, x); end;
-function  pcr_hypot(x, y: Double): Double;  begin Result := pcr_hypot_pas(x, y); end;
-function  pcr_pow(x, y: Double): Double;    begin Result := PcrPowPas(x, y);  end;
-// pcr_sincos — ported above
+function  pcr_lgamma(x: Double): Double;     begin Result := pcr_lgamma_pas(x);   end;
+function  pcr_tgamma(x: Double): Double;      begin Result := pcr_tgamma_pas(x);   end;
+function  pcr_atan2(y, x: Double): Double;    begin Result := pcr_atan2_pas(y, x); end;
+function  pcr_atan2pi(y, x: Double): Double;  begin Result := pcr_atan2pi_pas(y, x); end;
+function  pcr_hypot(x, y: Double): Double;    begin Result := pcr_hypot_pas(x, y); end;
+function  pcr_pow(x, y: Double): Double;      begin Result := PcrPowPas(x, y);     end;
 
 end.
