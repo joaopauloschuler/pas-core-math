@@ -1,6 +1,11 @@
 // ===========================================================================
 // pcr_cos — correctly-rounded binary64 cos(x)
 // Ported from core-math/src/binary64/cos/cos.c (Paul Zimmermann, Tom Hubrecht).
+// https://github.com/joaopauloschuler/pas-core-math
+//
+// Copyright (c) 2024-2026 Joao Paulo Schwarz Schuler and contributors.
+// Refer to the git commit history for individual authorship.
+// SPDX-License-Identifier: MIT
 //
 // Structure mirrors the C source:
 //   * Tables (T, S, C, PSfast, PCfast, PS, PC, SC) auto-extracted from cos.c

@@ -1,6 +1,11 @@
 // ---------------------------------------------------------------------------
 // pcr_atan2 — correctly-rounded binary64 atan2(y, x).
 // Ported from core-math/src/binary64/atan2/atan2.c
+// https://github.com/joaopauloschuler/pas-core-math
+//
+// Copyright (c) 2024-2026 Joao Paulo Schwarz Schuler and contributors.
+// Refer to the git commit history for individual authorship.
+// SPDX-License-Identifier: MIT
 //   (Paul Zimmermann and Alexei Sibidanov, 2024-2025).
 //
 // Uses TInt64 (192-bit) infrastructure from pascoremathtypes (task 2.07a).

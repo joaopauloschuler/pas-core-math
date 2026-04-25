@@ -1,6 +1,11 @@
 // ===========================================================================
 // pcr_tan — correctly-rounded binary64 tan(x)
 // Ported from core-math/src/binary64/tan/tan.c.
+// https://github.com/joaopauloschuler/pas-core-math
+//
+// Copyright (c) 2024-2026 Joao Paulo Schwarz Schuler and contributors.
+// Refer to the git commit history for individual authorship.
+// SPDX-License-Identifier: MIT
 //
 // Shares the T, S, C, PSfast, PCfast, PS, PC, SC tables with cos_port.inc
 // but needs a *higher-precision* reduce_fast (keeps one extra limb of the

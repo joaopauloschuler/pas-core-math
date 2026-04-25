@@ -2,6 +2,11 @@
 // pcr_pow — correctly-rounded binary64 power.
 // Ported from core-math/src/binary64/pow/{pow.c, pow.h, dint.h, qint.h} by
 // Paul Zimmermann, Tom Hubrecht and Claude Etienne Rohrbacher.
+// https://github.com/joaopauloschuler/pas-core-math
+//
+// Copyright (c) 2024-2026 Joao Paulo Schwarz Schuler and contributors.
+// Refer to the git commit history for individual authorship.
+// SPDX-License-Identifier: MIT
 //
 // Three-tier Ziv strategy:
 //   * fast path: pure double-double, ~2^-67 absolute error

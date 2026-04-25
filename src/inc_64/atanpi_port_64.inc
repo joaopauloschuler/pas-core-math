@@ -1,6 +1,11 @@
 // ---------------------------------------------------------------------------
 // pcr_atanpi — correctly-rounded atan(x)/pi (binary64).
 // Ported from CORE-MATH cr_atanpi (Sibidanov & Zimmermann, 2023-2025).
+// https://github.com/joaopauloschuler/pas-core-math
+//
+// Copyright (c) 2024-2026 Joao Paulo Schwarz Schuler and contributors.
+// Refer to the git commit history for individual authorship.
+// SPDX-License-Identifier: MIT
 // Reuses cAtanAHi/Lo, cAtanC0/1/2, cAtanIdHi/Lo/Lo2/Lo3, cAtanPhiScale,
 // cAtanRefCh*/Cl*, cAtanCh*/Ch2*, cAtanPiHalfH/L from the atan port above.
 // ---------------------------------------------------------------------------

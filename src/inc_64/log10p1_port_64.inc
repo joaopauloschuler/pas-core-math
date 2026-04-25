@@ -2,6 +2,11 @@
 // pcr_log10p1 — correctly-rounded binary64 log10(1+x).
 // Ported from core-math/src/binary64/log10p1/log10p1.c (Paul Zimmermann,
 // Tom Hubrecht).
+// https://github.com/joaopauloschuler/pas-core-math
+//
+// Copyright (c) 2024-2026 Joao Paulo Schwarz Schuler and contributors.
+// Refer to the git commit history for individual authorship.
+// SPDX-License-Identifier: MIT
 //
 // Reuses log_const.inc tables (cLogInverse, cLogInvH/L, cLogInverse2,
 // cLogLogInv2, cLogP2, cLogLog2Dint, cLogMOneDint, cLogLog2h/l) — these are

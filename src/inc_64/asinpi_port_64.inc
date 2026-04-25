@@ -1,6 +1,11 @@
 // ---------------------------------------------------------------------------
 // pcr_asinpi — correctly-rounded binary64 asin(x)/pi.
 // Ported from core-math/src/binary64/asinpi/asinpi.c (Sibidanov & Zimmermann).
+// https://github.com/joaopauloschuler/pas-core-math
+//
+// Copyright (c) 2024-2026 Joao Paulo Schwarz Schuler and contributors.
+// Refer to the git commit history for individual authorship.
+// SPDX-License-Identifier: MIT
 //
 // asinpi.c is the *u128-based* asin implementation with a final 1/pi multiply,
 // distinct from asin.c's double-double version that pcr_asin ports.

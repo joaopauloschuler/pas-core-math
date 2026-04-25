@@ -2,6 +2,11 @@
 // pcr_erfc — correctly-rounded binary64 erfc(x).
 // Ported from core-math/src/binary64/erfc/erfc.c (Sibidanov, Zimmermann,
 // Hubrecht, Jeannerod).
+// https://github.com/joaopauloschuler/pas-core-math
+//
+// Copyright (c) 2024-2026 Joao Paulo Schwarz Schuler and contributors.
+// Refer to the git commit history for individual authorship.
+// SPDX-License-Identifier: MIT
 //
 // Reuse map:
 //   - cExpT0 / cExpT1   == erfc.c T1 / T2     (2^(i/64), 2^(i/4096))

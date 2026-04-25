@@ -1,6 +1,11 @@
 // ===========================================================================
 // pcr_sincos — correctly-rounded binary64 sin(x)/cos(x) combined.
 // Ported from core-math/src/binary64/sincos/sincos.c.
+// https://github.com/joaopauloschuler/pas-core-math
+//
+// Copyright (c) 2024-2026 Joao Paulo Schwarz Schuler and contributors.
+// Refer to the git commit history for individual authorship.
+// SPDX-License-Identifier: MIT
 // Reuses CosReduce / CosReduceFast / CosEval* primitives from cos_port.inc,
 // SinAccurate from sin_port.inc, and CosAccurate from cos_port.inc.
 // ===========================================================================

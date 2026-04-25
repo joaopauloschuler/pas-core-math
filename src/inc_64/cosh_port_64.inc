@@ -1,6 +1,11 @@
 // ===========================================================================
 // pcr_cosh — correctly-rounded binary64 cosh(x).
 // Ported from core-math/src/binary64/cosh/cosh.c by Alexei Sibidanov.
+// https://github.com/joaopauloschuler/pas-core-math
+//
+// Copyright (c) 2024-2026 Joao Paulo Schwarz Schuler and contributors.
+// Refer to the git commit history for individual authorship.
+// SPDX-License-Identifier: MIT
 //
 // Shares with other exp-family ports already in pascoremath64.pas:
 //   * cExpT0 / cExpT1 lookup tables (byte-identical to cosh's t0[]/t1[])

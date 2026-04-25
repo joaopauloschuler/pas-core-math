@@ -1,6 +1,11 @@
 // ===========================================================================
 // pcr_sinh — correctly-rounded binary64 sinh(x).
 // Ported from core-math/src/binary64/sinh/sinh.c by Alexei Sibidanov.
+// https://github.com/joaopauloschuler/pas-core-math
+//
+// Copyright (c) 2024-2026 Joao Paulo Schwarz Schuler and contributors.
+// Refer to the git commit history for individual authorship.
+// SPDX-License-Identifier: MIT
 //
 // Shares with previously ported exp-family units:
 //   * cExpT0 / cExpT1 tables (byte-identical to sinh's t0[]/t1[])

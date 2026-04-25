@@ -1,5 +1,10 @@
 // pcr_exp2m1 — correctly-rounded binary64 2^x - 1.
 // Ported from core-math/src/binary64/exp2m1/exp2m1.c.
+// https://github.com/joaopauloschuler/pas-core-math
+//
+// Copyright (c) 2024-2026 Joao Paulo Schwarz Schuler and contributors.
+// Refer to the git commit history for individual authorship.
+// SPDX-License-Identifier: MIT
 // Reuses cExpT0 (= T1, 2^(i/64)) and cExpT1 (= T2, 2^(i/4096)) tables already
 // present in pascoremath64.pas for exp/exp2/exp10/expm1.
 

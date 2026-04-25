@@ -1,6 +1,11 @@
 // ===========================================================================
 // pcr_sin — correctly-rounded binary64 sin(x)
 // Ported from core-math/src/binary64/sin/sin.c (Paul Zimmermann, Tom Hubrecht).
+// https://github.com/joaopauloschuler/pas-core-math
+//
+// Copyright (c) 2024-2026 Joao Paulo Schwarz Schuler and contributors.
+// Refer to the git commit history for individual authorship.
+// SPDX-License-Identifier: MIT
 //
 // Reuses the shared machinery established in cos_port.inc:
 //   * Tables T / S / C / PSfast / PCfast / PS / PC / SC (cos_tables.inc)

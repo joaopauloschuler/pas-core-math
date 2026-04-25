@@ -1,6 +1,11 @@
 // ===========================================================================
 // pcr_sinpi — correctly-rounded binary64 sin(pi*x).
 // Ported from core-math/src/binary64/sinpi/sinpi.c by Alexei Sibidanov.
+// https://github.com/joaopauloschuler/pas-core-math
+//
+// Copyright (c) 2024-2026 Joao Paulo Schwarz Schuler and contributors.
+// Refer to the git commit history for individual authorship.
+// SPDX-License-Identifier: MIT
 //
 // Shares with cospi_port (already in pascoremath64.pas):
 //   * Sn/Sm/Cm tables via CospiSincosN / CospiSincosN2

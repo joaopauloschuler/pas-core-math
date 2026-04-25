@@ -1,5 +1,10 @@
 // pcr_exp10m1 — correctly-rounded binary64 10^x - 1.
 // Ported from core-math/src/binary64/exp10m1/exp10m1.c.
+// https://github.com/joaopauloschuler/pas-core-math
+//
+// Copyright (c) 2024-2026 Joao Paulo Schwarz Schuler and contributors.
+// Refer to the git commit history for individual authorship.
+// SPDX-License-Identifier: MIT
 // Reuses E2M1AMul / E2M1SMul / E2M1DMul / E2M1FastSum / E2M1Q1 / E2M1Q2 /
 // E2M1Exp1 from exp2m1_port.inc, plus cExpT0 (= T1) and cExpT1 (= T2).
 // Q_1 / Q_2 in exp10m1.c are byte-identical to cExp2m1Q1 / cExp2m1Q2.

@@ -2,6 +2,11 @@
 // pcr_log — correctly-rounded binary64 natural logarithm.
 // Ported from core-math/src/binary64/log/log.c by Paul Zimmermann and
 // Tom Hubrecht. See also dint.h.
+// https://github.com/joaopauloschuler/pas-core-math
+//
+// Copyright (c) 2024-2026 Joao Paulo Schwarz Schuler and contributors.
+// Refer to the git commit history for individual authorship.
+// SPDX-License-Identifier: MIT
 // Tables are emitted by tools/log_gen.py into log_const.inc.
 //
 // Algorithm:

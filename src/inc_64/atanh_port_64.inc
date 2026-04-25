@@ -1,6 +1,11 @@
 // ===========================================================================
 // pcr_atanh — correctly-rounded binary64 atanh(x).
 // Ported from core-math/src/binary64/atanh/atanh.c by Alexei Sibidanov.
+// https://github.com/joaopauloschuler/pas-core-math
+//
+// Copyright (c) 2024-2026 Joao Paulo Schwarz Schuler and contributors.
+// Refer to the git commit history for individual authorship.
+// SPDX-License-Identifier: MIT
 // Reuses main-branch tables (B, R1, R2, L1, L2) and refine tables
 // (T1..T4, LL, RefineCh, RefineCl, L20/L21/L22, VOffset) from acosh_port.inc.
 // ===========================================================================

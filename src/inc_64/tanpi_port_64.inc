@@ -1,6 +1,11 @@
 // ===========================================================================
 // pcr_tanpi — correctly-rounded binary64 tan(pi*x).
 // Ported from core-math/src/binary64/tanpi/tanpi.c by Alexei Sibidanov.
+// https://github.com/joaopauloschuler/pas-core-math
+//
+// Copyright (c) 2024-2026 Joao Paulo Schwarz Schuler and contributors.
+// Refer to the git commit history for individual authorship.
+// SPDX-License-Identifier: MIT
 // Tanpi is standalone: its T[][2]/ch/cl tables are distinct from
 // cospi/sinpi/tan. No sharing with previously-ported pi-trig functions.
 // ===========================================================================

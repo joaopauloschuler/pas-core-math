@@ -1,6 +1,11 @@
 // ---------------------------------------------------------------------------
 // pcr_atan2pi — correctly-rounded binary64 atan2pi(y, x) = atan2(y, x) / pi.
 // Ported from core-math/src/binary64/atan2pi/atan2pi.c
+// https://github.com/joaopauloschuler/pas-core-math
+//
+// Copyright (c) 2024-2026 Joao Paulo Schwarz Schuler and contributors.
+// Refer to the git commit history for individual authorship.
+// SPDX-License-Identifier: MIT
 //   (Paul Zimmermann, 2023-2025), itself derived from atan2.c.
 //
 // Reuses cAtan2P / cAtan2Q (TInt64 polynomial coefficients) from the atan2

@@ -1,6 +1,11 @@
 // ---------------------------------------------------------------------------
 // pcr_hypot — correctly-rounded binary64 sqrt(x^2 + y^2).
 // Ported from core-math/src/binary64/hypot/hypot.c (Alexei Sibidanov, 2022-2025).
+// https://github.com/joaopauloschuler/pas-core-math
+//
+// Copyright (c) 2024-2026 Joao Paulo Schwarz Schuler and contributors.
+// Refer to the git commit history for individual authorship.
+// SPDX-License-Identifier: MIT
 // ---------------------------------------------------------------------------
 //
 // Notes on infrastructure:
