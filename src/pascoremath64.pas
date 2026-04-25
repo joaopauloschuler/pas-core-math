@@ -42,6 +42,7 @@ function pcr_exp2m1(x: Double): Double;
 function pcr_exp10m1(x: Double): Double;
 procedure pcr_sincos(x: Double; out s, c: Double);
 function pcr_acospi(x: Double): Double;
+function pcr_asinpi(x: Double): Double;
 
 // ── Stub functions (delegate to C reference until ported) ────────────────────
 // pcr_acos declared in ported section above
@@ -49,7 +50,7 @@ function  pcr_acosh(x: Double): Double;
 // pcr_acospi declared in ported section above
 // pcr_asin declared in ported section above
 function  pcr_asinh(x: Double): Double;
-function  pcr_asinpi(x: Double): Double; inline;
+// pcr_asinpi declared in ported section above
 // pcr_atan declared in ported section above
 function  pcr_atanh(x: Double): Double;
 // pcr_atanpi declared in ported section above
@@ -4088,6 +4089,7 @@ end;
 {$I log2p1_port.inc}
 {$I atan2_port.inc}
 {$I atan2pi_port.inc}
+{$I asinpi_port.inc}
 
 // ---------------------------------------------------------------------------
 // Stubs — delegate to C reference until each function is ported.
@@ -4098,7 +4100,7 @@ end;
 // pcr_acospi — ported above
 // pcr_asin — ported above
 // pcr_asinh — ported above
-function  pcr_asinpi(x: Double): Double;  begin Result := cr_asinpi(x);  end;
+// pcr_asinpi — ported above
 // pcr_atan — ported above
 // pcr_atanh — ported above
 // pcr_atanpi — ported above
