@@ -1134,6 +1134,40 @@ starting this phase. Validate the qint arithmetic independently.
     - The C `add_qint` recursive call `add_qint(r, b, a)` is replaced by a swap to avoid recursion in Pascal (matches existing `AddDInt` / `AddTInt` pattern).
     - `Mulu64u64` is marked `inline` but FPC declines to inline it inside this unit (note: "Call to subroutine ... marked as inline is not inlined") — acceptable for now; will revisit during pow benchmarking if mul-qint becomes a hotspot.
 - [ ] **5.02** `pow`     — 1951 lines *(dint + qint + fenv, bivariate)*
+  - **Scope (2026-04-25):** the largest single function in the binary64 suite. Source split:
+    `pow.c` 1951 lines + `pow.h` 875 lines (helpers + tables P_1, Q_1, T1, T2, _INVERSE, _LOG_INV)
+    + `dint.h` 1254 lines (tables _INVERSE_2_1, _INVERSE_2_2, _LOG_INV_2_1, _LOG_INV_2_2, T1_2, T2_2, P_2, Q_2, ~640 new lines beyond pascoremathtypes)
+    + `qint.h` 1571 lines (arithmetic done in 5.01; tables _INVERSE_3_1, _INVERSE_3_2, _LOG_INV_3_1, _LOG_INV_3_2, T1_3, T2_3, P_3, Q_3, ~750 new lines).
+    Total expected Pascal: ~4000-5000 lines. Suggested commit cadence: one commit per sub-step.
+  - **Sub-plan:**
+    - [ ] **5.02a** Add infrastructure helpers to `pascoremathtypes.pas`:
+      `MulDInt11` (exact 64×64-bit dint mul, both `lo=0`),
+      `AddDInt11` (dint add with both `lo=0`, error 2 ulp_64),
+      `MulDInt2_AB` (= `mul_dint_int64(r,a,b)`, a wrapper around existing `MulDIntInt(r,b,a)` for direct port readability — or just use MulDIntInt with swapped args),
+      `DIntToI` (= `dint_toi`, truncate-toward-zero conversion to Int64),
+      `DIntToD` (= `dint_tod`, full conversion with overflow / subnormal / underflow handling — different from existing `DToD` which is the simpler sin.c version),
+      `DIntTodSubnormal` (subnormal helper for `DIntToD`),
+      plus dint constants `DINT_M_ONE` and `DINT_LOG2` (already have `DINT_ONE`, `DINT_ZERO`).
+      Also add qint helper `QIntFromD` (= `qint_fromd`), `QIntToI` (= `qint_toi`), `QIntToD` (= `qint_tod`), `SubnormalizeQInt` (= `subnormalize_qint`).
+    - [ ] **5.02b** Create `pow_const.inc` with the eight `pow.h` tables: `cPowInverse[0..181]`, `cPowLogInvHi[0..181]`, `cPowLogInvLo[0..181]`, `cPowT1Hi[0..63]`, `cPowT1Lo[0..63]`, `cPowT2Hi[0..63]`, `cPowT2Lo[0..63]`, `cPowP1[0..5]`, `cPowQ1[0..4]`. Use scalar constants per array index to avoid x87 indexing (per session header rule).
+    - [ ] **5.02c** Append dint-level pow tables to `pow_const.inc`: `cPowInverse21[0..91]`, `cPowInverse22[0..127]`, `cPowLogInv21[0..91]`, `cPowLogInv22[0..127]`, `cPowT12[0..63]`, `cPowT22[0..63]`, `cPowP2[0..8]`, `cPowQ2[0..7]`. Generate via `hexfloat.pas` for the dint hi/lo limbs.
+    - [ ] **5.02d** Append qint-level pow tables to `pow_const.inc`: `cPowInverse31`, `cPowInverse32`, `cPowLogInv31`, `cPowLogInv32`, `cPowT13[0..63]`, `cPowT23[0..63]`, `cPowP3[0..17]`, `cPowQ3[0..14]`.
+    - [ ] **5.02e** Implement `pcr_pow_q1` (= `q_1`), `pcr_pow_p1` (= `p_1`) — pure-double polynomial helpers using `pcr_fma`.
+    - [ ] **5.02f** Implement `pcr_pow_log1` (= `log_1`) — fast log(x) returning (h,l,cancel).
+    - [ ] **5.02g** Implement `pcr_pow_exp1` (= `exp_1`) — fast exp returning (eh,el) with overflow/underflow short-circuits and signed-result multiplier.
+    - [ ] **5.02h** Implement `pcr_pow_q2`, `pcr_pow_p2`, `pcr_pow_log2`, `pcr_pow_exp2` (all dint, second Ziv iteration).
+    - [ ] **5.02i** Implement `pcr_pow_q3`, `pcr_pow_p3`, `pcr_pow_log3`, `pcr_pow_exp3` (all qint, third Ziv iteration).
+    - [ ] **5.02j** Implement `IsExact`, `ExactPow` for the rounding-boundary test (Algorithm detectRoundingBoundaryCase from [4]).
+    - [ ] **5.02k** Implement main `pcr_pow` with the special-case cascade (NaN, ±Inf, ±0, x<0 with integer y, |x|=1) and the three Ziv phases.
+    - [ ] **5.02l** Wire `pow_port.inc` into `pascoremath64.pas` and `cr_pow` into `ccoremath64.pas`.
+    - [ ] **5.02m** Test with `--pct 1` and `Benchmark64 pow`.
+  - **Sharp edges to remember:**
+    - `pow` uses a **two-level lookup** for log (181-entry _INVERSE_2_1 of 9-bit reciprocals + 128-entry _INVERSE_2_2 of 14-bit reciprocals), unlike binary64 `log` which uses a single 240-entry lookup. The pow tables are therefore **not** shareable with `log_const.inc`.
+    - The dint format in `pow/dint.h` matches the `sin/dint.h` we already have (mantissa in [0.5, 1), `ex=1` for 1.0). Confirmed identical to `pascoremathtypes.pas` TDInt64.
+    - In `mul_dint_int64(r, a, b)`, the C signature is `(r, a, b)` whereas Pascal's existing `MulDIntInt(r, b, a)` takes the integer first. Mirror call sites carefully.
+    - `dint_tod` differs from the simpler `DToD` already in pascoremathtypes: it adds underflow/overflow handling for pow's wide output range, and takes an `exact` flag to suppress underflow signal when x^y is exactly representable.
+    - `is_exact` does **not** call dint/qint primitives; it works at the bit level on the inputs only. Keep it pure-integer.
+    - Special-case logic in `cr_pow` (~140 lines) handles NaN, Inf, ±0, negative x with integer y. Do not skip this — sampling tests will not cover all 23 special-case paths.
 
 ---
 
