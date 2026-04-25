@@ -160,6 +160,12 @@ if [ -f "$SOFILE64" ]; then
     echo "FixedTest64 skipped (functions not yet ported)"
 
   echo
+  echo "Compiling TestQInt64.pas ..."
+  fpc $FPC_FLAGS "$SCRIPT_DIR/TestQInt64.pas" && \
+    echo "TestQInt64 compiled -> $BIN_DIR/TestQInt64" || \
+    echo "TestQInt64 skipped"
+
+  echo
   echo "Compiling FmaCompare64.pas ..."
   fpc $FPC_FLAGS "$SCRIPT_DIR/FmaCompare64.pas" && \
     echo "FmaCompare64 compiled -> $BIN_DIR/FmaCompare64" || \

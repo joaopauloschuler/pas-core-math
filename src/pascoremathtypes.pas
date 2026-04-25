@@ -120,6 +120,39 @@ procedure DivTInt(out r: TInt64; const b, a: TInt64);
 // Convenience: r := bd / ad, both Doubles
 procedure DivTIntD(out r: TInt64; bd, ad: Double);
 
+// ------- qint64_t (256-bit) arithmetic -------
+// All operations ported faithfully from core-math/src/binary64/pow/qint.h.
+// Field mapping: r0 = hh (most significant), r1 = hl, r2 = lh, r3 = ll.
+
+// Copy
+procedure CpQInt(out r: TQInt64; const a: TQInt64); inline;
+// True if value is zero (r0 = r1 = 0; matches C check on rh)
+function QIntZeroP(const a: TQInt64): Boolean; inline;
+// Compare absolute values: -1 / 0 / +1 (full 256-bit precision)
+function CmpQIntAbs(const a, b: TQInt64): Integer;
+// Compare absolute values using only the upper 128 bits
+function CmpQIntAbs22(const a, b: TQInt64): Integer;
+// r := a + b (error bounded by 2 ulps in 256-bit; alias-safe)
+procedure AddQInt(out r: TQInt64; const a, b: TQInt64);
+// Same as AddQInt but only considers upper 2 limbs (error < 2 ulps in 128-bit)
+procedure AddQInt22(out r: TQInt64; const a, b: TQInt64);
+// r := a * b (error < 14 ulps in 256-bit)
+procedure MulQInt(out r: TQInt64; const a, b: TQInt64);
+// Same as MulQInt but only considers upper 3 limbs of a and b (error < 6 ulps)
+procedure MulQInt33(out r: TQInt64; const a, b: TQInt64);
+// Same as MulQInt but only considers upper limb of b (error < 2 ulps)
+procedure MulQInt41(out r: TQInt64; const a, b: TQInt64);
+// Same as MulQInt but uses upper 3 limbs of a, upper limb of b (no error)
+procedure MulQInt31(out r: TQInt64; const a, b: TQInt64);
+// Same as MulQInt but uses upper 2 limbs of a and b (no error)
+procedure MulQInt22(out r: TQInt64; const a, b: TQInt64);
+// Same as MulQInt but uses upper 2 limbs of a, upper limb of b (no error)
+procedure MulQInt21(out r: TQInt64; const a, b: TQInt64);
+// Same as MulQInt but uses upper limb of a and b only (no error)
+procedure MulQInt11(out r: TQInt64; const a, b: TQInt64);
+// Multiply integer b by qint a (error < 2 ulps); ported from mul_qint_2
+procedure MulQIntInt(out r: TQInt64; b: Int64; const a: TQInt64);
+
 const
   cNaNSingle: Single = 0.0/0.0;       // x86 indefinite: 0xFFC00000 (negative quiet NaN)
   cNaNDouble: Double = 0.0/0.0;
@@ -156,6 +189,19 @@ const
   // Helpers used inside InvTInt
   cTI_1pm1022: Tb64u64 = (u: $0010000000000000); // 0x1p-1022 (smallest normal)
   cTI_1p53:    Tb64u64 = (u: $4340000000000000); // 0x1p+53
+
+  // Sentinel TQInt64 constants (see pow/qint.h ZERO_Q / ONE_Q / M_ONE_Q / LOG2_Q / LOG2_INV_Q)
+  QINT_ZERO: TQInt64 = (r0: 0; r1: 0; r2: 0; r3: 0; ex: 0; sgn: 0);
+  // r0 = $8000... (MSB set, value 1.0 exactly)
+  QINT_ONE:  TQInt64 = (r0: $8000000000000000; r1: 0; r2: 0; r3: 0; ex: 0; sgn: 0);
+  QINT_M_ONE: TQInt64 = (r0: $8000000000000000; r1: 0; r2: 0; r3: 0; ex: 0; sgn: 1);
+  // log(2) to absolute error < 2^-256.14
+  QINT_LOG2: TQInt64 = (r0: $B17217F7D1CF79AB; r1: $C9E3B39803F2F6AF;
+                        r2: $40F343267298B62D; r3: $8A0D175B8BAAFA2B;
+                        ex: -1; sgn: 0);
+  // 2^12/log(2) to absolute error < 2^-52.96
+  QINT_LOG2_INV: TQInt64 = (r0: $B8AA3B295C17F0BC; r1: 0; r2: 0; r3: 0;
+                            ex: 12; sgn: 0);
 
   // Hex-float constants used inside DToD / subnormalise_dint
   cDTD_1pm53:    Tb64u64 = (u: $3CA0000000000000); // 0x1p-53
@@ -1111,6 +1157,662 @@ begin
   TIntFromD(A, ad);
   TIntFromD(B, bd);
   DivTInt(r, B, A);
+end;
+
+// ---------------------------------------------------------------------------
+// qint64_t (256-bit) arithmetic — ported from core-math/src/binary64/pow/qint.h
+// ---------------------------------------------------------------------------
+// Internal representation: a 256-bit significand stored as (rh, rl) where
+//   rh.hi = r0 (hh, most significant), rh.lo = r1 (hl),
+//   rl.hi = r2 (lh),                   rl.lo = r3 (ll, least significant).
+// Helpers below use (rh, rl) as TUInt128 pairs to mirror the C u128 code.
+
+// 128-bit add returning carry (0 or 1)
+function AddU128Cy(out r: TUInt128; const a, b: TUInt128): UInt64; inline;
+var alo: UInt64;
+begin
+  alo := a.lo;
+  r.lo := alo + b.lo;
+  r.hi := a.hi + b.hi + UInt64(r.lo < alo);
+  // Carry out of 128-bit add: result.hi < a.hi (or equal with low-half overflow)
+  if (r.hi < a.hi) or ((r.hi = a.hi) and (r.lo < alo)) then
+    Result := 1
+  else
+    Result := 0;
+end;
+
+// 128-bit subtract returning borrow (0 or 1)
+function SubU128Bo(out r: TUInt128; const a, b: TUInt128): UInt64; inline;
+var alo: UInt64;
+begin
+  alo := a.lo;
+  r.lo := alo - b.lo;
+  r.hi := a.hi - b.hi - UInt64(alo < b.lo);
+  if (a.hi < b.hi) or ((a.hi = b.hi) and (alo < b.lo)) then
+    Result := 1
+  else
+    Result := 0;
+end;
+
+// Decrement a 128-bit value (used after subu128 borrow)
+procedure DecU128(var a: TUInt128); inline;
+begin
+  if a.lo = 0 then Dec(a.hi);
+  Dec(a.lo);
+end;
+
+// Count leading zeros across a 128-bit value (returns 0..128)
+function ClzU128(const a: TUInt128): Integer; inline;
+begin
+  if a.hi <> 0 then
+    Result := clzll64(a.hi)
+  else if a.lo <> 0 then
+    Result := 64 + clzll64(a.lo)
+  else
+    Result := 128;
+end;
+
+procedure CpQInt(out r: TQInt64; const a: TQInt64); inline;
+begin
+  r := a;
+end;
+
+function QIntZeroP(const a: TQInt64): Boolean; inline;
+begin
+  // Matches C check `a->rh == 0` (top 128 bits zero ⇒ value zero, since
+  // a normalised qint has MSB of r0 set).
+  Result := (a.r0 = 0) and (a.r1 = 0);
+end;
+
+function CmpQIntAbs(const a, b: TQInt64): Integer;
+begin
+  if a.ex > b.ex then begin Result := 1; Exit; end;
+  if a.ex < b.ex then begin Result := -1; Exit; end;
+  if a.r0 > b.r0 then begin Result := 1; Exit; end;
+  if a.r0 < b.r0 then begin Result := -1; Exit; end;
+  if a.r1 > b.r1 then begin Result := 1; Exit; end;
+  if a.r1 < b.r1 then begin Result := -1; Exit; end;
+  if a.r2 > b.r2 then begin Result := 1; Exit; end;
+  if a.r2 < b.r2 then begin Result := -1; Exit; end;
+  if a.r3 > b.r3 then begin Result := 1; Exit; end;
+  if a.r3 < b.r3 then begin Result := -1; Exit; end;
+  Result := 0;
+end;
+
+function CmpQIntAbs22(const a, b: TQInt64): Integer;
+begin
+  if a.ex > b.ex then begin Result := 1; Exit; end;
+  if a.ex < b.ex then begin Result := -1; Exit; end;
+  if a.r0 > b.r0 then begin Result := 1; Exit; end;
+  if a.r0 < b.r0 then begin Result := -1; Exit; end;
+  if a.r1 > b.r1 then begin Result := 1; Exit; end;
+  if a.r1 < b.r1 then begin Result := -1; Exit; end;
+  Result := 0;
+end;
+
+// Ported from add_qint in qint.h.
+procedure AddQInt(out r: TQInt64; const a, b: TQInt64);
+var
+  pa, pb, ptmp: TQInt64;
+  ah, al, bh, bl, ch, cl, t: TUInt128;
+  m_ex, k: Int64;
+  sgn: Byte;
+  ex: UInt64;
+  sh: Integer;
+  cy: UInt64;
+begin
+  pa := a; pb := b;  // local copies handle aliasing
+
+  if (pa.r0 = 0) and (pa.r1 = 0) then begin
+    r := pb;
+    Exit;
+  end;
+  if (pb.r0 = 0) and (pb.r1 = 0) then begin
+    r := pa;
+    Exit;
+  end;
+
+  case CmpQIntAbs(pa, pb) of
+    0:
+      begin
+        if (pa.sgn xor pb.sgn) <> 0 then
+          r := QINT_ZERO
+        else begin
+          r := pa;
+          Inc(r.ex);
+        end;
+        Exit;
+      end;
+    -1:
+      begin
+        ptmp := pa; pa := pb; pb := ptmp;  // swap so |pa| >= |pb|
+      end;
+  end;
+
+  // From now on, |pa| > |pb|
+  ah.hi := pa.r0; ah.lo := pa.r1; al.hi := pa.r2; al.lo := pa.r3;
+  bh.hi := pb.r0; bh.lo := pb.r1; bl.hi := pb.r2; bl.lo := pb.r3;
+
+  m_ex := pa.ex;
+  k := pa.ex - pb.ex;
+
+  if k > 0 then begin
+    if k >= 128 then begin
+      if k < 256 then begin
+        // bl := bh >> (k-128); bh := 0
+        bl := bh; ShrU128(bl, Integer(k - 128));
+        bh.hi := 0; bh.lo := 0;
+      end else begin
+        bl.hi := 0; bl.lo := 0;
+        bh.hi := 0; bh.lo := 0;
+      end;
+    end else begin
+      // 1 <= k <= 127: bl := (bl >> k) | (bh << (128-k)); bh := bh >> k
+      // emulate via shifted copy of bh combined with shifted bl
+      ShrU128(bl, Integer(k));
+      t := bh;
+      ShlU128(t, Integer(128 - k));
+      bl.hi := bl.hi or t.hi;
+      bl.lo := bl.lo or t.lo;
+      ShrU128(bh, Integer(k));
+    end;
+  end;
+
+  sgn := pa.sgn;
+  r.ex := m_ex;
+
+  if (pa.sgn xor pb.sgn) <> 0 then begin
+    // subtraction case: C = A + (-B)
+    SubU128(ch, ah, bh);
+    if SubU128Bo(cl, al, bl) <> 0 then DecU128(ch);
+    // |A| > |B| guarantees C <> 0
+    ex := UInt64(ClzU128(ch));
+    if ex = 128 then ex := 128 + UInt64(ClzU128(cl));
+    // ex < 256
+
+    if ex > 0 then begin
+      // shift A by ex bits to the left, B by ex-k bits to the left
+      if ex >= 128 then begin
+        ah := al; ShlU128(ah, Integer(ex - 128));
+        al.hi := 0; al.lo := 0;
+      end else begin
+        // 1 <= ex < 128
+        t := al; ShrU128(t, Integer(128 - ex));
+        ShlU128(ah, Integer(ex));
+        ah.hi := ah.hi or t.hi;
+        ah.lo := ah.lo or t.lo;
+        ShlU128(al, Integer(ex));
+      end;
+      sh := Integer(ex) - Integer(k);
+      bh.hi := pb.r0; bh.lo := pb.r1;
+      bl.hi := pb.r2; bl.lo := pb.r3;
+      if sh >= 0 then begin
+        if sh >= 128 then begin
+          bh := bl; ShlU128(bh, sh - 128);
+          bl.hi := 0; bl.lo := 0;
+        end else if sh > 0 then begin
+          // 1 <= sh < 128
+          t := bl; ShrU128(t, 128 - sh);
+          ShlU128(bh, sh);
+          bh.hi := bh.hi or t.hi;
+          bh.lo := bh.lo or t.lo;
+          ShlU128(bl, sh);
+        end;
+      end else begin
+        sh := -sh;  // 0 < sh
+        if sh >= 128 then begin
+          bl := bh; ShrU128(bl, sh - 128);
+          bh.hi := 0; bh.lo := 0;
+        end else begin
+          // 0 < sh < 128
+          t := bh; ShlU128(t, 128 - sh);
+          ShrU128(bl, sh);
+          bl.hi := bl.hi or t.hi;
+          bl.lo := bl.lo or t.lo;
+          ShrU128(bh, sh);
+        end;
+      end;
+      r.ex := r.ex - Int64(ex);
+      SubU128(ch, ah, bh);
+      if SubU128Bo(cl, al, bl) <> 0 then DecU128(ch);
+      ex := UInt64(ClzU128(ch));
+      if ex = 128 then ex := 128 + UInt64(ClzU128(cl));
+    end;
+
+    if ex <> 0 then begin
+      // ch := (ch << ex) | (cl >> (128 - ex)); cl := cl << ex
+      // ex is in 1..255 here.
+      if ex < 128 then begin
+        t := cl; ShrU128(t, Integer(128 - ex));
+        ShlU128(ch, Integer(ex));
+        ch.hi := ch.hi or t.hi;
+        ch.lo := ch.lo or t.lo;
+        ShlU128(cl, Integer(ex));
+      end else begin
+        // 128 <= ex < 256: top half becomes shifted cl, bottom becomes 0
+        ch := cl; ShlU128(ch, Integer(ex - 128));
+        cl.hi := 0; cl.lo := 0;
+      end;
+    end;
+    r.ex := r.ex - Int64(ex);
+  end else begin
+    // addition case
+    cy := AddU128Cy(ch, ah, bh);
+    if AddU128Cy(cl, al, bl) <> 0 then begin
+      // ++ch and check whether ch wrapped to zero (which would imply another carry)
+      if (ch.lo = $FFFFFFFFFFFFFFFF) and (ch.hi = $FFFFFFFFFFFFFFFF) then begin
+        ch.lo := 0; ch.hi := 0;
+        Inc(cy);
+      end else begin
+        Inc(ch.lo);
+        if ch.lo = 0 then Inc(ch.hi);
+      end;
+    end;
+
+    if cy <> 0 then begin
+      // cl := (ch << 127) | (cl >> 1)
+      t := ch; ShlU128(t, 127);
+      ShrU128(cl, 1);
+      cl.hi := cl.hi or t.hi;
+      cl.lo := cl.lo or t.lo;
+      // ch := (1 << 127) | (ch >> 1)
+      ShrU128(ch, 1);
+      ch.hi := ch.hi or UInt64($8000000000000000);
+      Inc(r.ex);
+    end;
+  end;
+
+  r.sgn := sgn;
+  r.r0 := ch.hi; r.r1 := ch.lo;
+  r.r2 := cl.hi; r.r3 := cl.lo;
+end;
+
+// Ported from add_qint_22 in qint.h.
+procedure AddQInt22(out r: TQInt64; const a, b: TQInt64);
+var
+  pa, pb, ptmp: TQInt64;
+  ah, bh, ch: TUInt128;
+  m_ex: Int64;
+  k: UInt64;
+  sgn: Byte;
+  ex: UInt64;
+  cy: UInt64;
+begin
+  pa := a; pb := b;
+
+  if (pa.r0 = 0) and (pa.r1 = 0) then begin r := pb; Exit; end;
+  if (pb.r0 = 0) and (pb.r1 = 0) then begin r := pa; Exit; end;
+
+  case CmpQIntAbs22(pa, pb) of
+    0:
+      begin
+        if (pa.sgn xor pb.sgn) <> 0 then
+          r := QINT_ZERO
+        else begin
+          r := pa;
+          Inc(r.ex);
+        end;
+        Exit;
+      end;
+    -1:
+      begin
+        ptmp := pa; pa := pb; pb := ptmp;
+      end;
+  end;
+
+  ah.hi := pa.r0; ah.lo := pa.r1;
+  bh.hi := pb.r0; bh.lo := pb.r1;
+
+  m_ex := pa.ex;
+  k := UInt64(pa.ex - pb.ex);
+
+  if k > 0 then begin
+    if k >= 128 then begin
+      bh.hi := 0; bh.lo := 0;
+    end else
+      ShrU128(bh, Integer(k));
+  end;
+
+  sgn := pa.sgn;
+  r.ex := m_ex;
+
+  if (pa.sgn xor pb.sgn) <> 0 then begin
+    SubU128(ch, ah, bh);
+    ex := UInt64(ClzU128(ch));  // < 128 since |A| > |B|
+
+    if ex > 0 then begin
+      ShlU128(ah, Integer(ex));
+      bh.hi := pb.r0; bh.lo := pb.r1;
+      if ex >= k then
+        ShlU128(bh, Integer(ex - k))
+      else
+        ShrU128(bh, Integer(k - ex));
+      r.ex := r.ex - Int64(ex);
+      SubU128(ch, ah, bh);
+      ex := UInt64(ClzU128(ch));
+    end;
+    ShlU128(ch, Integer(ex));
+    r.ex := r.ex - Int64(ex);
+  end else begin
+    cy := AddU128Cy(ch, ah, bh);
+    if cy <> 0 then begin
+      ShrU128(ch, 1);
+      ch.hi := ch.hi or UInt64($8000000000000000);
+      Inc(r.ex);
+    end;
+  end;
+
+  r.sgn := sgn;
+  r.r0 := ch.hi; r.r1 := ch.lo;
+  r.r2 := 0; r.r3 := 0;
+end;
+
+// Helper: compose (rh, rl) from t6 (128b) + lowt5 (64b) + lowt4 (64b),
+// applying the ex (0/1) renormalisation step shared by all the mul_qint*
+// variants. ulow5 = low 64 bits of t5 (post-shift), ulow4 = low 64 bits of t4.
+procedure QMulFinish(var r: TQInt64;
+                     const t6: TUInt128; ulow5, ulow4: UInt64;
+                     a_ex, b_ex: Int64; a_sgn, b_sgn: Byte);
+var
+  ex: UInt64;
+  rh, rl: TUInt128;
+begin
+  // build t5 in 128 bits: (lowt5 in high half, ulow4 in low half)
+  rh := t6;
+  rl.hi := ulow5; rl.lo := ulow4;
+
+  if (rh.hi and UInt64($8000000000000000)) <> 0 then
+    ex := 0
+  else
+    ex := 1;
+
+  if ex <> 0 then begin
+    // shift left by 1
+    rh.hi := (rh.hi shl 1) or (rh.lo shr 63);
+    rh.lo := (rh.lo shl 1) or (rl.hi shr 63);
+    rl.hi := (rl.hi shl 1) or (rl.lo shr 63);
+    rl.lo := rl.lo shl 1;
+  end;
+
+  r.r0 := rh.hi; r.r1 := rh.lo;
+  r.r2 := rl.hi; r.r3 := rl.lo;
+  r.ex := a_ex + b_ex + 1 - Int64(ex);
+  r.sgn := a_sgn xor b_sgn;
+end;
+
+// Ported from mul_qint in qint.h. Error < 14 ulps.
+procedure MulQInt(out r: TQInt64; const a, b: TQInt64);
+var
+  r33, r32, r23, r31, r13, r22, r30, r03, r21, r12: TUInt128;
+  t6, t5, t4, t3: TUInt128;
+  c5, c4: UInt64;
+  tmp: TUInt128;
+  ulow4: UInt64;
+begin
+  r33 := Mulu64u64(a.r0, b.r0);
+  r32 := Mulu64u64(a.r0, b.r1);
+  r23 := Mulu64u64(a.r1, b.r0);
+  r31 := Mulu64u64(a.r0, b.r2);
+  r13 := Mulu64u64(a.r2, b.r0);
+  r22 := Mulu64u64(a.r1, b.r1);
+  r30 := Mulu64u64(a.r0, b.r3);
+  r03 := Mulu64u64(a.r3, b.r0);
+  r21 := Mulu64u64(a.r1, b.r2);
+  r12 := Mulu64u64(a.r2, b.r1);
+
+  // t3 = (r12 >> 64) + (r21 >> 64) + (r03 >> 64) + (r30 >> 64)  (sum < 2^66)
+  t3.hi := 0; t3.lo := r12.hi;
+  Inc(t3.hi, Ord(t3.lo + r21.hi < t3.lo));
+  t3.lo := t3.lo + r21.hi;
+  Inc(t3.hi, Ord(t3.lo + r03.hi < t3.lo));
+  t3.lo := t3.lo + r03.hi;
+  Inc(t3.hi, Ord(t3.lo + r30.hi < t3.lo));
+  t3.lo := t3.lo + r30.hi;
+
+  // c4 = addu128(r22, t3, &t4); c4 += addu128(r13, t4, &t4); c4 += addu128(r31, t4, &t4);
+  c4 := AddU128Cy(t4, r22, t3);
+  c4 := c4 + AddU128Cy(t4, r13, t4);
+  c4 := c4 + AddU128Cy(t4, r31, t4);
+
+  // c5 = addu128(r23, t4 >> 64, &t5); c5 += addu128(r32, t5, &t5);
+  tmp.lo := t4.hi; tmp.hi := 0;
+  c5 := AddU128Cy(t5, r23, tmp);
+  c5 := c5 + AddU128Cy(t5, r32, t5);
+
+  // t6 = r33 + ((c5 << 64) | (t5 >> 64)) + c4
+  tmp.hi := c5; tmp.lo := t5.hi;
+  AddU128(t6, r33, tmp);
+  tmp.hi := 0; tmp.lo := c4;
+  AddU128(t6, t6, tmp);
+
+  ulow4 := t4.lo;
+  // t5 = (t5 << 64) | (low64(t4))
+  t5.hi := t5.lo; t5.lo := ulow4;
+
+  QMulFinish(r, t6, t5.hi, t5.lo, a.ex, b.ex, a.sgn, b.sgn);
+end;
+
+// Ported from mul_qint_33 in qint.h. Error < 6 ulps.
+procedure MulQInt33(out r: TQInt64; const a, b: TQInt64);
+var
+  r33, r32, r23, r31, r13, r22, r21, r12: TUInt128;
+  t6, t5, t4, t3, tmp: TUInt128;
+  c5, c4: UInt64;
+  ulow4: UInt64;
+begin
+  r33 := Mulu64u64(a.r0, b.r0);
+  r32 := Mulu64u64(a.r0, b.r1);
+  r23 := Mulu64u64(a.r1, b.r0);
+  r31 := Mulu64u64(a.r0, b.r2);
+  r13 := Mulu64u64(a.r2, b.r0);
+  r22 := Mulu64u64(a.r1, b.r1);
+  r21 := Mulu64u64(a.r1, b.r2);
+  r12 := Mulu64u64(a.r2, b.r1);
+
+  // t3 = (r12 >> 64) + (r21 >> 64)
+  t3.hi := 0; t3.lo := r12.hi;
+  Inc(t3.hi, Ord(t3.lo + r21.hi < t3.lo));
+  t3.lo := t3.lo + r21.hi;
+
+  c4 := AddU128Cy(t4, r22, t3);
+  c4 := c4 + AddU128Cy(t4, r13, t4);
+  c4 := c4 + AddU128Cy(t4, r31, t4);
+
+  tmp.lo := t4.hi; tmp.hi := 0;
+  c5 := AddU128Cy(t5, r23, tmp);
+  c5 := c5 + AddU128Cy(t5, r32, t5);
+
+  tmp.hi := c5; tmp.lo := t5.hi;
+  AddU128(t6, r33, tmp);
+  tmp.hi := 0; tmp.lo := c4;
+  AddU128(t6, t6, tmp);
+
+  ulow4 := t4.lo;
+  t5.hi := t5.lo; t5.lo := ulow4;
+  QMulFinish(r, t6, t5.hi, t5.lo, a.ex, b.ex, a.sgn, b.sgn);
+end;
+
+// Ported from mul_qint_41 in qint.h. Error < 2 ulps.
+procedure MulQInt41(out r: TQInt64; const a, b: TQInt64);
+var
+  r33, r23, r13, r03: TUInt128;
+  t6, t5, t4, t3, tmp: TUInt128;
+  c5, c4: UInt64;
+  ulow4: UInt64;
+begin
+  r33 := Mulu64u64(a.r0, b.r0);
+  r23 := Mulu64u64(a.r1, b.r0);
+  r13 := Mulu64u64(a.r2, b.r0);
+  r03 := Mulu64u64(a.r3, b.r0);
+
+  // t3 = r03 >> 64
+  t3.hi := 0; t3.lo := r03.hi;
+
+  c4 := AddU128Cy(t4, r13, t3);
+
+  tmp.lo := t4.hi; tmp.hi := 0;
+  c5 := AddU128Cy(t5, r23, tmp);
+
+  tmp.hi := c5; tmp.lo := t5.hi;
+  AddU128(t6, r33, tmp);
+  tmp.hi := 0; tmp.lo := c4;
+  AddU128(t6, t6, tmp);
+
+  ulow4 := t4.lo;
+  t5.hi := t5.lo; t5.lo := ulow4;
+  QMulFinish(r, t6, t5.hi, t5.lo, a.ex, b.ex, a.sgn, b.sgn);
+end;
+
+// Ported from mul_qint_31 in qint.h. Exact (no error).
+procedure MulQInt31(out r: TQInt64; const a, b: TQInt64);
+var
+  r33, r23, r13: TUInt128;
+  t6, t5, t4, tmp: TUInt128;
+  c5: UInt64;
+  ulow4: UInt64;
+begin
+  r33 := Mulu64u64(a.r0, b.r0);
+  r23 := Mulu64u64(a.r1, b.r0);
+  r13 := Mulu64u64(a.r2, b.r0);
+
+  t4 := r13;
+
+  tmp.lo := t4.hi; tmp.hi := 0;
+  c5 := AddU128Cy(t5, r23, tmp);
+
+  tmp.hi := c5; tmp.lo := t5.hi;
+  AddU128(t6, r33, tmp);
+
+  ulow4 := t4.lo;
+  t5.hi := t5.lo; t5.lo := ulow4;
+  QMulFinish(r, t6, t5.hi, t5.lo, a.ex, b.ex, a.sgn, b.sgn);
+end;
+
+// Ported from mul_qint_22 in qint.h. Exact.
+procedure MulQInt22(out r: TQInt64; const a, b: TQInt64);
+var
+  r33, r32, r23, r22: TUInt128;
+  t6, t5, t4, tmp: TUInt128;
+  c5: UInt64;
+  ulow4: UInt64;
+begin
+  r33 := Mulu64u64(a.r0, b.r0);
+  r32 := Mulu64u64(a.r0, b.r1);
+  r23 := Mulu64u64(a.r1, b.r0);
+  r22 := Mulu64u64(a.r1, b.r1);
+
+  t4 := r22;
+
+  tmp.lo := t4.hi; tmp.hi := 0;
+  c5 := AddU128Cy(t5, r23, tmp);
+  c5 := c5 + AddU128Cy(t5, r32, t5);
+
+  tmp.hi := c5; tmp.lo := t5.hi;
+  AddU128(t6, r33, tmp);
+
+  ulow4 := t4.lo;
+  t5.hi := t5.lo; t5.lo := ulow4;
+  QMulFinish(r, t6, t5.hi, t5.lo, a.ex, b.ex, a.sgn, b.sgn);
+end;
+
+// Ported from mul_qint_21 in qint.h. Exact.
+procedure MulQInt21(out r: TQInt64; const a, b: TQInt64);
+var
+  r33, r23: TUInt128;
+  t6, t5, tmp: TUInt128;
+begin
+  r33 := Mulu64u64(a.r0, b.r0);
+  r23 := Mulu64u64(a.r1, b.r0);
+
+  // t6 = r33 + (r23 >> 64)
+  tmp.hi := 0; tmp.lo := r23.hi;
+  AddU128(t6, r33, tmp);
+
+  // t5 = r23 << 64  (only low 64 of r23 contribute as the new high half)
+  t5.hi := r23.lo; t5.lo := 0;
+
+  QMulFinish(r, t6, t5.hi, t5.lo, a.ex, b.ex, a.sgn, b.sgn);
+end;
+
+// Ported from mul_qint_11 in qint.h. Exact.
+procedure MulQInt11(out r: TQInt64; const a, b: TQInt64);
+var
+  t6: TUInt128;
+  ex: UInt64;
+begin
+  t6 := Mulu64u64(a.r0, b.r0);
+  if (t6.hi and UInt64($8000000000000000)) <> 0 then ex := 0 else ex := 1;
+  if ex <> 0 then begin
+    t6.hi := (t6.hi shl 1) or (t6.lo shr 63);
+    t6.lo := t6.lo shl 1;
+  end;
+  r.r0 := t6.hi; r.r1 := t6.lo;
+  r.r2 := 0; r.r3 := 0;
+  r.ex := a.ex + b.ex + 1 - Int64(ex);
+  r.sgn := a.sgn xor b.sgn;
+end;
+
+// Ported from mul_qint_2 in qint.h. Error < 2 ulps.
+procedure MulQIntInt(out r: TQInt64; b: Int64; const a: TQInt64);
+var
+  c: UInt64;
+  k: Integer;
+  t0, t1, t2, t3, t, tmp: TUInt128;
+  cy: UInt64;
+  ex: UInt32;
+  ulow1: UInt64;
+begin
+  if b = 0 then begin
+    r := QINT_ZERO;
+    Exit;
+  end;
+
+  if b < 0 then c := UInt64(-b) else c := UInt64(b);
+  if c = 1 then begin
+    r := a;
+    if b < 0 then r.sgn := r.sgn xor 1;
+    Exit;
+  end;
+
+  if b < 0 then r.sgn := a.sgn xor 1 else r.sgn := a.sgn;
+  r.ex := a.ex + 64;
+
+  // scale c so that 2^63 <= c < 2^64
+  k := clzll64(c);
+  c := c shl k;
+  r.ex := r.ex - Int64(k);
+
+  t3 := Mulu64u64(a.r0, c);
+  t2 := Mulu64u64(a.r1, c);
+  t1 := Mulu64u64(a.r2, c);
+  t0 := Mulu64u64(a.r3, c);
+
+  // t = t0 >> 64
+  t.hi := 0; t.lo := t0.hi;
+
+  cy := AddU128Cy(t1, t, t1);
+  // t = (cy << 64) | (t1 >> 64)
+  tmp.hi := cy; tmp.lo := t1.hi;
+  cy := AddU128Cy(t2, tmp, t2);
+  // t3 += (cy << 64) | (t2 >> 64)
+  tmp.hi := cy; tmp.lo := t2.hi;
+  AddU128(t3, t3, tmp);
+
+  ex := UInt32(clzll64(t3.hi));  // 0 or 1
+
+  ulow1 := t1.lo;
+  t2.hi := t2.lo; t2.lo := ulow1;
+
+  if ex <> 0 then begin
+    r.r0 := (t3.hi shl 1) or (t3.lo shr 63);
+    r.r1 := (t3.lo shl 1) or (t2.hi shr 63);
+    r.r2 := (t2.hi shl 1) or (t2.lo shr 63);
+    r.r3 := t2.lo shl 1;
+    Dec(r.ex);
+  end else begin
+    r.r0 := t3.hi; r.r1 := t3.lo;
+    r.r2 := t2.hi; r.r3 := t2.lo;
+  end;
 end;
 
 end.

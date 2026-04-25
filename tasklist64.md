@@ -1127,7 +1127,12 @@ Validate `AddDInt`, `MulDInt`, `DIntFromD`, and `DToD` exhaustively before start
 `core-math/src/binary64/pow/qint.h` (1571 lines) into `pascoremathtypes.pas` before
 starting this phase. Validate the qint arithmetic independently.
 
-- [ ] **5.01** Port `TQInt64` arithmetic from `qint.h`
+- [X] **5.01** Port `TQInt64` arithmetic from `qint.h`
+  - **Port notes (2026-04-25):** all qint arithmetic primitives ported into `pascoremathtypes.pas` (interface + implementation, ~520 lines added). Functions ported: `CpQInt`, `QIntZeroP`, `CmpQIntAbs`, `CmpQIntAbs22`, `AddQInt`, `AddQInt22`, `MulQInt`, `MulQInt33`, `MulQInt41`, `MulQInt31`, `MulQInt22`, `MulQInt21`, `MulQInt11`, `MulQIntInt` (= `mul_qint_2`). Constants: `QINT_ZERO`, `QINT_ONE`, `QINT_M_ONE`, `QINT_LOG2`, `QINT_LOG2_INV`. New private helpers in the implementation section: `AddU128Cy` / `SubU128Bo` (carry/borrow returning) and `ClzU128`. `TestQInt64.pas` in `src/tests/` exercises every primitive and passes (`ALL OK`). Sharp edges to remember when porting `pow` (5.02):
+    - **qint normalisation differs from dint.** qint mantissa lies in `[1, 2)` (MSB of `r0` is the integer 1.0); dint mantissa lies in `[0.5, 1)`. Consequently `QINT_ONE.ex = 0` whereas `DINT_ONE.ex = 1`. The exponent formula `r.ex = a.ex + b.ex + 1 - ex_correction` (where `ex_correction` is 0 if `t6 >> 127` is set, else 1) reflects the [1,2) convention.
+    - Field mapping `r0 → hh, r1 → hl, r2 → lh, r3 → ll` (r0 is most significant) — opposite of what one might expect from "rl/rh" naming in C.
+    - The C `add_qint` recursive call `add_qint(r, b, a)` is replaced by a swap to avoid recursion in Pascal (matches existing `AddDInt` / `AddTInt` pattern).
+    - `Mulu64u64` is marked `inline` but FPC declines to inline it inside this unit (note: "Call to subroutine ... marked as inline is not inlined") — acceptable for now; will revisit during pow benchmarking if mul-qint becomes a hotspot.
 - [ ] **5.02** `pow`     — 1951 lines *(dint + qint + fenv, bivariate)*
 
 ---
