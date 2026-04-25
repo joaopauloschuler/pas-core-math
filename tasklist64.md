@@ -1140,15 +1140,13 @@ starting this phase. Validate the qint arithmetic independently.
     + `qint.h` 1571 lines (arithmetic done in 5.01; tables _INVERSE_3_1, _INVERSE_3_2, _LOG_INV_3_1, _LOG_INV_3_2, T1_3, T2_3, P_3, Q_3, ~750 new lines).
     Total expected Pascal: ~4000-5000 lines. Suggested commit cadence: one commit per sub-step.
   - **Sub-plan:**
-    - [ ] **5.02a** Add infrastructure helpers to `pascoremathtypes.pas`:
-      `MulDInt11` (exact 64×64-bit dint mul, both `lo=0`),
-      `AddDInt11` (dint add with both `lo=0`, error 2 ulp_64),
-      `MulDInt2_AB` (= `mul_dint_int64(r,a,b)`, a wrapper around existing `MulDIntInt(r,b,a)` for direct port readability — or just use MulDIntInt with swapped args),
-      `DIntToI` (= `dint_toi`, truncate-toward-zero conversion to Int64),
-      `DIntToD` (= `dint_tod`, full conversion with overflow / subnormal / underflow handling — different from existing `DToD` which is the simpler sin.c version),
-      `DIntTodSubnormal` (subnormal helper for `DIntToD`),
-      plus dint constants `DINT_M_ONE` and `DINT_LOG2` (already have `DINT_ONE`, `DINT_ZERO`).
-      Also add qint helper `QIntFromD` (= `qint_fromd`), `QIntToI` (= `qint_toi`), `QIntToD` (= `qint_tod`), `SubnormalizeQInt` (= `subnormalize_qint`).
+    - [X] **5.02a** Add infrastructure helpers to `pascoremathtypes.pas`:
+      `MulDInt11`, `AddDInt11`, `DIntToI` ported (covered by `TestDIntPowHelpers` in `TestQInt64.pas`); constants `DINT_M_ONE`, `DINT_LOG2`, `DINT_LOG2_INV` added.
+      Use existing `MulDIntInt(r, b, a)` with swapped args for `mul_dint_int64(r, a, b)`.
+      **Still TODO inside 5.02a** before pow main:
+      `DIntToD` (= `dint_tod`, full conversion with overflow / subnormal / underflow handling — distinct from existing `DToD`),
+      `DIntTodSubnormal` helper,
+      qint helpers `QIntFromD`, `QIntToI`, `QIntToD`, `SubnormalizeQInt`. Defer until pow code that calls them is being written, so we can validate by call sites rather than by ad-hoc unit tests.
     - [ ] **5.02b** Create `pow_const.inc` with the eight `pow.h` tables: `cPowInverse[0..181]`, `cPowLogInvHi[0..181]`, `cPowLogInvLo[0..181]`, `cPowT1Hi[0..63]`, `cPowT1Lo[0..63]`, `cPowT2Hi[0..63]`, `cPowT2Lo[0..63]`, `cPowP1[0..5]`, `cPowQ1[0..4]`. Use scalar constants per array index to avoid x87 indexing (per session header rule).
     - [ ] **5.02c** Append dint-level pow tables to `pow_const.inc`: `cPowInverse21[0..91]`, `cPowInverse22[0..127]`, `cPowLogInv21[0..91]`, `cPowLogInv22[0..127]`, `cPowT12[0..63]`, `cPowT22[0..63]`, `cPowP2[0..8]`, `cPowQ2[0..7]`. Generate via `hexfloat.pas` for the dint hi/lo limbs.
     - [ ] **5.02d** Append qint-level pow tables to `pow_const.inc`: `cPowInverse31`, `cPowInverse32`, `cPowLogInv31`, `cPowLogInv32`, `cPowT13[0..63]`, `cPowT23[0..63]`, `cPowP3[0..17]`, `cPowQ3[0..14]`.

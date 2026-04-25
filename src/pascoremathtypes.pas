@@ -82,6 +82,17 @@ procedure AddDInt(out r: TDInt64; const a, b: TDInt64);
 procedure MulDInt(out r: TDInt64; const a, b: TDInt64);
 // Multiply two TDInt64 values, assuming b.lo = 0 (error bounded by 2 ulp_128)
 procedure MulDInt21(out r: TDInt64; const a, b: TDInt64);
+// Multiply two TDInt64 values, assuming both a.lo = b.lo = 0; the 128-bit
+// product is exact (ported from mul_dint_11 in core-math/src/binary64/pow/dint.h).
+procedure MulDInt11(out r: TDInt64; const a, b: TDInt64);
+// Add two TDInt64 values, assuming both a.lo = b.lo = 0 (error 1-2 ulp_64;
+// ported from add_dint_11 in core-math/src/binary64/pow/dint.h).
+procedure AddDInt11(out r: TDInt64; const a, b: TDInt64);
+// Truncate a TDInt64 to a signed 64-bit integer (rounding toward zero)
+// — ported from dint_toi in core-math/src/binary64/pow/pow.h. Note that
+// the dint format here uses ex=1 for value 1.0, so the C formula
+// `hi >> (63 - ex)` becomes `hi >> (64 - ex)` in our convention.
+function DIntToI(const a: TDInt64): Int64;
 // Multiply a TDInt64 by a signed 64-bit integer (ported from mul_dint_2 in
 // core-math/src/binary64/log/dint.h). Caller must ensure |b| fits the dint
 // range — currently safe for log/log10 where |b| <= 1074.
@@ -170,6 +181,13 @@ const
   // hi = $8000000000000000 = 2^63 (MSB set, normalised 1.0 in dint format)
   // ex=1: value = hi/2^64 * 2^ex = (2^63/2^64) * 2^1 = 0.5 * 2 = 1.0
   DINT_ONE:  TDInt64 = (hi: $8000000000000000; lo: 0; ex: 1; sgn: 0);
+  // -1 (used by pow log_2 / log_3); same magnitude as DINT_ONE, sgn=1.
+  DINT_M_ONE: TDInt64 = (hi: $8000000000000000; lo: 0; ex: 1; sgn: 1);
+  // log(2) to absolute error < 2^-129.97 (ex shifted by +1 vs C convention).
+  DINT_LOG2: TDInt64 = (hi: $B17217F7D1CF79AB; lo: $C9E3B39803F2F6AF;
+                        ex: 0; sgn: 0);
+  // 2^12/log(2) to absolute error < 2^-52.96 (ex shifted by +1 vs C).
+  DINT_LOG2_INV: TDInt64 = (hi: $B8AA3B295C17F0BC; lo: 0; ex: 13; sgn: 0);
 
   // Sentinel TInt64 constants (see atan2/tint.h ZERO / ONE / PI / PI2)
   TINT_ZERO: TInt64 = (m: 0; h: 0; l: 0; ex: -1076; sgn: 0);
@@ -570,6 +588,114 @@ begin
   r.lo  := hi.lo;
   r.ex  := rex_a + rex_b + Int64(ex) - 1;
   r.sgn := rsgn;
+end;
+
+// Ported from mul_dint_11 in core-math/src/binary64/pow/dint.h.
+// Both operand low limbs are assumed zero; the 128-bit product is exact.
+procedure MulDInt11(out r: TDInt64; const a, b: TDInt64);
+var
+  hi: TUInt128;
+  ex: UInt64;
+begin
+  hi := Mulu64u64(a.hi, b.hi);
+  ex := hi.hi shr 63;
+  if ex = 0 then begin
+    hi.hi := (hi.hi shl 1) or (hi.lo shr 63);
+    hi.lo := hi.lo shl 1;
+  end;
+  r.hi  := hi.hi;
+  r.lo  := hi.lo;
+  r.ex  := a.ex + b.ex + Int64(ex) - 1;
+  r.sgn := a.sgn xor b.sgn;
+end;
+
+// Ported from add_dint_11 in core-math/src/binary64/pow/dint.h.
+// Both operand low limbs are assumed zero; error bounded by 2 ulps_64.
+procedure AddDInt11(out r: TDInt64; const a, b: TDInt64);
+var
+  pa, pb: TDInt64;
+  uA, uB, uC, tmp64: UInt64;
+  k, ex_shift: UInt64;
+  cmp: Integer;
+  sgn, tmpSgn: Byte;
+  tmpEx: Int64;
+begin
+  pa := a; pb := b;
+  if pa.hi = 0 then begin r := pb; Exit; end;
+  if pb.hi = 0 then begin r := pa; Exit; end;
+
+  // cmp_dint_11: compare ex first, then hi
+  if pa.ex > pb.ex then cmp := 1
+  else if pa.ex < pb.ex then cmp := -1
+  else if pa.hi > pb.hi then cmp := 1
+  else if pa.hi < pb.hi then cmp := -1
+  else cmp := 0;
+
+  case cmp of
+    0:
+      begin
+        if (pa.sgn xor pb.sgn) <> 0 then r := DINT_ZERO
+        else begin r := pa; Inc(r.ex); end;
+        Exit;
+      end;
+    -1:
+      begin
+        // swap so |pa| > |pb|
+        tmp64 := pa.hi; pa.hi := pb.hi; pb.hi := tmp64;
+        tmpEx := pa.ex; pa.ex := pb.ex; pb.ex := tmpEx;
+        tmpSgn := pa.sgn; pa.sgn := pb.sgn; pb.sgn := tmpSgn;
+      end;
+  end;
+
+  uA := pa.hi; uB := pb.hi;
+  if pa.ex > pb.ex then begin
+    k := UInt64(pa.ex - pb.ex);
+    if k < 64 then uB := uB shr k else uB := 0;
+  end;
+
+  sgn := pa.sgn;
+  r.ex := pa.ex;
+
+  if (pa.sgn xor pb.sgn) <> 0 then begin
+    // different signs: uC = uA - uB; uA > uB since |pa| > |pb|
+    uC := uA - uB;
+    ex_shift := UInt64(clzll64(uC));
+    if ex_shift > 0 then begin
+      uC := (uA shl ex_shift) - (uB shl ex_shift);
+      Dec(r.ex, Int64(ex_shift));
+      ex_shift := UInt64(clzll64(uC));  // 0 or 1
+    end;
+    uC := uC shl ex_shift;
+    Dec(r.ex, Int64(ex_shift));
+  end else begin
+    // same signs: uC = uA + uB
+    uC := uA + uB;
+    if uC < uA then begin
+      // overflow: shift right and set MSB, bump exponent
+      uC := (UInt64($8000000000000000)) or (uC shr 1);
+      Inc(r.ex);
+    end;
+  end;
+
+  r.sgn := sgn;
+  r.hi  := uC;
+  r.lo  := 0;
+end;
+
+// Ported from dint_toi in core-math/src/binary64/pow/pow.h.
+// Truncates toward zero; assumes |a| < 2^63 (caller guards).
+function DIntToI(const a: TDInt64): Int64;
+var
+  shift: Integer;
+  r: UInt64;
+begin
+  if a.ex < 1 then begin Result := 0; Exit; end;
+  // C uses shift (63 - ex_C); our ex is C-ex + 1, so shift = 64 - our_ex.
+  shift := Integer(64 - a.ex);
+  if shift < 0 then shift := 0;
+  if shift >= 64 then r := 0
+  else r := a.hi shr shift;
+  if a.sgn <> 0 then Result := -Int64(r) else Result := Int64(r);
 end;
 
 // Ported from mul_dint_2 in core-math/src/binary64/log/dint.h.

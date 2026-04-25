@@ -204,6 +204,59 @@ begin
         Format('r2=%x want 0x8000000000000000', [r.r2]));
 end;
 
+// Sanity checks for the new dint helpers added for pow (5.02a):
+// MulDInt11, AddDInt11, DIntToI, DINT_M_ONE, DINT_LOG2, DINT_LOG2_INV.
+procedure TestDIntPowHelpers;
+var r, two, half: TDInt64;
+begin
+  WriteLn('-- TestDIntPowHelpers --');
+
+  // 1*1 = 1
+  MulDInt11(r, DINT_ONE, DINT_ONE);
+  Check((r.hi = UInt64($8000000000000000)) and (r.lo = 0) and (r.ex = 1) and
+        (r.sgn = 0), 'MulDInt11(1,1) != 1');
+
+  // 1 + 1 = 2 (hi unchanged, ex=2)
+  AddDInt11(r, DINT_ONE, DINT_ONE);
+  Check((r.hi = UInt64($8000000000000000)) and (r.ex = 2) and (r.sgn = 0),
+        Format('AddDInt11(1,1) hi=%x ex=%d', [r.hi, r.ex]));
+
+  // 1 + (-1) = 0
+  AddDInt11(r, DINT_ONE, DINT_M_ONE);
+  Check((r.hi = 0) and (r.lo = 0), 'AddDInt11(1,-1) != 0');
+
+  // 2 + (-1) = 1 (Sterbenz)
+  two := DINT_ONE; two.ex := 2;
+  AddDInt11(r, two, DINT_M_ONE);
+  Check((r.hi = UInt64($8000000000000000)) and (r.ex = 1) and (r.sgn = 0),
+        Format('AddDInt11(2,-1) hi=%x ex=%d sgn=%d', [r.hi, r.ex, r.sgn]));
+
+  // 1 + 0.5 = 1.5  (0.5 has hi=$8000.., ex=0)
+  half := DINT_ONE; half.ex := 0;
+  AddDInt11(r, DINT_ONE, half);
+  Check((r.hi = UInt64($C000000000000000)) and (r.ex = 1) and (r.sgn = 0),
+        Format('AddDInt11(1,0.5) hi=%x ex=%d', [r.hi, r.ex]));
+
+  // DIntToI: trunc-toward-zero
+  Check(DIntToI(DINT_ONE) = 1, 'DIntToI(1) != 1');
+  Check(DIntToI(DINT_M_ONE) = -1, 'DIntToI(-1) != -1');
+  Check(DIntToI(half) = 0, 'DIntToI(0.5) != 0');
+  Check(DIntToI(DINT_ZERO) = 0, 'DIntToI(0) != 0');
+  // 2.5: hi=$A000.., ex=2 -> trunc(2.5) = 2
+  r := DINT_ONE; r.hi := UInt64($A000000000000000); r.ex := 2;
+  Check(DIntToI(r) = 2, Format('DIntToI(2.5)=%d want 2', [DIntToI(r)]));
+  // -3: hi=$C000.., ex=2, sgn=1 -> -3
+  r := DINT_ONE; r.hi := UInt64($C000000000000000); r.ex := 2; r.sgn := 1;
+  Check(DIntToI(r) = -3, Format('DIntToI(-3)=%d', [DIntToI(r)]));
+
+  // LOG2 * LOG2_INV ~= 2^12 (LOG2_INV is truncated, so product is slightly
+  // below 2^12; in normalised dint that means hi just below 2^64 with ex=12,
+  // not ex=13 with hi=2^63).
+  MulDInt11(r, DINT_LOG2, DINT_LOG2_INV);
+  Check((r.ex = 12) and (r.sgn = 0) and ((r.hi shr 60) >= $F),
+        Format('LOG2*LOG2_INV ex=%d hi=%x', [r.ex, r.hi]));
+end;
+
 begin
   TestCmp;
   TestAdd;
@@ -211,6 +264,7 @@ begin
   TestONEPlusMONE;
   TestLog2Identity;
   TestLowLimbMul;
+  TestDIntPowHelpers;
   WriteLn;
   if fail = 0 then WriteLn('ALL OK')
   else WriteLn('FAILURES: ', fail);
