@@ -351,7 +351,6 @@ end;
 function pcr_tan(x: Double): Double;
 const
   cTanTinyBits: UInt64 = $3E4D12ED0AF1A27E;
-  cTan1pm54:    Tb64u64 = (u: $3C90000000000000); // 0x1p-54
 var
   t: Tb64u64;
   e: UInt64;

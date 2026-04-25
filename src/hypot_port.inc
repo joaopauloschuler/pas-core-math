@@ -17,7 +17,6 @@ const
   cHypAidrHi:  UInt64 = $3C9FFFFFFFFFFF80;  // upper edge for accurate dispatch
   cHypAidrMid: UInt64 = $3C90000000000000;  // mid base for ((aidr-base+16)>>5)
   cHypInfMant: UInt64 = $7FF0000000000000;  // 0x7ff << 52
-  cHypTwo52:   UInt64 = UInt64(1) shl 52;
   cHypTwo53:   UInt64 = UInt64(1) shl 53;
   cHyp1pM27:   Tb64u64 = (u: $3E40000000000000);  // 0x1p-27
   cHyp1pM54:   Tb64u64 = (u: $3C90000000000000);  // 0x1p-54

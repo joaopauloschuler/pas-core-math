@@ -6,7 +6,6 @@ const
   cAsinpi_INV_PI_L:    UInt64  = QWord($FE13ABE8FA9A6EE0);
   cAsinpi_ONE_OVER_PI_H: Tb64u64 = (u: $3FD45F306DC9C883);
   cAsinpi_ONE_OVER_PI_L: Tb64u64 = (u: QWord($BC76B01EC5417056));
-  cAsinpi_X1:          Tb64u64 = (u: $3FEFFF8133AA33E4);
   cAsinpi_Small_C1H:   Tb64u64 = (u: $3FD45F306DC9C883);
   cAsinpi_Small_C1L:   Tb64u64 = (u: QWord($BC76B01EC5417057));
   cAsinpi_Small_C3:    Tb64u64 = (u: $3FAB2995E7B7B606);

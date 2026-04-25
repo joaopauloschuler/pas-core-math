@@ -14,7 +14,6 @@ const
   // sin-specific threshold: for |x| <= 0x1.7137449123ef6p-26, sin(x) rounds to
   // fma(x, -2^-54, x). Differs from cos's 2^-27 threshold.
   cSinTinyBits: UInt64 = $3E57137449123EF6;
-  cSinNeg1pm54: Tb64u64 = (u: QWord($BC90000000000000)); // -0x1p-54
 
   // sin_accurate exceptions (ported from sin.c:2009). Only 2 entries.
   cSinExceptionsX: array[0..1] of Tb64u64 = (

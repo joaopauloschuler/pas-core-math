@@ -49,7 +49,6 @@ const
   cErfcSterbenzTh: Tb64u64 = (u:$3FDE861FBB24C00A); // 0x1.e861fbb24c00ap-2
   cErfcAddErr_104: Tb64u64 = (u:$3990000000000000); // 0x1.4p-104
   cErfcAddErr_102: Tb64u64 = (u:$39A0000000000000); // 0x1.4p-102
-  cErfcThr1Fast:   Tb64u64 = (u:$4001713786D9C7C0); // 0x1.713786d9c7c08p+1 (rounded; runtime const used)
   cErfcSatTinyBd:  Tb64u64 = (u:$3C8C5BF891B4EF6A); // 0x1.c5bf891b4ef6ap-54
   cErfcSatTinyPos: Tb64u64 = (u:$3C7C5BF891B4EF6A); // 0x1.c5bf891b4ef6ap-55
   cErfcP54:        Tb64u64 = (u:$3C90000000000000); //  0x1p-54

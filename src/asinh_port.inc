@@ -87,7 +87,6 @@ const
   cAsinhBr_VTiny:  UInt64 = $3F30000000000000; // 0x1p-12
   cAsinhBr_Small:  UInt64 = $3F93000000000000; // 0x1.3p-6
   cAsinhBr_Med:    UInt64 = $3FBB000000000000; // 0x1.bp-4
-  cAsinhBr_Half:   UInt64 = $3FD0000000000000; // 0x1p-2
   cAsinhBr_One:    UInt64 = $3FF0000000000000; // 0x1p+0
   cAsinhBr_P26:    UInt64 = $4190000000000000; // 0x1p+26
   cAsinhBr_P52:    UInt64 = $4330000000000000; // 0x1p+52

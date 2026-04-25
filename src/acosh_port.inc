@@ -363,7 +363,7 @@ var
   L0, L1, L2: Double;
   t12, t34, th, tl, dh, dl, shm, slm: Double;
   xh, xl: Double;
-  xh2, xl2, sh_: Double;
+ xh2, sh_: Double;
   sh2, sl2: Double;
   v0, v1, v2, vtmp: Double;
   er, de: UInt64;
@@ -484,7 +484,7 @@ end;
 
 function pcr_acosh(x: Double): Double;
 var
-  ix, t, v_u: Tb64u64;
+ ix, t: Tb64u64;
   aix, iuint, jshift: UInt64;
   off: Int32;
   z, iz, zt, sh, sl: Double;

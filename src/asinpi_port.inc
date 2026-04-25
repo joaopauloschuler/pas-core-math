@@ -417,7 +417,7 @@ var
   e, ss, sc, indx, ce, ixe, nz: Int32;
   m: UInt64;
   xsign, sm, cm, ixm, d, v2u, v3u: UInt64;
-  fi, m1, m2, fpu, fpd, tmp, V128: TUInt128;
+ fi, fpu, fpd, tmp, V128: TUInt128;
   xx, c0, c2, x2, ax: Double;
   Smh, Cmh, v_i, v2_i, v3_i: Int64;
   Vh, Vl: UInt64;

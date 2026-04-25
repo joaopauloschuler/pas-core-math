@@ -185,29 +185,29 @@ const
   DINT_ZERO: TDInt64 = (hi: 0; lo: 0; ex: -1076; sgn: 0);
   // hi = $8000000000000000 = 2^63 (MSB set, normalised 1.0 in dint format)
   // ex=1: value = hi/2^64 * 2^ex = (2^63/2^64) * 2^1 = 0.5 * 2 = 1.0
-  DINT_ONE:  TDInt64 = (hi: $8000000000000000; lo: 0; ex: 1; sgn: 0);
+  DINT_ONE:  TDInt64 = (hi: QWord($8000000000000000); lo: 0; ex: 1; sgn: 0);
   // -1 (used by pow log_2 / log_3); same magnitude as DINT_ONE, sgn=1.
-  DINT_M_ONE: TDInt64 = (hi: $8000000000000000; lo: 0; ex: 1; sgn: 1);
+  DINT_M_ONE: TDInt64 = (hi: QWord($8000000000000000); lo: 0; ex: 1; sgn: 1);
   // log(2) to absolute error < 2^-129.97 (ex shifted by +1 vs C convention).
-  DINT_LOG2: TDInt64 = (hi: $B17217F7D1CF79AB; lo: $C9E3B39803F2F6AF;
+  DINT_LOG2: TDInt64 = (hi: QWord($B17217F7D1CF79AB); lo: QWord($C9E3B39803F2F6AF);
                         ex: 0; sgn: 0);
   // 2^12/log(2) to absolute error < 2^-52.96 (ex shifted by +1 vs C).
-  DINT_LOG2_INV: TDInt64 = (hi: $B8AA3B295C17F0BC; lo: 0; ex: 13; sgn: 0);
+  DINT_LOG2_INV: TDInt64 = (hi: QWord($B8AA3B295C17F0BC); lo: 0; ex: 13; sgn: 0);
 
   // Sentinel TInt64 constants (see atan2/tint.h ZERO / ONE / PI / PI2)
   TINT_ZERO: TInt64 = (m: 0; h: 0; l: 0; ex: -1076; sgn: 0);
-  TINT_ONE:  TInt64 = (m: 0; h: $8000000000000000; l: 0; ex: 1; sgn: 0);
+  TINT_ONE:  TInt64 = (m: 0; h: QWord($8000000000000000); l: 0; ex: 1; sgn: 0);
   // pi to error < 2^-196.96
-  TINT_PI:   TInt64 = (m: $C4C6628B80DC1CD1; h: $C90FDAA22168C234;
+  TINT_PI:   TInt64 = (m: QWord($C4C6628B80DC1CD1); h: QWord($C90FDAA22168C234);
                        l: $29024E088A67CC74; ex: 2; sgn: 0);
   // pi/2 to error < 2^-197.96
-  TINT_PI2:  TInt64 = (m: $C4C6628B80DC1CD1; h: $C90FDAA22168C234;
+  TINT_PI2:  TInt64 = (m: QWord($C4C6628B80DC1CD1); h: QWord($C90FDAA22168C234);
                        l: $29024E088A67CC74; ex: 1; sgn: 0);
   // 1/2 (used by atan2pi)
-  TINT_ONE_HALF: TInt64 = (m: 0; h: $8000000000000000; l: 0; ex: 0; sgn: 0);
+  TINT_ONE_HALF: TInt64 = (m: 0; h: QWord($8000000000000000); l: 0; ex: 0; sgn: 0);
   // 1/pi to relative error < 2^-198.59 (used by atan2pi)
-  TINT_ONE_OVER_PI: TInt64 = (m: $FC2757D1F534DDC0; h: $A2F9836E4E441529;
-                              l: $DB6295993C439042; ex: -1; sgn: 0);
+  TINT_ONE_OVER_PI: TInt64 = (m: QWord($FC2757D1F534DDC0); h: QWord($A2F9836E4E441529);
+                              l: QWord($DB6295993C439042); ex: -1; sgn: 0);
 
   // Helpers used inside InvTInt
   cTI_1pm1022: Tb64u64 = (u: $0010000000000000); // 0x1p-1022 (smallest normal)
@@ -216,14 +216,14 @@ const
   // Sentinel TQInt64 constants (see pow/qint.h ZERO_Q / ONE_Q / M_ONE_Q / LOG2_Q / LOG2_INV_Q)
   QINT_ZERO: TQInt64 = (r0: 0; r1: 0; r2: 0; r3: 0; ex: 0; sgn: 0);
   // r0 = $8000... (MSB set, value 1.0 exactly)
-  QINT_ONE:  TQInt64 = (r0: $8000000000000000; r1: 0; r2: 0; r3: 0; ex: 0; sgn: 0);
-  QINT_M_ONE: TQInt64 = (r0: $8000000000000000; r1: 0; r2: 0; r3: 0; ex: 0; sgn: 1);
+  QINT_ONE:  TQInt64 = (r0: QWord($8000000000000000); r1: 0; r2: 0; r3: 0; ex: 0; sgn: 0);
+  QINT_M_ONE: TQInt64 = (r0: QWord($8000000000000000); r1: 0; r2: 0; r3: 0; ex: 0; sgn: 1);
   // log(2) to absolute error < 2^-256.14
-  QINT_LOG2: TQInt64 = (r0: $B17217F7D1CF79AB; r1: $C9E3B39803F2F6AF;
-                        r2: $40F343267298B62D; r3: $8A0D175B8BAAFA2B;
+  QINT_LOG2: TQInt64 = (r0: QWord($B17217F7D1CF79AB); r1: QWord($C9E3B39803F2F6AF);
+                        r2: $40F343267298B62D; r3: QWord($8A0D175B8BAAFA2B);
                         ex: -1; sgn: 0);
   // 2^12/log(2) to absolute error < 2^-52.96
-  QINT_LOG2_INV: TQInt64 = (r0: $B8AA3B295C17F0BC; r1: 0; r2: 0; r3: 0;
+  QINT_LOG2_INV: TQInt64 = (r0: QWord($B8AA3B295C17F0BC); r1: 0; r2: 0; r3: 0;
                             ex: 12; sgn: 0);
 
   // Hex-float constants used inside DToD / subnormalise_dint
@@ -1533,7 +1533,7 @@ begin
     cy := AddU128Cy(ch, ah, bh);
     if AddU128Cy(cl, al, bl) <> 0 then begin
       // ++ch and check whether ch wrapped to zero (which would imply another carry)
-      if (ch.lo = $FFFFFFFFFFFFFFFF) and (ch.hi = $FFFFFFFFFFFFFFFF) then begin
+      if (ch.lo = QWord($FFFFFFFFFFFFFFFF)) and (ch.hi = QWord($FFFFFFFFFFFFFFFF)) then begin
         ch.lo := 0; ch.hi := 0;
         Inc(cy);
       end else begin

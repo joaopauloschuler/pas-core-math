@@ -12,7 +12,6 @@ const
   cLgammaLn2M3:    Tb64u64 = (u:$3D2EF35793C76000); // 0x1.ef35793c76p-45
   cLgammaLn2L3:    Tb64u64 = (u:$3B7CC01F97B57A08); // 0x1.cc01f97b57a08p-87
   cLgammaP100:     Tb64u64 = (u:$39B0000000000000); // 2^-100
-  cLgammaP54:      Tb64u64 = (u:$3C90000000000000); // 2^-54
   cLgammaP52:      Tb64u64 = (u:$3CB0000000000000); // 2^-52
   cLgammaP26:      Tb64u64 = (u:$3E50000000000000); // 2^-26
   cLgammaP120:     Tb64u64 = (u:$4770000000000000); // 2^120

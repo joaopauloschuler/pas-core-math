@@ -27,7 +27,6 @@ const
   cExp10m1ErrMain:    Tb64u64 = (u:$3B77A00000000000); // 0x1.7ap-72
 
   // K=4194304 clamp (max value of round(x*INVLOG2_10) in valid x range).
-  cExp10m1Kmax:       Int64 = 4194304;
 
   // Subnormal exception magic constants (cr_exp10m1, |x| <= 2^-104 path).
   cExp10m1Sub1Mag:    Tb64u64 = (u:$000086C73059343C);   // |x| == 0x0.086c73059343cp-1022

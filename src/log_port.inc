@@ -93,7 +93,7 @@ procedure LogTwo(out r: TDInt64; var x: TDInt64);
 var
   E: Int64;
   i: UInt32;
-  z, p, prod: TDInt64;
+ z, p: TDInt64;
 begin
   // x.ex in pascoremath convention; shift by -1 conceptually, work in log.c idx
   // The C code: E = x->ex; i = x->hi >> 55;

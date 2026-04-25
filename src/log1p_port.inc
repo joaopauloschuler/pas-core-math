@@ -79,7 +79,6 @@ var
   t12, t34, th, tl, dh, dl, sh2, sl2: Double;
   xh, xl, ddh, ddl: Double;
   ch_, cl_, th_, tl_: Double;
-  res: Double;
   w: Tb64u64;
 begin
   ix.f := x;

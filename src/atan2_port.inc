@@ -25,10 +25,8 @@ const
   cAtan2PiL:    Tb64u64 = (u: $3CA1A62633145C07); // 0x1.1a62633145c07p-53
   cAtan2Pi2H:   Tb64u64 = (u: $3FF921FB54442D18); // 0x1.921fb54442d18p+0
   cAtan2Pi2L:   Tb64u64 = (u: $3C91A62633145C07); // 0x1.1a62633145c07p-54
-  cAtan2P54Pos: Tb64u64 = (u: $3C90000000000000); //  0x1p-54
   cAtan2P54Neg: Tb64u64 = (u: QWord($BC90000000000000)); // -0x1p-54
   cAtan2P105:   Tb64u64 = (u: $4680000000000000); //  0x1p+105
-  cAtan2PMin22: Tb64u64 = (u: $0010000000000000); //  0x1p-1022 (smallest normal)
   cAtan2PM915:  Tb64u64 = (u: $44C0000000000000); //  0x1p-915
   cAtan2P968:   Tb64u64 = (u: $7C70000000000000); //  0x1p+968
   cAtan2PM968:  Tb64u64 = (u: $0370000000000000); //  0x1p-968 (threshold const)
@@ -273,7 +271,7 @@ function pcr_atan2_pas(y0, x0: Double): Double;
 const
   MASK = UInt64($7FFFFFFFFFFFFFFF);
 var
-  iy, ix, sgn, jj, ut: Tb64u64;
+ iy, ix, sgn, jj: Tb64u64;
   aiy, aix, sy, sx, GT, dxy, kw: UInt64;
   jt: Int64;
   ax, ay, x, y, fh, fl, t0, zn, zd, z, z2, dz, eps, rh, rl, lb, ub: Double;

@@ -1843,7 +1843,6 @@ var
   aix: UInt64;
   i1, i0: Int32;
   ie: Int64;
-  sh_sum, d_sum, sl_sum: Double;
 begin
   ax := Abs(x);
   ix.f := ax;
@@ -3215,7 +3214,7 @@ end;
 function Exp2Refine(x: Double): Double;
 var
   ix, ixs, v: Tb64u64;
-  sx, fx, z, t, th, tl, t0h, t0l, t1h, t1l, fh, fl, e, ch_v, cl_v: Double;
+ sx, fx, z, th, tl, t0h, t0l, t1h, t1l, fh, fl, e, ch_v, cl_v: Double;
   k, i0, i1, ie: Int64;
   i: Int32;
 begin

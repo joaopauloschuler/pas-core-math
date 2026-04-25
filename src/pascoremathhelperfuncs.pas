@@ -237,9 +237,9 @@ const
   EXP_MASK_D  : UInt64 = $7FF0000000000000;
   MANT_MASK_D : UInt64 = $000FFFFFFFFFFFFF;
   IMPLICIT_D  : UInt64 = $0010000000000000;
-  SIGN_MASK_D : UInt64 = $8000000000000000;
+  SIGN_MASK_D : UInt64 = QWord($8000000000000000);
 var
-  va, vb, vc, vr: Tb64u64;
+ va, vb, vc: Tb64u64;
   ma, mb, mc: UInt64;
   ea, eb, ec, ep: Int32;
   sa, sb, sc, sp, sr: Boolean;

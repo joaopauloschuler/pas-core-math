@@ -192,7 +192,6 @@ end;
 procedure TestSinCos;
 var
   i: Int32;
-  bits: UInt64;
   v: Tb64u64;
   cs, cc, ps, pc: Double;
   mismatches, tested: Int64;
