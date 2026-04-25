@@ -33,6 +33,7 @@ function pcr_cosh(x: Double): Double;
 function pcr_sinh(x: Double): Double;
 function pcr_log1p(x: Double): Double;
 function pcr_log(x: Double): Double;
+function pcr_log10(x: Double): Double;
 function pcr_erf(x: Double): Double;
 procedure pcr_sincos(x: Double; out s, c: Double);
 
@@ -60,7 +61,7 @@ function  pcr_exp2m1(x: Double): Double; inline;
 // pcr_expm1 declared in ported section above
 function  pcr_lgamma(x: Double): Double; inline;
 // pcr_log declared in ported section above
-function  pcr_log10(x: Double): Double; inline;
+// pcr_log10 declared in ported section above
 function  pcr_log10p1(x: Double): Double; inline;
 // pcr_log1p declared in ported section above
 // pcr_log2 declared in ported section above
@@ -4068,6 +4069,7 @@ end;
 {$I asinh_port.inc}
 {$I log1p_port.inc}
 {$I log_port.inc}
+{$I log10_port.inc}
 {$I erf_port.inc}
 
 // ---------------------------------------------------------------------------
@@ -4097,7 +4099,7 @@ function  pcr_exp2m1(x: Double): Double;  begin Result := cr_exp2m1(x);  end;
 // pcr_expm1 — ported above
 function  pcr_lgamma(x: Double): Double;  begin Result := cr_lgamma(x);  end;
 // pcr_log — ported above
-function  pcr_log10(x: Double): Double;   begin Result := cr_log10(x);   end;
+// pcr_log10 — ported above
 function  pcr_log10p1(x: Double): Double; begin Result := cr_log10p1(x); end;
 // pcr_log1p — ported above
 // pcr_log2 — ported above

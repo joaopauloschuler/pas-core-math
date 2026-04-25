@@ -957,8 +957,15 @@ here were wrong.)
     - Subnormal input branch: replicated C's `v.f *= 0x1p52` scaling exactly; pcr_log handles +/-0 → -Inf via `1.0 / -0.0`, negative → NaN.
 - [ ] **2.11** `atan2pi` — 866 lines  *(**TInt64 (192-bit)** + dd + fenv, bivariate — NOT pure dd)*
   - **Dependency discovery (2026-04-24):** same tint_t dependency as 2.07 atan2 (shares tint.h). Port 2.07 first (or tint infrastructure separately) before attempting.
-- [ ] **2.12** `log10`   — 882 lines  *(**dint** + clzll + dd)*
-  - **Now unblocked by 2.10:** dint.h infrastructure is shared (same `_INVERSE_2`, similar `_LOG_INV_2` rescaled by 1/log(10), similar `P_2`). Reuse `MulDIntInt` from pascoremathtypes; reuse fast-path `_INVERSE`/`_LOG_INV` table layout. log10's accurate path multiplies the result by `LOG10_INV = 1/log(10)` (or computes `log10(2) * E + log10(y)`). Generator pattern: copy `tmp/log_gen.py` → `tmp/log10_gen.py` and adjust constant names + add `LOG10` dint constant.
+- [X] **2.12** `log10`   — 882 lines  *(**dint** + clzll + dd)*
+  - **Done:** ported as `src/log10_port.inc`, fully reusing `log_const.inc` tables.
+    log10 is `log` + final `pcr_d_mul` by `(ONE_OVER_LOG10_H, ONE_OVER_LOG10_L)` on
+    the fast path, and `MulDInt(Y, ONE_OVER_LOG10, Y)` after `LogTwo` on the
+    accurate path. Added a 32-entry `cLog10Pow10` perfect-hash table so `x = 10^n`
+    for `0 <= n <= 22` returns `n` exactly with no spurious inexact. The
+    `ONE_OVER_LOG10` dint constant is stored with `ex=-1` (pascoremath
+    convention; C `dint.h` uses `ex=-2`). Tests: 1,000,016 random samples vs
+    `cr_log10` — 0 mismatches. No new generator script needed.
 
 ---
 
