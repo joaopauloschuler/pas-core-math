@@ -45,6 +45,19 @@ type
     sgn:            Byte;
   end;
 
+  // 192-bit significand type used by atan2 / atan2pi (Phase 2.07 / 2.11).
+  // Field order matches the little-endian C union in atan2/tint.h:
+  //   m at offset 0 (low 64 of u128 _h), h at offset 8 (high 64 of u128 _h),
+  //   l at offset 16 (= u64 _l). Value = (-1)^sgn * (h/2^64 + m/2^128 + l/2^192) * 2^ex.
+  // h is the most significant limb; when non-zero, MSB of h is 1 (normalized).
+  TInt64 = record
+    m:   UInt64;   // middle 64 bits of significand
+    h:   UInt64;   // high 64 bits of significand (MSB always 1 when non-zero)
+    l:   UInt64;   // low 64 bits of significand
+    ex:  Int64;    // binary exponent
+    sgn: UInt64;   // sign: 0 = positive, 1 = negative
+  end;
+
 operator +(const a: TUInt128; b: UInt64): TUInt128; inline;
 
 procedure AddU128(out r: TUInt128; const a, b: TUInt128); inline;
@@ -81,6 +94,32 @@ procedure DIntFromD(out a: TDInt64; b: Double);
 // Convert TDInt64 to Double (modifies a via subnormalise; pass a copy if const needed)
 function DToD(var a: TDInt64): Double;
 
+// ------- tint64_t (192-bit) arithmetic -------
+// All operations ported faithfully from core-math/src/binary64/atan2/tint.h.
+
+procedure CpTInt(out r: TInt64; const a: TInt64); inline;
+function TIntZeroP(const a: TInt64): Boolean; inline;
+function CmpTIntAbs(const a, b: TInt64): Integer;
+// Right shift the significand (h, m, l) by k bits. Does not touch ex/sgn.
+procedure RShiftTInt(var r: TInt64; const b: TInt64; k: Integer);
+// Left shift the significand (h, m, l) by k bits. Does not touch ex/sgn.
+procedure LShiftTInt(var r: TInt64; const b: TInt64; k: Integer);
+// r := a + b   (error bounded by 2 ulps in 192-bit)
+procedure AddTInt(out r: TInt64; const a, b: TInt64);
+// r := a * b   (error bounded by 10 ulps in 192-bit; alias-safe)
+procedure MulTInt(out r: TInt64; const a, b: TInt64);
+// Convert Double to TInt64 (exact for finite, non-NaN inputs; defined for 0)
+procedure TIntFromD(out a: TInt64; b: Double);
+// Convert TInt64 to Double with directed rounding driven by err (in ulps of l).
+// y, x are pass-through inputs used only for the worst-case panic message.
+function TIntToD(const a: TInt64; err: UInt64; y, x: Double): Double;
+// r := 1 / A   (relative error < 2^-103.9; A must be non-zero)
+procedure InvTInt(out r: TInt64; const A: TInt64);
+// r := b / a   (relative error < 2^-185.53)
+procedure DivTInt(out r: TInt64; const b, a: TInt64);
+// Convenience: r := bd / ad, both Doubles
+procedure DivTIntD(out r: TInt64; bd, ad: Double);
+
 const
   cNaNSingle: Single = 0.0/0.0;       // x86 indefinite: 0xFFC00000 (negative quiet NaN)
   cNaNDouble: Double = 0.0/0.0;
@@ -98,6 +137,20 @@ const
   // hi = $8000000000000000 = 2^63 (MSB set, normalised 1.0 in dint format)
   // ex=1: value = hi/2^64 * 2^ex = (2^63/2^64) * 2^1 = 0.5 * 2 = 1.0
   DINT_ONE:  TDInt64 = (hi: $8000000000000000; lo: 0; ex: 1; sgn: 0);
+
+  // Sentinel TInt64 constants (see atan2/tint.h ZERO / ONE / PI / PI2)
+  TINT_ZERO: TInt64 = (m: 0; h: 0; l: 0; ex: -1076; sgn: 0);
+  TINT_ONE:  TInt64 = (m: 0; h: $8000000000000000; l: 0; ex: 1; sgn: 0);
+  // pi to error < 2^-196.96
+  TINT_PI:   TInt64 = (m: $C4C6628B80DC1CD1; h: $C90FDAA22168C234;
+                       l: $29024E088A67CC74; ex: 2; sgn: 0);
+  // pi/2 to error < 2^-197.96
+  TINT_PI2:  TInt64 = (m: $C4C6628B80DC1CD1; h: $C90FDAA22168C234;
+                       l: $29024E088A67CC74; ex: 1; sgn: 0);
+
+  // Helpers used inside InvTInt
+  cTI_1pm1022: Tb64u64 = (u: $0010000000000000); // 0x1p-1022 (smallest normal)
+  cTI_1p53:    Tb64u64 = (u: $4340000000000000); // 0x1p+53
 
   // Hex-float constants used inside DToD / subnormalise_dint
   cDTD_1pm53:    Tb64u64 = (u: $3CA0000000000000); // 0x1p-53
@@ -625,6 +678,430 @@ begin
   end;
 
   Result := ru.f * eu.f;
+end;
+
+// ---------------------------------------------------------------------------
+// TInt64 (192-bit) arithmetic — ported from core-math/src/binary64/atan2/tint.h
+// ---------------------------------------------------------------------------
+
+procedure CpTInt(out r: TInt64; const a: TInt64); inline;
+begin
+  r := a;
+end;
+
+function TIntZeroP(const a: TInt64): Boolean; inline;
+begin
+  Result := a.h = 0;
+end;
+
+function CmpTIntAbs(const a, b: TInt64): Integer;
+begin
+  if a.h = 0 then begin
+    if b.h = 0 then Result := 0 else Result := -1;
+    Exit;
+  end;
+  if b.h = 0 then begin Result := 1; Exit; end;
+  if a.ex > b.ex then begin Result := 1; Exit; end;
+  if a.ex < b.ex then begin Result := -1; Exit; end;
+  // same exponent: compare 192-bit significands as unsigned (h:m:l)
+  if a.h > b.h then Result := 1
+  else if a.h < b.h then Result := -1
+  else if a.m > b.m then Result := 1
+  else if a.m < b.m then Result := -1
+  else if a.l > b.l then Result := 1
+  else if a.l < b.l then Result := -1
+  else Result := 0;
+end;
+
+// Right shift only the (h, m, l) significand. Caller manages ex/sgn.
+procedure RShiftTInt(var r: TInt64; const b: TInt64; k: Integer);
+var bh, bm, bl: UInt64;
+begin
+  bh := b.h; bm := b.m; bl := b.l;
+  if k = 0 then begin r.h := bh; r.m := bm; r.l := bl; end
+  else if k < 64 then begin
+    r.h := bh shr k;
+    r.m := (bm shr k) or (bh shl (64 - k));
+    r.l := (bl shr k) or (bm shl (64 - k));
+  end
+  else if k = 64 then begin
+    r.h := 0;
+    r.m := bh;
+    r.l := bm;
+  end
+  else if k < 128 then begin
+    r.h := 0;
+    r.m := bh shr (k - 64);
+    r.l := (bm shr (k - 64)) or (bh shl (128 - k));
+  end
+  else if k < 192 then begin
+    r.h := 0;
+    r.m := 0;
+    r.l := bh shr (k - 128);
+  end
+  else begin
+    r.h := 0; r.m := 0; r.l := 0;
+  end;
+end;
+
+// Left shift only the (h, m, l) significand. Caller manages ex/sgn.
+procedure LShiftTInt(var r: TInt64; const b: TInt64; k: Integer);
+var bh, bm, bl: UInt64;
+begin
+  bh := b.h; bm := b.m; bl := b.l;
+  if k = 0 then begin r.h := bh; r.m := bm; r.l := bl; end
+  else if k < 64 then begin
+    r.h := (bh shl k) or (bm shr (64 - k));
+    r.m := (bm shl k) or (bl shr (64 - k));
+    r.l := bl shl k;
+  end
+  else if k = 64 then begin
+    r.h := bm;
+    r.m := bl;
+    r.l := 0;
+  end
+  else if k < 128 then begin
+    r.h := (bm shl (k - 64)) or (bl shr (128 - k));
+    r.m := bl shl (k - 64);
+    r.l := 0;
+  end
+  else if k < 192 then begin
+    r.h := bl shl (k - 128);
+    r.m := 0;
+    r.l := 0;
+  end
+  else begin
+    r.h := 0; r.m := 0; r.l := 0;
+  end;
+end;
+
+// Internal: 192-bit clz of (h:m:l) treated as unsigned.
+// Returns 0..192. Undefined-but-defined: returns 192 for the all-zero input.
+function clz192(h, m, l: UInt64): Integer; inline;
+begin
+  if h <> 0 then Result := clzll64(h)
+  else if m <> 0 then Result := 64 + clzll64(m)
+  else Result := 128 + clzll64(l);
+end;
+
+// Ported from add_tint in tint.h.
+procedure AddTInt(out r: TInt64; const a, b: TInt64);
+var
+  pa, pb, ptmp, t: TInt64;
+  sh: UInt64;
+  ex, ex1: Integer;
+  th, tm, tl: UInt64;
+  rl, cl, ch, borrow: UInt64;
+  pa_hu, t_hu, r_hu, cl_hu: TUInt128;
+  cmp: Integer;
+begin
+  pa := a; pb := b;  // local copies handle aliasing
+
+  cmp := CmpTIntAbs(pa, pb);
+  case cmp of
+    0:
+      begin
+        if (pa.sgn xor pb.sgn) <> 0 then begin
+          CpTInt(r, TINT_ZERO);
+          Exit;
+        end;
+        CpTInt(r, pa);
+        Inc(r.ex);
+        Exit;
+      end;
+    -1:
+      begin
+        ptmp := pa; pa := pb; pb := ptmp;  // swap so |pa| >= |pb|
+      end;
+  end;
+
+  // From here |pa| > |pb|, so pa.ex >= pb.ex
+  sh := UInt64(pa.ex - pb.ex);
+  // rshift writes only h/m/l; preserve t.ex and t.sgn (unused after).
+  t.ex := 0; t.sgn := 0;
+  if sh < 192 then RShiftTInt(t, pb, Integer(sh))
+  else begin t.h := 0; t.m := 0; t.l := 0; end;
+
+  if (pa.sgn xor pb.sgn) <> 0 then begin
+    // Subtract: t := pa - t (192-bit subtraction, no borrow out since |pa| > |pb|)
+    tl := pa.l - t.l;
+    borrow := UInt64(t.l > pa.l);
+    tm := pa.m - t.m - borrow;
+    // borrow out of the m subtraction: one if (pa.m < t.m) OR (pa.m == t.m and borrow)
+    if pa.m < t.m then borrow := 1
+    else if (pa.m = t.m) and (borrow = 1) then borrow := 1
+    else borrow := 0;
+    th := pa.h - t.h - borrow;
+    t.h := th; t.m := tm; t.l := tl;
+
+    ex := clz192(t.h, t.m, t.l);
+    if (ex <= 1) or (sh = 0) then begin
+      LShiftTInt(r, t, ex);
+      r.ex := pa.ex - ex;
+    end
+    else begin
+      // ex >= 2 and sh >= 1: redo with no neglected low bits of pb
+      // Shift t := pb << (ex - sh), r := pa << ex, then t := r - t.
+      LShiftTInt(t, pb, ex - Integer(sh));
+      LShiftTInt(r, pa, ex);
+      tl := r.l - t.l;
+      borrow := UInt64(t.l > r.l);
+      tm := r.m - t.m - borrow;
+      if r.m < t.m then borrow := 1
+      else if (r.m = t.m) and (borrow = 1) then borrow := 1
+      else borrow := 0;
+      th := r.h - t.h - borrow;
+      t.h := th; t.m := tm; t.l := tl;
+      ex1 := clz192(t.h, t.m, t.l);
+      LShiftTInt(r, t, ex1);
+      r.ex := pa.ex - (ex + ex1);
+    end;
+  end
+  else begin
+    // Same signs: 192-bit addition.  In C, _h is the high u128 (m,h pair); we
+    // use TUInt128 here for parity with the C's u128 add + overflow detection.
+    pa_hu.lo := pa.m; pa_hu.hi := pa.h;
+    t_hu.lo  := t.m;  t_hu.hi  := t.h;
+    rl := pa.l + t.l;
+    cl := UInt64(rl < pa.l);
+    AddU128(r_hu, pa_hu, t_hu);
+    // ch := (r_hu < pa_hu) as u128
+    if (r_hu.hi < pa_hu.hi) or
+       ((r_hu.hi = pa_hu.hi) and (r_hu.lo < pa_hu.lo)) then ch := 1
+    else ch := 0;
+    // r_hu += cl
+    cl_hu.lo := cl; cl_hu.hi := 0;
+    AddU128(r_hu, r_hu, cl_hu);
+    // overflow of r_hu when adding cl: result < cl as u128 ⇒ result.hi = 0 ∧ result.lo < cl
+    if (r_hu.hi = 0) and (r_hu.lo < cl) then Inc(ch);
+    if ch <> 0 then begin
+      // 193-bit overflow: shift result right by 1, insert ch=1 at MSB of h.
+      r.l := (r_hu.lo shl 63) or (rl shr 1);
+      r.m := (r_hu.hi shl 63) or (r_hu.lo shr 1);
+      r.h := (ch shl 63) or (r_hu.hi shr 1);
+      r.ex := pa.ex + 1;
+    end
+    else begin
+      r.l := rl;
+      r.m := r_hu.lo;
+      r.h := r_hu.hi;
+      r.ex := pa.ex;
+    end;
+  end;
+  r.sgn := pa.sgn;
+end;
+
+// Ported from mul_tint in tint.h.
+procedure MulTInt(out r: TInt64; const a, b: TInt64);
+var
+  ah, am, al, bh, bm, bl: UInt64;
+  rh, rm1, rm2, rl1, rl2, rl3: TUInt128;
+  rsum: TUInt128;
+  rh_v, rm_v, rl_v: UInt64;
+  hh, lo, cm: UInt64;
+  rex_a, rex_b: Int64;
+  rsgn: UInt64;
+begin
+  rex_a := a.ex; rex_b := b.ex;
+  rsgn := a.sgn xor b.sgn;
+  ah := a.h; am := a.m; al := a.l;
+  bh := b.h; bm := b.m; bl := b.l;
+
+  rh  := Mulu64u64(ah, bh);
+  rm1 := Mulu64u64(ah, bm);
+  rm2 := Mulu64u64(am, bh);
+  rl1 := Mulu64u64(ah, bl);
+  rl2 := Mulu64u64(am, bm);
+  rl3 := Mulu64u64(al, bh);
+
+  rh_v := rh.hi;
+  rm_v := rh.lo;
+  rl_v := rm1.lo;
+
+  // Accumulate rm1's high part into rm_v (carry to rh_v)
+  hh := rm1.hi;
+  rm_v := rm_v + hh;
+  if rm_v < hh then Inc(rh_v);
+
+  // Accumulate rm2 (lo into rl_v with carry-out cm; hi into rm_v)
+  lo := rm2.lo;
+  hh := rm2.hi;
+  rl_v := rl_v + lo;
+  cm := UInt64(rl_v < lo);
+  rm_v := rm_v + hh;
+  if rm_v < hh then Inc(rh_v);
+
+  // Accumulate (rl1.hi + rl2.hi + rl3.hi) into (rl_v, cm)
+  rsum.lo := rl1.hi; rsum.hi := 0;
+  rsum := rsum + rl2.hi;
+  rsum := rsum + rl3.hi;
+  lo := rsum.lo;
+  cm := cm + rsum.hi;
+  rl_v := rl_v + lo;
+  if rl_v < lo then Inc(cm);
+
+  // Accumulate cm into rm_v (carry to rh_v)
+  rm_v := rm_v + cm;
+  if rm_v < cm then Inc(rh_v);
+
+  r.ex := rex_a + rex_b;
+  r.sgn := rsgn;
+  if (rh_v shr 63) = 0 then begin
+    // Normalize: shift left 1
+    rh_v := (rh_v shl 1) or (rm_v shr 63);
+    rm_v := (rm_v shl 1) or (rl_v shr 63);
+    rl_v := rl_v shl 1;
+    Dec(r.ex);
+  end;
+  r.h := rh_v; r.m := rm_v; r.l := rl_v;
+end;
+
+// Ported from tint_fromd in tint.h. Defined for 0 (yields h=m=l=0).
+procedure TIntFromD(out a: TInt64; b: Double);
+var
+  u: Tb64u64;
+  ax: UInt64;
+  e: Int64;
+  cnt: Integer;
+begin
+  u.f := b;
+  a.sgn := u.u shr 63;
+  ax := u.u and UInt64($7FFFFFFFFFFFFFFF);
+  e := Int64(ax shr 52);
+  if e <> 0 then begin
+    a.ex := e - $3FE;
+    a.h := (UInt64(1) shl 63) or (ax shl 11);
+  end
+  else begin
+    cnt := clzll64(ax);
+    a.ex := -$3F2 - cnt;
+    if cnt < 64 then a.h := ax shl cnt else a.h := 0;
+  end;
+  a.m := 0; a.l := 0;
+end;
+
+// Ported from tint_tod in tint.h. Calls Math.Ldexp for the final exponent fold.
+function TIntToD(const a: TInt64; err: UInt64; y, x: Double): Double;
+const
+  S: array[0..1] of Double = (1.0, -1.0);
+var
+  hh, mm, ll, low, notmm, notll: UInt64;
+  ex_val: Int64;
+  sh: Integer;
+  hf, lf, sf: Double;
+  worst: Boolean;
+  mid: Boolean;
+begin
+  // Defined extension over the C: zero significand returns +/-0.0 cleanly.
+  if (a.h = 0) and (a.m = 0) and (a.l = 0) then begin
+    if a.sgn <> 0 then Result := -0.0 else Result := 0.0;
+    Exit;
+  end;
+  if a.ex >= 1025 then begin
+    // overflow
+    if a.sgn <> 0 then Result := -1.7976931348623157e+308 - 1.7976931348623157e+308
+    else Result := 1.7976931348623157e+308 + 1.7976931348623157e+308;
+    Exit;
+  end;
+  if a.ex <= -1074 then begin
+    if a.ex < -1074 then begin
+      if a.sgn <> 0 then Result := -5e-324 * 0.5 else Result := 5e-324 * 0.5;
+      Exit;
+    end;
+    mid := (a.h = (UInt64(1) shl 63)) and (a.m = 0) and (a.l = 0);
+    if a.sgn <> 0 then begin
+      if mid then Result := -5e-324 * 0.5 else Result := -5e-324 * 0.75;
+    end
+    else begin
+      if mid then Result := 5e-324 * 0.5 else Result := 5e-324 * 0.75;
+    end;
+    Exit;
+  end;
+
+  hh := a.h; mm := a.m; ll := a.l;
+  ex_val := a.ex;
+  low := hh and $7FF;
+  notmm := not mm;
+  notll := not ll;
+
+  // Worst-case detection — we cannot determine correct rounding.
+  if (mm = 0) or (notmm = 0) then begin
+    worst :=
+      ((mm = 0) and ((low = 0) or (low = $400)) and (ll < err)) or
+      ((notmm = 0) and ((low = $3FF) or (low = $7FF)) and (notll < err));
+    if worst then begin
+      WriteLn('Unexpected worst-case found, please report to core-math@inria.fr:');
+      WriteLn('Worst-case of atan2 found: y,x=', y, ',', x);
+      Halt(1);
+    end;
+  end;
+
+  if ex_val <= -1022 then begin
+    sh := -1021 - ex_val;  // 1 <= sh <= 52
+    ll := (mm shl (64 - sh)) or (ll shr sh) or UInt64(ll > 0);
+    mm := (hh shl (64 - sh)) or (mm shr sh);
+    hh := hh shr sh;
+    low := hh and $7FF;
+    ex_val := ex_val + sh;
+  end;
+
+  hf := Double(hh shr 11);  // 53-bit significand value
+  if err = 0 then lf := 0.0
+  else if low < $400 then lf := 0.25
+  else if low > $400 then lf := 0.75
+  else begin
+    if (mm = 0) and (ll = 0) then lf := 0.5
+    else lf := 0.75;
+  end;
+
+  sf := S[a.sgn];
+  // h = fma(l, s, s*h) ; h *= 2^-52 ; result = h * 2^(ex_val-1)
+  hf := lf * sf + sf * hf;
+  hf := hf * 2.220446049250313e-16;  // 0x1p-52
+  Result := hf * Math.Ldexp(1.0, Integer(ex_val - 1));
+end;
+
+// Ported from inv_tint in tint.h.
+procedure InvTInt(out r: TInt64; const A: TInt64);
+var
+  q: TInt64;
+  ad: Double;
+  subnormal: Boolean;
+begin
+  ad := TIntToD(A, 0, 0.0, 0.0);
+  subnormal := Abs(ad) < cTI_1pm1022.f;
+  if subnormal then ad := ad * cTI_1p53.f;
+  TIntFromD(r, 1.0 / ad);
+  if subnormal then Inc(r.ex, 53);
+  MulTInt(q, A, r);
+  q.sgn := 1 - q.sgn;
+  AddTInt(q, TINT_ONE, q);
+  MulTInt(q, r, q);
+  AddTInt(r, r, q);
+end;
+
+// Ported from div_tint in tint.h.
+procedure DivTInt(out r: TInt64; const b, a: TInt64);
+var
+  Y, Z: TInt64;
+begin
+  InvTInt(Y, a);
+  MulTInt(r, Y, b);
+  MulTInt(Z, a, r);
+  Z.sgn := 1 - Z.sgn;
+  AddTInt(Z, b, Z);
+  MulTInt(Z, Y, Z);
+  AddTInt(r, r, Z);
+end;
+
+// Ported from div_tint_d in tint.h.
+procedure DivTIntD(out r: TInt64; bd, ad: Double);
+var
+  A, B: TInt64;
+begin
+  TIntFromD(A, ad);
+  TIntFromD(B, bd);
+  DivTInt(r, B, A);
 end;
 
 end.
