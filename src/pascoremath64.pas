@@ -79,7 +79,7 @@ function  pcr_lgamma(x: Double): Double; inline;
 // pcr_tanh declared in ported section above
 function  pcr_tanpi(x: Double): Double;
 function  pcr_tgamma(x: Double): Double; inline;
-function  pcr_atan2(y, x: Double): Double; inline;
+function  pcr_atan2(y, x: Double): Double;
 function  pcr_atan2pi(y, x: Double): Double; inline;
 function  pcr_hypot(x, y: Double): Double; inline;
 function  pcr_pow(x, y: Double): Double; inline;
@@ -4086,6 +4086,7 @@ end;
 {$I lgamma_port.inc}
 {$I log10p1_port.inc}
 {$I log2p1_port.inc}
+{$I atan2_port.inc}
 
 // ---------------------------------------------------------------------------
 // Stubs — delegate to C reference until each function is ported.
@@ -4125,7 +4126,7 @@ function  pcr_lgamma(x: Double): Double;  begin Result := pcr_lgamma_pas(x); end
 // pcr_tan — ported above
 // pcr_tanpi — ported above
 function  pcr_tgamma(x: Double): Double;  begin Result := pcr_tgamma_pas(x); end;
-function  pcr_atan2(y, x: Double): Double;  begin Result := cr_atan2(y, x);   end;
+function  pcr_atan2(y, x: Double): Double;  begin Result := pcr_atan2_pas(y, x); end;
 function  pcr_atan2pi(y, x: Double): Double; begin Result := cr_atan2pi(y, x); end;
 function  pcr_hypot(x, y: Double): Double;  begin Result := pcr_hypot_pas(x, y); end;
 function  pcr_pow(x, y: Double): Double;    begin Result := cr_pow(x, y);     end;
