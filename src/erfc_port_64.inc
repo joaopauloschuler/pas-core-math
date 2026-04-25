@@ -13,7 +13,7 @@
 // ===========================================================================
 
 const
-{$I erfc_const.inc}
+{$I erfc_const_64.inc}
   // exp_accurate constants
   cErfcInvLog2Acc: Tb64u64 = (u:$3FF71547652B82FE); // 0x1.71547652b82fep+0
   cErfcLog2Hacc:   Tb64u64 = (u:$3FE62E42FEFA39EF); // 0x1.62e42fefa39efp-1

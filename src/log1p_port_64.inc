@@ -6,7 +6,7 @@
 // ===========================================================================
 
 const
-{$I log1p_const.inc}
+{$I log1p_const_64.inc}
   cLog1pEpsFastSmall: Tb64u64 = (u:$3BF6000000000000); // 0x1.6p-64
   cLog1pEpsFastMid:   Tb64u64 = (u:$3CB9400000000000); // 0x1.94p-52
   cLog1pEpsFastBig:   Tb64u64 = (u:$3BEA000000000000); // 0x1.ap-65

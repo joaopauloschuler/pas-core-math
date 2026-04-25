@@ -4025,34 +4025,34 @@ begin
   Result := ExpAsLdexp(lb, ie);
 end;
 
-{$I cos_port.inc}
-{$I sin_port.inc}
-{$I tan_port.inc}
-{$I sincos_port.inc}
-{$I sinpi_port.inc}
-{$I atanpi_port.inc}
-{$I cosh_port.inc}
-{$I tanpi_port.inc}
-{$I sinh_port.inc}
-{$I acosh_port.inc}
-{$I atanh_port.inc}
-{$I asinh_port.inc}
-{$I log1p_port.inc}
-{$I log_port.inc}
-{$I log10_port.inc}
-{$I erf_port.inc}
-{$I exp2m1_port.inc}
-{$I exp10m1_port.inc}
-{$I acospi_port.inc}
-{$I tgamma_port.inc}
-{$I erfc_port.inc}
-{$I hypot_port.inc}
-{$I lgamma_port.inc}
-{$I log10p1_port.inc}
-{$I log2p1_port.inc}
-{$I atan2_port.inc}
-{$I atan2pi_port.inc}
-{$I asinpi_port.inc}
-{$I pow_port.inc}
+{$I cos_port_64.inc}
+{$I sin_port_64.inc}
+{$I tan_port_64.inc}
+{$I sincos_port_64.inc}
+{$I sinpi_port_64.inc}
+{$I atanpi_port_64.inc}
+{$I cosh_port_64.inc}
+{$I tanpi_port_64.inc}
+{$I sinh_port_64.inc}
+{$I acosh_port_64.inc}
+{$I atanh_port_64.inc}
+{$I asinh_port_64.inc}
+{$I log1p_port_64.inc}
+{$I log_port_64.inc}
+{$I log10_port_64.inc}
+{$I erf_port_64.inc}
+{$I exp2m1_port_64.inc}
+{$I exp10m1_port_64.inc}
+{$I acospi_port_64.inc}
+{$I tgamma_port_64.inc}
+{$I erfc_port_64.inc}
+{$I hypot_port_64.inc}
+{$I lgamma_port_64.inc}
+{$I log10p1_port_64.inc}
+{$I log2p1_port_64.inc}
+{$I atan2_port_64.inc}
+{$I atan2pi_port_64.inc}
+{$I asinpi_port_64.inc}
+{$I pow_port_64.inc}
 
 end.

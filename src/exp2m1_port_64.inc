@@ -26,7 +26,7 @@ const
   cExp2m1ErrTiny:    Tb64u64 = (u:$3BD4E00000000000); // 0x1.4ep-66
   cExp2m1ErrMain:    Tb64u64 = (u:$3B84200000000000); // 0x1.42p-71
 
-{$I exp2m1_const.inc}
+{$I exp2m1_const_64.inc}
 
 // --- Local primitives matching exp2m1.c (no extra normalization) ---
 

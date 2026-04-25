@@ -27,7 +27,7 @@ const
   // Constant DEGREE+LARGE+1 = 19 → index of polynomial leading "h" in T2 row.
   // Constant DEGREE+LARGE+2 = 20 → index of evaluation point xmid in T2 row.
 
-{$I acospi_const.inc}
+{$I acospi_const_64.inc}
 
 // Local d_mul matching acospi.c grouping exactly (order ah*bl first, then al*bh).
 // pcr_d_mul does al*bh first then ah*bl — a different FMA chain that drifts 1 ULP.

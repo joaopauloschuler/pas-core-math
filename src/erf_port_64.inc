@@ -6,7 +6,7 @@
 // ===========================================================================
 
 const
-{$I erf_const.inc}
+{$I erf_const_64.inc}
   cErfCH:    Tb64u64 = (u:$3FF20DD750429B6D); // 2/sqrt(pi) hi
   cErfCL:    Tb64u64 = (u:$3C71AE3A914FED80); // 2/sqrt(pi) lo
   cErfFastErr0: Tb64u64 = (u:$3BA7800000000000); // 0x1.78p-69

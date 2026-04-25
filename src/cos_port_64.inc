@@ -20,7 +20,7 @@
 // ===========================================================================
 
 // --- Auto-generated tables (tools/extract_cos_tables.py) ---------------------
-{$I cos_tables.inc}
+{$I cos_tables_64.inc}
 
 const
   // 1/(2pi) high/low double-double approximation used by reduce_fast for |x| < 2pi.

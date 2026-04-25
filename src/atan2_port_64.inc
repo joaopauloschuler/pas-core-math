@@ -17,7 +17,7 @@
 //     fma(t, -2^-54, t) just as the C does, so the round-to-nearest result
 //     is byte-identical.
 //
-{$I atan2_const.inc}
+{$I atan2_const_64.inc}
 
 // PI / PI/2 / PI/4 as double-double pairs (matches PI_H/PI_L etc.).
 const

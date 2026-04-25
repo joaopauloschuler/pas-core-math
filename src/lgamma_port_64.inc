@@ -36,7 +36,7 @@ const
   cLgammaThrBr12:  Tb64u64 = (u:$3FC76C0000000000); // 0x1.76cp-3
   cLgammaThrBr13:  Tb64u64 = (u:$3FC9900000000000); // 0x1.99p-3
 
-{$I lgamma_const.inc}
+{$I lgamma_const_64.inc}
 
 // ---------------------------------------------------------------------------
 // Local primitives matching lgamma.c grouping (no renormalization).

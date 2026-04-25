@@ -37,7 +37,7 @@ const
   cExp10m1Sub2A:      Tb64u64 = (u:$1E5FFE0000000000);   //  0x0.fffp-537 = 0x1.ffep-538
   cExp10m1Sub2C:      Tb64u64 = (u:$0002D41F3B972FC7);   //  0x1.6a0f9dcb97e38p-1025 (subnormal)
 
-{$I exp10m1_const.inc}
+{$I exp10m1_const_64.inc}
 
 // Integer 10^k for k in 1..15 (exact in Double up to 15).
 const

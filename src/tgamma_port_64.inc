@@ -28,7 +28,7 @@ const
   cTGEpsAcc:      Tb64u64 = (u:$398E000000000000);  // 0x1.ep-103
   cTGEps50:       Tb64u64 = (u:$3CD0000000000000);  // 2^-50
 
-{$I tgamma_const.inc}
+{$I tgamma_const_64.inc}
 
 // ---------------------------------------------------------------------------
 // Local primitives matching tgamma.c grouping exactly.
