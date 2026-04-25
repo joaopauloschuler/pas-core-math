@@ -2,7 +2,7 @@
 // pcr_log — correctly-rounded binary64 natural logarithm.
 // Ported from core-math/src/binary64/log/log.c by Paul Zimmermann and
 // Tom Hubrecht. See also dint.h.
-// Tables are emitted by tmp/log_gen.py into log_const.inc.
+// Tables are emitted by tools/log_gen.py into log_const.inc.
 //
 // Algorithm:
 //   * fast path (cr_log_fast): degree-6 polynomial reduction with 363-entry

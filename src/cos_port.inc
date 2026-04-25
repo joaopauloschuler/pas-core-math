@@ -4,7 +4,7 @@
 //
 // Structure mirrors the C source:
 //   * Tables (T, S, C, PSfast, PCfast, PS, PC, SC) auto-extracted from cos.c
-//     via tmp/extract_cos_tables.py — do NOT hand-edit. Regenerate instead.
+//     via tools/extract_cos_tables.py — do NOT hand-edit. Regenerate instead.
 //   * CosSetDD / CosReduce / CosReduce2 / CosReduceFast — range reduction.
 //     All four are shared primitives that will be reused by sin/sincos/tan
 //     in subsequent ports (task 4.02 / 4.04 / 4.05).
@@ -19,7 +19,7 @@
 // Pascal counterpart; follow the C comments line-by-line for intent.
 // ===========================================================================
 
-// --- Auto-generated tables (tmp/extract_cos_tables.py) ---------------------
+// --- Auto-generated tables (tools/extract_cos_tables.py) ---------------------
 {$I cos_tables.inc}
 
 const
