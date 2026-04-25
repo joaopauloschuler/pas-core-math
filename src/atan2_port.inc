@@ -267,7 +267,7 @@ end;
 // Mirrors cr_atan2 (atan2.c lines 461-586).
 // ---------------------------------------------------------------------------
 
-function pcr_atan2_pas(y0, x0: Double): Double;
+function pcr_atan2(y0, x0: Double): Double;
 const
   MASK = UInt64($7FFFFFFFFFFFFFFF);
 var

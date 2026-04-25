@@ -49,7 +49,7 @@ function  pcr_atanh(x: Double): Double;
 function  pcr_tanpi(x: Double): Double;
 function  pcr_lgamma(x: Double): Double; inline;
 function  pcr_tgamma(x: Double): Double; inline;
-function  pcr_atan2(y, x: Double): Double;
+function  pcr_atan2(y0, x0: Double): Double;
 function  pcr_atan2pi(y, x: Double): Double;
 function  pcr_hypot(x, y: Double): Double; inline;
 function  pcr_pow(x, y: Double): Double; inline;
@@ -4054,17 +4054,5 @@ end;
 {$I atan2pi_port.inc}
 {$I asinpi_port.inc}
 {$I pow_port.inc}
-
-// ---------------------------------------------------------------------------
-// Stubs — delegate to C reference until each function is ported.
-// Replace each stub body with the real Pascal port as phases 1-5 progress.
-// ---------------------------------------------------------------------------
-// pcr_acos — ported above
-function  pcr_lgamma(x: Double): Double;     begin Result := pcr_lgamma_pas(x);   end;
-function  pcr_tgamma(x: Double): Double;      begin Result := pcr_tgamma_pas(x);   end;
-function  pcr_atan2(y, x: Double): Double;    begin Result := pcr_atan2_pas(y, x); end;
-function  pcr_atan2pi(y, x: Double): Double;  begin Result := pcr_atan2pi_pas(y, x); end;
-function  pcr_hypot(x, y: Double): Double;    begin Result := pcr_hypot_pas(x, y); end;
-function  pcr_pow(x, y: Double): Double;      begin Result := PcrPowPas(x, y);     end;
 
 end.

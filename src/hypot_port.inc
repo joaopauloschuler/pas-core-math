@@ -238,7 +238,7 @@ end;
 // pcr_hypot — main entry.
 // ---------------------------------------------------------------------------
 
-function pcr_hypot_pas(x, y: Double): Double;
+function pcr_hypot(x, y: Double): Double;
 var
   flag: LongWord;
   xi, yi, xd, yd, thd: Tb64u64;

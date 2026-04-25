@@ -355,7 +355,7 @@ end;
 // Mirrors cr_atan2pi (atan2pi.c lines 790-866).
 // ---------------------------------------------------------------------------
 
-function pcr_atan2pi_pas(y, x: Double): Double;
+function pcr_atan2pi(y, x: Double): Double;
 var
   uy, ux: Tb64u64;
   ay, ax: UInt64;

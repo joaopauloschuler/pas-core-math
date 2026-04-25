@@ -638,7 +638,7 @@ end;
 // ---------------------------------------------------------------------------
 // pcr_tgamma — main entry
 // ---------------------------------------------------------------------------
-function pcr_tgamma_pas(x: Double): Double;
+function pcr_tgamma(x: Double): Double;
 var
   t, th_u: Tb64u64;
   ax: UInt64;

@@ -801,9 +801,9 @@ begin
 end;
 
 // ---------------------------------------------------------------------------
-// Main entry: pcr_lgamma_pas
+// Main entry: pcr_lgamma
 // ---------------------------------------------------------------------------
-function pcr_lgamma_pas(x: Double): Double;
+function pcr_lgamma(x: Double): Double;
 var
   t: Tb64u64;
   nx: UInt64;

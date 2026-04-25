@@ -817,7 +817,7 @@ end;
 
 // Main entry point. Correctly-rounded x^y for binary64.
 // Mirrors cr_pow (pow.c:1495).
-function PcrPowPas(x, y: Double): Double;
+function pcr_pow(x, y: Double): Double;
 const
   cInfPos:    Tb64u64 = (u: $7FF0000000000000);
   cInfNeg:    Tb64u64 = (u: QWord($FFF0000000000000));
@@ -852,68 +852,68 @@ begin
   if (xu.u >= UInt64($7FF0000000000000)) or (yu.u >= UInt64($7FF0000000000000)) then
   begin
     if x <> x then begin   // x is NaN
-      if (y = 0.0) and not PowIsSignaling(x) then begin PcrPowPas := 1.0; exit; end;
-      PcrPowPas := x + x; exit;
+      if (y = 0.0) and not PowIsSignaling(x) then begin pcr_pow := 1.0; exit; end;
+      pcr_pow := x + x; exit;
     end;
     if y <> y then begin   // y is NaN
-      if (x = 1.0) and not PowIsSignaling(y) then begin PcrPowPas := 1.0; exit; end;
-      PcrPowPas := y + y; exit;
+      if (x = 1.0) and not PowIsSignaling(y) then begin pcr_pow := 1.0; exit; end;
+      pcr_pow := y + y; exit;
     end;
 
     // x = +Inf
     if xu.u = cInfPos.u then begin
-      if y = 0.0 then begin PcrPowPas := 1.0; exit; end;
-      if y < 0.0 then begin PcrPowPas := 0.0; exit; end;
-      if y > 0.0 then begin PcrPowPas := cInfPos.f; exit; end;
+      if y = 0.0 then begin pcr_pow := 1.0; exit; end;
+      if y < 0.0 then begin pcr_pow := 0.0; exit; end;
+      if y > 0.0 then begin pcr_pow := cInfPos.f; exit; end;
     end;
     // x = -Inf
     if xu.u = cInfNeg.u then begin
       if PowIsInt(y) and not PowIsInt(y * 0.5) then begin
-        if y < 0.0 then begin PcrPowPas := -0.0; exit; end;
-        PcrPowPas := -cInfPos.f; exit;
+        if y < 0.0 then begin pcr_pow := -0.0; exit; end;
+        pcr_pow := -cInfPos.f; exit;
       end;
-      if y < 0.0 then begin PcrPowPas := 0.0; exit; end;
-      if y > 0.0 then begin PcrPowPas := cInfPos.f; exit; end;
+      if y < 0.0 then begin pcr_pow := 0.0; exit; end;
+      if y > 0.0 then begin pcr_pow := cInfPos.f; exit; end;
     end;
 
     // y = +Inf
     if yu.u = cInfPos.u then begin
-      if x = 0.0 then begin PcrPowPas := 0.0; exit; end;
-      if (x = -1.0) or (x = 1.0) then begin PcrPowPas := 1.0; exit; end;
-      if (-1.0 < x) and (x < 1.0) then begin PcrPowPas := 0.0; exit; end;
-      if (x < -1.0) or (1.0 < x) then begin PcrPowPas := cInfPos.f; exit; end;
+      if x = 0.0 then begin pcr_pow := 0.0; exit; end;
+      if (x = -1.0) or (x = 1.0) then begin pcr_pow := 1.0; exit; end;
+      if (-1.0 < x) and (x < 1.0) then begin pcr_pow := 0.0; exit; end;
+      if (x < -1.0) or (1.0 < x) then begin pcr_pow := cInfPos.f; exit; end;
     end;
     // y = -Inf
     if yu.u = cInfNeg.u then begin
-      if x = 0.0 then begin PcrPowPas := cInfPos.f; exit; end;
-      if (x = -1.0) or (x = 1.0) then begin PcrPowPas := 1.0; exit; end;
-      if (-1.0 < x) and (x < 1.0) then begin PcrPowPas := cInfPos.f; exit; end;
-      if (x < -1.0) or (1.0 < x) then begin PcrPowPas := 0.0; exit; end;
+      if x = 0.0 then begin pcr_pow := cInfPos.f; exit; end;
+      if (x = -1.0) or (x = 1.0) then begin pcr_pow := 1.0; exit; end;
+      if (-1.0 < x) and (x < 1.0) then begin pcr_pow := cInfPos.f; exit; end;
+      if (x < -1.0) or (1.0 < x) then begin pcr_pow := 0.0; exit; end;
     end;
   end;
 
   // === x <= 0 cascade ===
   if x <= 0.0 then begin
-    if y = 0.0 then begin PcrPowPas := 1.0; exit; end;
+    if y = 0.0 then begin pcr_pow := 1.0; exit; end;
 
     if xu.u = 0 then begin   // x = +0.0
       if PowIsInt(y) and not PowIsInt(y * 0.5) then begin
-        if y < 0.0 then begin PcrPowPas := cInfPos.f; exit; end;
-        PcrPowPas := 0.0; exit;
+        if y < 0.0 then begin pcr_pow := cInfPos.f; exit; end;
+        pcr_pow := 0.0; exit;
       end;
-      if y > 0.0 then begin PcrPowPas := 0.0; exit; end;
-      PcrPowPas := cInfPos.f; exit;
+      if y > 0.0 then begin pcr_pow := 0.0; exit; end;
+      pcr_pow := cInfPos.f; exit;
     end;
     if xu.u = UInt64($8000000000000000) then begin   // x = -0.0
       if PowIsInt(y) and not PowIsInt(y * 0.5) then begin
-        if y < 0.0 then begin PcrPowPas := -cInfPos.f; exit; end;
-        PcrPowPas := -0.0; exit;
+        if y < 0.0 then begin pcr_pow := -cInfPos.f; exit; end;
+        pcr_pow := -0.0; exit;
       end;
-      if y > 0.0 then begin PcrPowPas := 0.0; exit; end;
-      PcrPowPas := cInfPos.f; exit;
+      if y > 0.0 then begin pcr_pow := 0.0; exit; end;
+      pcr_pow := cInfPos.f; exit;
     end;
 
-    if not PowIsInt(y) then begin PcrPowPas := cNaNDoublePos.f; exit; end;
+    if not PowIsInt(y) then begin pcr_pow := cNaNDoublePos.f; exit; end;
 
     cs0 := 1.0; cs1 := -1.0;
     ay := y; if ay < 0 then ay := -ay;
@@ -943,14 +943,14 @@ begin
   exact := PowIsExact(x, y);
 
   if res_min = res_max then begin
-    PcrPowPas := res_max; exit;
+    pcr_pow := res_max; exit;
   end;
 
   // Easy cases short-circuit
-  if y = 1.0 then begin PcrPowPas := s * x; exit; end;
-  if y = 2.0 then begin PcrPowPas := x * x; exit; end;
-  if y = 0.5 then begin PcrPowPas := Sqrt(x); exit; end;
-  if y = 0.0 then begin PcrPowPas := 1.0; exit; end;
+  if y = 1.0 then begin pcr_pow := s * x; exit; end;
+  if y = 2.0 then begin pcr_pow := x * x; exit; end;
+  if y = 0.5 then begin pcr_pow := Sqrt(x); exit; end;
+  if y = 0.0 then begin pcr_pow := 1.0; exit; end;
 
   // === Phase 2: dint slow path ===
   DIntFromD(Xd, x);
@@ -964,7 +964,7 @@ begin
   // Rounding test (Pascal +1 ex convention: subtract 1 from C thresholds).
   // C R.ex < -1075 ; underflow -> -1074 in Pascal
   if Rd_dint.ex < -1074 then begin
-    PcrPowPas := 0.5 * (s * cPowMinSub.f); exit;
+    pcr_pow := 0.5 * (s * cPowMinSub.f); exit;
   end;
 
   if Rd_dint.ex < -1021 then begin   // C: < -1022
@@ -981,12 +981,12 @@ begin
   Rd_dint.sgn := Byte(s = -1.0);
 
   if rd <> 0 then begin
-    PcrPowPas := DToD(Rd_dint); exit;
+    pcr_pow := DToD(Rd_dint); exit;
   end;
 
   // Detect rounding boundary cases
   if PowExactPow(e_exact, x0, y, Rd_dint, exact) then begin
-    PcrPowPas := e_exact; exit;
+    pcr_pow := e_exact; exit;
   end;
 
   // === Phase 3: qint very-slow path ===
@@ -1011,16 +1011,16 @@ begin
   if rd <> 0 then begin
     qZ.sgn := Byte(s = -1.0);
     qZ.r3 := qZ.r3 and (UInt64($FFFFFFFFFFFFFFFF) shl 10);
-    PcrPowPas := PowQIntToD(qZ); exit;
+    pcr_pow := PowQIntToD(qZ); exit;
   end;
 
   // qR very small: x^y near 1
   if qR.ex < -56 then begin
-    if qR.sgn = 0 then PcrPowPas := 1.0 + cPow1pm100.f
-    else PcrPowPas := 1.0 - cPow1pm100.f;
+    if qR.sgn = 0 then pcr_pow := 1.0 + cPow1pm100.f
+    else pcr_pow := 1.0 - cPow1pm100.f;
     exit;
   end;
 
   // Should not reach here for any valid input.
-  PcrPowPas := cNaNDoublePos.f;
+  pcr_pow := cNaNDoublePos.f;
 end;
