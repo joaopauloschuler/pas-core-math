@@ -50,7 +50,6 @@ procedure Log10Fast(var h, l: Double; e: Int32; vf: Double);
 var
   v: Tb64u64;
   m: UInt64;
-  c: Int32;
   i: Int32;
   y, r, l1, l2, z, ph, z2, p45, p23: Double;
   ee, hh, lo, et: Double;
@@ -59,11 +58,10 @@ begin
   m := UInt64($10000000000000) + (v.u and UInt64($FFFFFFFFFFFFF));
 
   if m >= UInt64($16A09E667F3BCD) then begin
-    c := 1; e := e + 1;
+    e := e + 1;
     y := vf * 0.5;
     i := Int32(m shr 44);
   end else begin
-    c := 0;
     y := vf;
     i := Int32(m shr 43);
   end;

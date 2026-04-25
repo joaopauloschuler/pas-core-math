@@ -2974,7 +2974,6 @@ var
   ch_v, cl_v: Double;
   i: Int32;
   v: Tb64u64;
-  d_kind: Int64;
 begin
   ix.f := x;
   if ((ix.u shr 52) and $7FF) < cExpAccTinyExp then
@@ -3038,7 +3037,6 @@ begin
         // C: d = ((sign(ix) XOR sign(v)) ? -1 : 1); ix.u += d (mod 2^64)
         if (v.u shr 63) <> (ixs.u shr 63) then v.u := v.u - 1 else v.u := v.u + 1;
         fl := v.f;
-        d_kind := 0; // suppress hint
       end;
     end
     else
@@ -3297,7 +3295,7 @@ function pcr_exp2(x: Double): Double;
 var
   ix, ixs: Tb64u64;
   ax, m_bits, ex, frac: UInt64;
-  sx, fx, z, z2, th, tl, t0h, t0l, t1h, t1l, fh, fl, tz, eps, ub, lb, e, signed_p54: Double;
+  sx, fx, z, z2, th, tl, t0h, t0l, t1h, t1l, fh, fl, tz, eps, ub, e, signed_p54: Double;
   k, i0, i1, ie: Int64;
 begin
   ix.f := x;
@@ -3377,7 +3375,6 @@ begin
     end;
     Result := ExpAsToDenormal(fh);
   end;
-  lb := 0; // suppress hint
 end;
 
 // ---------------------------------------------------------------------------
@@ -3800,7 +3797,7 @@ end;
 
 function Expm1RefineSmall(x: Double): Double;
 var
-  fl, fh, hx, x2h, x2l, v0, v1, v2, e: Double;
+  fl, fh, hx, x2h, x2l, v0, v1, v2: Double;
   ch_v, cl_v, fh_t, fl_t: Double;
   i: Int32;
   v_u, v2_u: Tb64u64;
@@ -3856,18 +3853,16 @@ begin
     v1 := v_u.f;
   end;
   Result := v0 + v1;
-  e := 0; // suppress hint
 end;
 
 function Expm1RefineLarge(x: Double): Double;
 var
-  ix, off, v: Tb64u64;
+  off, v: Tb64u64;
   t, dx, dxl, dxll, dxh, fh, fl, e, th, tl, t0h, t0l, t1h, t1l: Double;
   ch_v, cl_v, fh_t, fl_t: Double;
   jt, i0, i1, ie: Int64;
   i: Int32;
 begin
-  ix.f := x;
   t  := pcr_roundeven(x * cExpS.f);
   jt := Trunc(t);
   i0 := (jt shr 6) and $3F;

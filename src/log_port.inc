@@ -28,7 +28,6 @@ procedure LogFast(out h, l: Double; e: Int32; vf: Double);
 var
   v: Tb64u64;
   m: UInt64;
-  c: Int32;
   i: Int32;
   y, r, l1, l2, z, ph, z2, p45, p23: Double;
   ee, hh, lo, et: Double;
@@ -38,11 +37,10 @@ begin
 
   // if m >= 0x16a09e667f3bcd (sqrt(2) * 2^52) divide by 2 to avoid cancellation
   if m >= UInt64($16A09E667F3BCD) then begin
-    c := 1; e := e + 1;
+    e := e + 1;
     y := vf * 0.5;
     i := Int32(m shr 44);
   end else begin
-    c := 0;
     y := vf;
     i := Int32(m shr 43);
   end;

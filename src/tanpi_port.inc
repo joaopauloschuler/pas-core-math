@@ -144,7 +144,6 @@ var
   scu, iscu: Tb64u64;
   sc, isc: Double;
   o, v0b, v0h: Double;
-  dummy: Double;
   iq_mask: Int32;
 begin
   ix.f := x;
@@ -314,7 +313,6 @@ begin
         if Abs(res) < Double(2.2250738585072014e-308) then
         begin
           // Forced underflow
-          dummy := x * x;
           if (ix.u shr 63) <> 0 then o := -Double(2.2250738585072014e-308)
           else                       o :=  Double(2.2250738585072014e-308);
           v0b := (o + res) * sc;

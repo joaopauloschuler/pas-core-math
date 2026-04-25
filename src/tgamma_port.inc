@@ -305,7 +305,6 @@ var
   xh, xl, ix: Double;
   k, i0, i1: Int32;
   rh, rl, fh, fl, el: Double;
-  cFlat: TTGFlatArr;
 begin
   xh := x; xl := l;
   xh := TGMul(xh, xl, cTGExpLn2H.f, cTGExpLn2L.f, xl);
@@ -317,9 +316,6 @@ begin
   e  := SarLongInt(k, 10);
   rh := TGMul(cTGExpE0[i0, 1].f, cTGExpE0[i0, 0].f,
               cTGExpE1[i1, 1].f, cTGExpE1[i1, 0].f, rl);
-  cFlat := TGFlat(cTGExpC[0]); // includes all 5*2 entries
-  // cFlat[0..1] = c[0], cFlat[2..3] = c[1], etc.  But TGFlat takes a flat 1-D
-  // array; we need to flatten the 2D table. Use direct access instead.
   // fl = xh * polyd(xh, 4, c+1)
   fl := xh * (cTGExpC[1, 0].f + xh * (cTGExpC[2, 0].f + xh * (cTGExpC[3, 0].f + xh * cTGExpC[4, 0].f)));
   // fh = polydd(xh, xl, 1, c, &fl)  — only c[0] entry; seeded by fl
