@@ -203,3 +203,133 @@ begin
   eh := eh * d.f;
   el := el * d.f;
 end;
+
+// --- 5.02h: dint slow path — q_2 / p_2 / log_2 / exp_2 --------------------
+
+// Arithmetic shift right by 12 for signed Int64 (FPC's `shr` is logical).
+// Used in exp_2/log_2 to compute floor(k/2^12). Range: |a| <= 4399162.
+function PowAsr12(a: Int64): Int64; inline;
+begin
+  if a >= 0 then PowAsr12 := a shr 12
+  else PowAsr12 := -Int64((QWord(-a-1) shr 12) + 1);
+end;
+
+// Mirrors q_2 (pow.c:137). |y| < 2^-12.52, returns r ≈ exp(y) as TDInt64.
+procedure PowQ2(out r: TDInt64; const y: TDInt64);
+begin
+  MulDInt11(r, y, cPowQ2_0);
+  AddDInt11(r, cPowQ2_1, r);
+  MulDInt11(r, y, r);
+  AddDInt11(r, cPowQ2_2, r);
+  MulDInt11(r, y, r);
+  AddDInt(r, cPowQ2_3, r);
+  MulDInt(r, y, r);
+  AddDInt(r, cPowQ2_4, r);
+  MulDInt(r, y, r);
+  AddDInt(r, cPowQ2_5, r);
+  MulDInt(r, y, r);
+  AddDInt(r, cPowQ2_6, r);
+  MulDInt(r, y, r);
+  AddDInt(r, cPowQ2_7, r);
+end;
+
+// Mirrors p_2 (pow.c:343). |z| <= 2^-13, returns r ≈ log(1+z) as TDInt64.
+procedure PowP2(out r: TDInt64; const z: TDInt64);
+begin
+  MulDInt11(r, z, cPowP2_0);
+  AddDInt11(r, cPowP2_1, r);
+  MulDInt11(r, z, r);
+  AddDInt11(r, cPowP2_2, r);
+  MulDInt11(r, z, r);
+  AddDInt11(r, cPowP2_3, r);
+  MulDInt11(r, z, r);
+  AddDInt(r, cPowP2_4, r);
+  MulDInt21(r, r, z);
+  AddDInt(r, cPowP2_5, r);
+  MulDInt21(r, r, z);
+  AddDInt(r, cPowP2_6, r);
+  MulDInt21(r, r, z);
+  AddDInt(r, cPowP2_7, r);
+  MulDInt21(r, r, z);
+  AddDInt(r, cPowP2_8, r);
+  MulDInt21(r, r, z);
+end;
+
+// Mirrors log_2 (pow.c:652). Returns r ≈ log(x) with relative error < 2^-122.88.
+// xIn is taken by const-ref; caller's x is preserved (we mutate a local copy).
+procedure PowLog2(out r: TDInt64; const xIn: TDInt64);
+var
+  xLoc, z, p: TDInt64;
+  E: Int64;
+  i, j: UInt32;
+begin
+  xLoc := xIn;
+  // E must be the C-convention binary exponent of x (= Pascal ex - 1) so that
+  // E*log(2) and the post-reduction xLoc both end up with the right magnitude.
+  E := xLoc.ex - 1;
+
+  if xLoc.hi > UInt64($B504F333F9DE6484) then begin
+    Inc(E);
+    i := UInt32(xLoc.hi shr (63 + 1 - 7));
+  end else
+    i := UInt32(xLoc.hi shr (63 - 7));
+
+  xLoc.ex := xLoc.ex - E;
+
+  MulDInt11(z, xLoc, cPowInverse21[i - 90]);  // exact
+
+  // 2nd lookup index. C: j = z.hi >> (63 - 13 - z.ex). Convention compatible
+  // since shift is signed by-difference; xLoc.ex was relative, and our +1
+  // offset cancels in the subtraction below.
+  // Pascal's TDInt64.ex is C ex + 1, so the C shift "63-13-z.ex_C" becomes
+  //   63 - 13 - (z.ex_P - 1) = 51 - z.ex_P
+  j := UInt32(z.hi shr (51 - z.ex));
+
+  MulDInt11(z, z, cPowInverse22[j - 8128]);
+
+  AddDInt(z, DINT_M_ONE, z);  // z := z - 1; exact (Sterbenz)
+
+  // E * log(2)
+  MulDIntInt(r, E, DINT_LOG2);
+
+  PowP2(p, z);
+  AddDInt(p, cPowLogInv22[j - 8128], p);
+  AddDInt(p, cPowLogInv21[i - 90],  p);
+  AddDInt(r, p, r);
+end;
+
+// Mirrors exp_2 (pow.c:1061). Returns r ≈ exp(x) with relative error < 2^-121.70.
+// In Pascal +1 ex convention, the C threshold "x->ex >= 10" becomes ">= 11";
+// the underflow/overflow result ex values shift accordingly (-1076→-1075, 1025→1026).
+procedure PowExp2(out r: TDInt64; const xIn: TDInt64);
+var
+  xLoc, Kdint, y: TDInt64;
+  kInt, M, i2, i1: Int64;
+begin
+  xLoc := xIn;
+
+  if xLoc.ex >= 11 then begin
+    CpDInt(r, xLoc);
+    if xLoc.sgn = 1 then r.ex := -1075 else r.ex := 1026;
+    r.sgn := 0;
+    Exit;
+  end;
+
+  MulDInt11(Kdint, xLoc, DINT_LOG2_INV);
+  kInt := DIntToI(Kdint);
+
+  MulDIntInt(Kdint, kInt, DINT_LOG2);
+  Kdint.ex := Kdint.ex - 12;
+  Kdint.sgn := Byte(Kdint.sgn = 0);
+
+  AddDInt(y, xLoc, Kdint);
+
+  M  := PowAsr12(kInt);
+  i2 := (kInt shr 6) and $3F;   // mask cleans up logical-vs-arithmetic difference
+  i1 := kInt and $3F;
+
+  PowQ2(r, y);
+  MulDInt(r, cPowT12[i2], r);
+  MulDInt(r, cPowT22[i1], r);
+  r.ex := r.ex + M;
+end;
