@@ -19,6 +19,23 @@
 
 {$I pow_const.inc}
 
+const
+  // Named constants used by the fast-path log/exp helpers (anti-x87 typecasts).
+  cPowLog2H:  Tb64u64 = (u: $3FE62E42FEFA3800);  // 0x1.62e42fefa38p-1
+  cPowLog2L:  Tb64u64 = (u: $3D2EF35793C76730);  // 0x1.ef35793c7673p-45
+  cPowLog1Threshold: Tb64u64 = (u: $3E70000000000000); // 0x1p-24
+
+  // exp_1 thresholds and constants
+  cPowRho0:    Tb64u64 = (u: $C0874910EE4E8A27); // -0x1.74910ee4e8a27p+9
+  cPowRho1:    Tb64u64 = (u: $C08483B8CCA421AF); // -0x1.483b8cca421afp+9
+  cPowRho2:    Tb64u64 = (u: $40862E42E709A95B); // 0x1.62e42e709a95bp+9
+  cPowRho3:    Tb64u64 = (u: $40862E4316EA5DF9); // 0x1.62e4316ea5df9p+9
+  cPowInvLog2: Tb64u64 = (u: $40B71547652B82FE); // 0x1.71547652b82fep+12
+  cPowExpLog2H:Tb64u64 = (u: $3F262E42FEFA39EF); // 0x1.62e42fefa39efp-13
+  cPowExpLog2L:Tb64u64 = (u: $3BBABC9E3B39803F); // 0x1.abc9e3b39803fp-68
+  cPowDblMax:  Tb64u64 = (u: $7FEFFFFFFFFFFFFF); // 0x1.fffffffffffffp+1023
+  cPowMinSub:  Tb64u64 = (u: $0000000000000001); // 0x1p-1074
+
 // --- 5.02e: q_1 / p_1 — pure-double polynomial helpers --------------------
 
 // Given |z| < 2^-12.905, compute (qh, ql) ≈ exp(z) with relative error < 2^-64.9.
@@ -52,4 +69,137 @@ begin
   u := v * wh;
   ph := Double(-0.5) * wh;
   pl := pcr_fma(u, z, Double(-0.5) * wl);
+end;
+
+// --- 5.02f: log_1 — fast log(x) returning (h, l, cancel) ------------------
+// Mirrors pow.c:581 (log_1). Returns 1 when massive cancellation triggered
+// a fast_two_sum normalization (caller may use it as a "rerun in slow path"
+// hint), else 0.
+function PowLog1(out h, l: Double; x: Double): Integer;
+var
+  xu: Tb64u64;
+  m, mraw: UInt64;
+  e: Int64;
+  t_u: Tb64u64;
+  k, c: UInt32;
+  i: UInt64;
+  t, ee, r, l1, l2, z, th, tl, ph, pl, hh, ll: Double;
+begin
+  xu.f := x;
+  mraw := xu.u and (UInt64($FFFFFFFFFFFFFFFF) shr 12);
+  e    := (xu.u shr 52) and $7FF;
+
+  if e <> 0 then begin
+    t_u.u := mraw or (UInt64($3FF) shl 52);
+    m := mraw + (UInt64(1) shl 52);
+    e := e - $3FF;
+  end else begin
+    // subnormal
+    k := UInt32(pcr_clzll(mraw)) - 11;
+    e := -$3FE - Int64(k);
+    m := mraw shl k;
+    t_u.u := m or (UInt64($3FF) shl 52);
+  end;
+
+  t := t_u.f;
+
+  // c = 1 when m >= 0x16a09e667f3bcd (~ sqrt(2)*2^52); else 0
+  if m >= UInt64($16A09E667F3BCD) then c := 1 else c := 0;
+
+  e := e + Int64(c);
+  ee := Int64(e);  // exact int->double for |e|<=1024
+
+  if c = 1 then begin
+    i := m shr 45;
+    t := t * Double(0.5);
+  end else begin
+    i := m shr 44;
+  end;
+
+  // i is in [128..181] when c=0, [90..127] when c=1; index into 182-entry table
+  r  := cPowInverse  [i - 181].f;
+  l1 := cPowLogInvHi [i - 181].f;
+  l2 := cPowLogInvLo [i - 181].f;
+
+  z := pcr_fma(r, t, Double(-1.0));
+
+  th := pcr_fma(ee, cPowLog2H.f, l1);
+  tl := pcr_fma(ee, cPowLog2L.f, l2);
+
+  // fast_sum(h, l, th, z, tl)
+  pcr_fasttwosum(h, l, th, z);
+  l := l + tl;
+
+  PowP1(ph, pl, z);
+
+  // fast_sum(h, l, h, ph, l + pl)
+  hh := h;
+  ll := l + pl;
+  pcr_fasttwosum(h, l, hh, ph);
+  l := l + ll;
+
+  if (e = 0) and (pcr_fabs(l) > pcr_fabs(h) * cPowLog1Threshold.f) then begin
+    pcr_fasttwosum(h, l, h, l);
+    PowLog1 := 1;
+    exit;
+  end;
+  PowLog1 := 0;
+end;
+
+// --- 5.02g: exp_1 — fast exp(rh+rl)*s with overflow/underflow shortcuts ---
+// Mirrors pow.c:954 (exp_1). On NaN input or borderline overflow/underflow
+// returns NaN in eh/el so caller can defer to the slow path.
+procedure PowExp1(out eh, el: Double; rh, rl, s: Double);
+var
+  kd, zh, zl, qh, ql: Double;
+  kInt, M, i2, i1: Int64;
+  d: Tb64u64;
+  rh_is_nan: Boolean;
+begin
+  rh_is_nan := rh <> rh;
+  if rh_is_nan or (rh > cPowRho2.f) then begin
+    if (not rh_is_nan) and (rh > cPowRho3.f) then begin
+      // certain overflow; return s*DBL_MAX so rounding in caller picks +/-Inf or DBL_MAX
+      eh := cPowDblMax.f * s;
+      el := cPowDblMax.f * s;
+    end else begin
+      // intermediate region or NaN: defer to slow path
+      eh := cNaNDoublePos.f;
+      el := cNaNDoublePos.f;
+    end;
+    exit;
+  end;
+
+  if rh < cPowRho1.f then begin
+    if rh < cPowRho0.f then begin
+      // certain underflow
+      eh := Double(0.0) * s;
+      el := cPowMinSub.f * (Double(0.5) * s);
+    end else begin
+      eh := cNaNDoublePos.f;
+      el := cNaNDoublePos.f;
+    end;
+    exit;
+  end;
+
+  kd := pcr_roundeven(rh * cPowInvLog2.f);
+
+  zh := pcr_fma(cPowExpLog2H.f, -kd, rh);
+  zl := pcr_fma(cPowExpLog2L.f, -kd, rl);
+
+  kInt := Trunc(kd);
+  M  := (kInt shr 12) + $3FF;
+  i2 := (kInt shr 6) and $3F;
+  i1 := kInt and $3F;
+
+  pcr_d_mul(eh, el, cPowT2Hi[i1].f, cPowT2Lo[i1].f, cPowT1Hi[i2].f, cPowT1Lo[i2].f);
+
+  PowQ1(qh, ql, zh + zl);
+
+  pcr_d_mul(eh, el, eh, el, qh, ql);
+
+  d.u := UInt64(M) shl 52;
+  d.f := d.f * s;
+  eh := eh * d.f;
+  el := el * d.f;
 end;
