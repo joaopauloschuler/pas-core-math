@@ -976,7 +976,14 @@ pure double-double. `hypot` uses `clzll` + fenv + **u128** (not just clzll).
 `lgamma` uses `clzll` (2 call sites) but not dint. `tgamma` has one fenv call.
 (Verified 2026-04-24 by precise grep.)
 
-- [ ] **3.01** `exp2m1`  — 1022 lines *(pure dd; no dint)*
+- [X] **3.01** `exp2m1`  — 1022 lines *(pure dd; no dint)*
+  - **Port notes (2026-04-25):** `src/exp2m1_port.inc` + `src/exp2m1_const.inc` (auto-generated via `tmp/exp2m1_gen.py`). Reuses `cExpT0`/`cExpT1` (the 2^(i/64) and 2^(i/4096) tables). Three branches in `cr_exp2m1`: very-tiny (|x| <= 2^-104, scaled-fma + 56-entry exception table), tiny (|x| <= 0.125, P[12] degree-10 polynomial in x with 2 dd pairs), main (-54 < x < 1024, exp_1 from pow.c subtracts 1 via fast_two_sum). Accurate path: Q[22] degree-15 polynomial for tiny, exp_2 + 93-entry exception table for main, plus 59-entry tiny exception table. **Tests:** 10M random TestHarness64: 0 mismatches. 200M Benchmark64: sink=MATCH, **Pascal 179.7 Mops/s vs C 128.4 Mops/s (~1.4× faster, AVX2)**. Sharp edges:
+    - **Bit-pack typo in `cExp2m1ErrTiny`**: I encoded `0x1.4ep-66` as `$3B94E00000000000` (biased exp $3B9 = 2^-70) instead of `$3BD4E00000000000` (biased exp $3BD = 2^-66). The 16x-too-small err passed the Ziv bracket trivially, accepting fast-path values that needed accurate-path refinement. One mismatch in 5M random samples (input near 4e-13). **Always verify exponent encoding by computing biased = 1023 - p**, even after running through the generator — this constant was hand-typed in the port file, not generated.
+    - **`pcr_muldd` has an extra fasttwosum-normalize at the end** (renormalizes ahhh+ahhl). The C exp2m1.c `d_mul` does NOT renormalize. Local `E2M1AMul`/`E2M1SMul`/`E2M1DMul` written manually (no inline) to match C semantics — using `pcr_muldd` here would shift hi by 1 ULP and break the precision contract.
+    - **`cExpT0`/`cExpT1` lo bits differ from exp2m1.c T1/T2 by 1 ULP at some entries** (table generated from exp2.c, slightly different rounding). Tested OK at 10M samples — the 1-ULP-of-lo difference (~2^-105 absolute) is well below the 2^-74 polynomial error budget. If a future test fails, regenerate dedicated exp2m1 T1/T2 tables.
+    - **`out` parameters with aliasing under FPC `inline`**: removed `inline` from helper procedures (E2M1AMul, E2M1SMul, E2M1DMul, E2M1Q1, E2M1Q2, E2M1Exp1, E2M1Exp2, Exp2m1FastTiny, Exp2m1Fast). Tests passed without inline; aliasing analysis suggested the issue was the err typo, not inlining, but defensive non-inlining is preserved.
+    - **Sign-bit shift trap (per cosh)**: `K shr 12` and `K shr 6` can be negative when `xh < 0` (e.g., x in (-54, -0.125)) — use `SarInt64` since FPC's `shr` on Int64 is logical, not arithmetic.
+    - **`(ux shl 17) == 0` integer-x detection** combined with `Trunc(x) == x` works correctly for integer x in `[-53, 53]`. For non-integer powers of 2 (e.g., 0.5), Trunc returns 0 ≠ x, falling through to fast path. Verified.
 - [ ] **3.02** `tgamma`  — 1096 lines *(pure dd + 1 fenv call)*
 - [ ] **3.03** `acospi`  — 1099 lines *(pure dd; no dint)*
 - [ ] **3.04** `exp10m1` — 1153 lines *(pure dd; no dint)*
