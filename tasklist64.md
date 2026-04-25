@@ -16,7 +16,7 @@ Before starting, check the existing functions and notes at:
 
 ## Status summary
 
-- **17 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 in progress — 1.01 rsqrt, 1.02 cbrt, 1.03 atan, 1.04 log2, 1.05 acos, 1.06 tanh, 1.07 cospi, 1.08 asin, 1.09 cosh, 1.10 exp10, 1.11 exp2, 1.12 exp, 1.13 tanpi, 1.14 sinpi, 1.15 sinh, 2.01 expm1, 2.02 acosh, 2.03 atanh, 2.04 atanpi, 2.05 asinh, 2.06 log1p, 2.08 erf done — note 4.01 cos / 4.02 sin / 4.04 sincos / 4.05 tan also done in Phase 4)
+- **18 of 41 functions ported** (Phase 0 infrastructure complete; Phase 1 in progress — 1.01 rsqrt, 1.02 cbrt, 1.03 atan, 1.04 log2, 1.05 acos, 1.06 tanh, 1.07 cospi, 1.08 asin, 1.09 cosh, 1.10 exp10, 1.11 exp2, 1.12 exp, 1.13 tanpi, 1.14 sinpi, 1.15 sinh, 2.01 expm1, 2.02 acosh, 2.03 atanh, 2.04 atanpi, 2.05 asinh, 2.06 log1p, 2.08 erf, 2.10 log, 2.12 log10, 3.01 exp2m1, 3.04 exp10m1 done — note 4.01 cos / 4.02 sin / 4.04 sincos / 4.05 tan also done in Phase 4)
 - Target file: `src/pascoremath64.pas`
 - **Phase 0 fully complete** (tasks 0.1–0.10): infrastructure, helpers, and test harness ready
 - libcoremath64.so built from core-math/src/binary64/; test programs compile once pcr_* functions added
@@ -986,7 +986,12 @@ pure double-double. `hypot` uses `clzll` + fenv + **u128** (not just clzll).
     - **`(ux shl 17) == 0` integer-x detection** combined with `Trunc(x) == x` works correctly for integer x in `[-53, 53]`. For non-integer powers of 2 (e.g., 0.5), Trunc returns 0 ≠ x, falling through to fast path. Verified.
 - [ ] **3.02** `tgamma`  — 1096 lines *(pure dd + 1 fenv call)*
 - [ ] **3.03** `acospi`  — 1099 lines *(pure dd; no dint)*
-- [ ] **3.04** `exp10m1` — 1153 lines *(pure dd; no dint)*
+- [X] **3.04** `exp10m1` — 1153 lines *(pure dd; no dint)*
+  - **Port notes (2026-04-25):** `src/exp10m1_port.inc` + `src/exp10m1_const.inc` (auto-generated via `tmp/exp10m1_gen.py`). Reuses everything from exp2m1: `cExpT0`/`cExpT1` (T1/T2), `cExp2m1Q1`/`cExp2m1Q2` (Q_1/Q_2 byte-identical), and the helpers `E2M1AMul` / `E2M1SMul` / `E2M1DMul` / `E2M1FastSum` / `E2M1Q1` / `E2M1Q2` / `E2M1Exp1`. Dedicated to exp10m1: `E10M1Exp2` (uses INVLOG2_10 reduction + final ×log(10)), `Exp10m1FastTiny` (P[14] degree-11 with 3 dd pairs), `Exp10m1Fast` (main path = exp_1∘(x·log(10)) − 1), `Exp10m1AccurateTiny` (Q[25] degree-17 with 8 dd pairs + 145-entry exception table), `Exp10m1Accurate` (E10M1Exp2 + 81-entry exception table). 74-entry very-tiny exception table for 2^-104 < |x| <= 2^-54. Two subnormal special-case fma identities for |x|=0x0.086c…p-1022 and |x|=0x0.13a7…p-1022. Integer fast path: `cExp10m1IntT[1..15]` returns 9, 99, …, 999999999999999. **Tests:** 10M random TestHarness64: 0 mismatches. 200M Benchmark64: sink=MATCH, **Pascal 162.7 Mops/s vs C 133.1 Mops/s (~1.22× faster, AVX2)**. Sharp edges:
+    - **Hex-float bit-pack traps** (caught at write time, not via failures — verify with `python3 -c 'import struct; …'` always): `0x1.0ap-68` is `$3BB0A00000000000` not `$3B9A000000000000`; `0x1.7ap-72` is `$3B77A00000000000` not `$3B7A000000000000`. The biased-exp formula `1023 - p` is correct but the *non-leading* hex digit `0a` / `7a` left-aligns into bits 51..44 (so the next-byte gets the low nibble), not into bits 47..40.
+    - **Subnormal exception encodings**: `0x1.6a0f9dcb97e38p-1025` is *subnormal* — it shifts to `$0002D41F3B972FC7`, not the naive `$0006A0F9DCB97E38`. Always verify subnormal hex floats by Python because the exponent + leading-1 collapse requires bit-shift accounting.
+    - **No deduplicated `_Sub1B` reuse**: both subnormal exceptions use `0x1p-538` as the middle fma argument; only one `cExp10m1Sub1B` constant defined and reused.
+    - **Reuse pattern**: importing exp2m1's helpers via `{$I exp2m1_port.inc}` *before* exp10m1 is required (FPC inc-includes are textual; the helpers must be defined before exp10m1's port references them). Already correct in pascoremath64.pas line ordering.
 - [ ] **3.05** `erfc`    — 1247 lines *(pure dd; no dint)*
 - [ ] **3.06** `lgamma`  — 1452 lines *(clzll + dd; no dint)*
   - Reference: `pascoremath32.pas:3197` (`lgamma_as_sinpi`) and `:3211` (`lgamma_as_ln`) — existing `Double`-precision auxiliary functions used by `pcr_lgammaf`. Mirror their shape when porting; the coefficient tables (`c_nz1`/`c_nz2`/`c_nz3`, `rn_md`/`rd_md`) will be re-derived from `binary64/lgamma/lgamma.c`.
