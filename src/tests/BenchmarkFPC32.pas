@@ -240,6 +240,7 @@ function pcm_hypotf(x, y: Single): Single;  begin Result := pcr_hypotf(x, y);  e
 function pcm_powf(x, y: Single): Single;    begin Result := pcr_powf(x, y);    end;
 
 begin
+  PCMWins := 0; FPCWins := 0; PTies := 0;
   {$IFDEF AVX2}
   WriteLn('Compiled with AVX2.');
   {$ENDIF}

@@ -3454,6 +3454,7 @@ begin
       d.u := (((s shr m) and 1) shl 63) or UInt64($3C90000000000000);
       p := s2[m shr 5] shr (2 * (m and 31));
       jf.f := f;
+      probe.u := 0;
       for i := 0 to 2 do
       begin
         case i of

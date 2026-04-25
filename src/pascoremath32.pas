@@ -4866,7 +4866,7 @@ begin
 end;
 
 // ── p2: double-double approx of log2(1+zh+zl) ────────────────────────────────
-procedure cf_p2(var h, l: Double; zh, zl: Double); inline;
+procedure cf_p2(out h, l: Double; zh, zl: Double); inline;
 var t_p2: Double;
 begin
   h := CF_P2C[17]; // degree 13
@@ -4909,7 +4909,7 @@ begin
 end;
 
 // ── q2: double-double approx of 2^(h+l) ──────────────────────────────────────
-procedure cf_q2(var qh, ql: Double; h, l: Double); inline;
+procedure cf_q2(out qh, ql: Double; h, l: Double); inline;
 var h2_q2, c7_q2, c5_q2, t_q2: Double;
 begin
   h2_q2 := h * h;
@@ -5202,7 +5202,7 @@ begin
 end;
 
 // ── log2p1_accurate: double-double approx of log2(1+x) ───────────────────────
-procedure cf_log2p1_accurate(var h, l: Double; x: Double); inline;
+procedure cf_log2p1_accurate(out h, l: Double; x: Double); inline;
 var v_la: Tb64u64;
     m_la: UInt64;
     e_la: Int64;

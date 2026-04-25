@@ -65,7 +65,7 @@ procedure SubU128(out r: TUInt128; const a, b: TUInt128); inline;
 procedure ShlU128(var a: TUInt128; sh: Integer); inline;
 procedure ShrU128(var a: TUInt128; sh: Integer); inline;
 
-function Mulu64u64(a, b: UInt64): TUInt128; inline;
+function Mulu64u64(a, b: UInt64): TUInt128; {$IFNDEF AVX2} inline; {$ENDIF}
 
 // ------- dint64_t arithmetic -------
 // All operations ported faithfully from core-math/src/binary64/sin/sin.c.
@@ -321,11 +321,12 @@ begin
   Result.hi := a.hi + UInt64(Result.lo < b);
 end;
 
-function Mulu64u64(a, b: UInt64): TUInt128; inline;
+function Mulu64u64(a, b: UInt64): TUInt128;
 {$IFDEF AVX2}
 var
   rlo, rhi: UInt64;
 begin
+  Result := Default(TUInt128);
   asm
     mov  rax, a
     mul  b           // rdx:rax = a * b
@@ -341,6 +342,7 @@ end;
 var
   MulLo, Temp1, Temp2: UInt64;
 begin
+  Result := Default(TUInt128);
   MulLo := uint64(uint32(a)) * uint64(uint32(b));
   Temp1 := (a shr 32) * uint64(uint32(b)) + (MulLo shr 32);
   Temp2 := uint64(uint32(a)) * (b shr 32) + uint64(uint32(Temp1));

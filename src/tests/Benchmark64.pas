@@ -237,6 +237,7 @@ function wrap_hypot_p(x, y: Double): Double;   begin Result := pcr_hypot(x, y); 
 function wrap_pow_p(x, y: Double): Double;     begin Result := pcr_pow(x, y);     end;
 
 begin
+  PWins := 0; CWins := 0; PTies := 0;
   {$IFDEF AVX2}
   WriteLn('Compiled with AVX2.');
   {$ENDIF}

@@ -159,6 +159,7 @@ type TLgFlatArr = array of Tb64u64;
 function LgFlat2(const t: array of Tb64u64): TLgFlatArr;
 var i: Int32;
 begin
+  Result := nil;
   SetLength(Result, Length(t));
   for i := 0 to High(t) do Result[i] := t[i];
 end;
@@ -166,6 +167,7 @@ end;
 // Flatten a 2D [N][2] constant table by raw memory copy.
 function LgPairsFlat(const src; nPairs: Int32): TLgFlatArr;
 begin
+  Result := nil;
   SetLength(Result, 2 * nPairs);
   Move(src, Result[0], 2 * nPairs * SizeOf(Tb64u64));
 end;

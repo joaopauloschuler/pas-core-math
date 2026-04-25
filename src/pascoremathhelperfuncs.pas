@@ -101,16 +101,16 @@ function pcr_polydd(xh, xl: Double; n: Int32; const c: array of Double; out l: D
 // reads) so that callers may safely alias value params with var params.
 
 // Error-free sum: s + t = a + b exactly.
-procedure pcr_fasttwosum(var s, t: Double; a, b: Double); inline;
+procedure pcr_fasttwosum(out s, t: Double; a, b: Double); inline;
 
 // Error-free product: hi + lo = a * b exactly (via FMA).
-procedure pcr_a_mul(var hi, lo: Double; a, b: Double); inline;
+procedure pcr_a_mul(out hi, lo: Double; a, b: Double); inline;
 
 // Scalar × double-double: (hi + lo) = a * (bh + bl).
-procedure pcr_s_mul(var hi, lo: Double; a, bh, bl: Double); inline;
+procedure pcr_s_mul(out hi, lo: Double; a, bh, bl: Double); inline;
 
 // Double-double × double-double: (hi + lo) = (ah + al) * (bh + bl).
-procedure pcr_d_mul(var hi, lo: Double; ah, al, bh, bl: Double); inline;
+procedure pcr_d_mul(out hi, lo: Double; ah, al, bh, bl: Double); inline;
 
 implementation
 
@@ -417,6 +417,7 @@ var
   end;
 
 begin
+  Result := 0;
   va.f := a; vb.f := b; vc.f := c;
 
   ExtractParts(va.u, ma, ea, sa, aNaN, aZ);
@@ -998,7 +999,7 @@ begin
   Result := ch;
 end;
 
-procedure pcr_fasttwosum(var s, t: Double; a, b: Double); inline;
+procedure pcr_fasttwosum(out s, t: Double; a, b: Double); inline;
 var s_tmp: Double;
 begin
   s_tmp := a + b;
@@ -1006,7 +1007,7 @@ begin
   s     := s_tmp;
 end;
 
-procedure pcr_a_mul(var hi, lo: Double; a, b: Double); inline;
+procedure pcr_a_mul(out hi, lo: Double; a, b: Double); inline;
 var t_am: Double;
 begin
   t_am := a * b;
@@ -1014,7 +1015,7 @@ begin
   hi   := t_am;
 end;
 
-procedure pcr_s_mul(var hi, lo: Double; a, bh, bl: Double); inline;
+procedure pcr_s_mul(out hi, lo: Double; a, bh, bl: Double); inline;
 var bl_sm: Double;
 begin
   bl_sm := bl;             // save bl before pcr_a_mul may overwrite lo
@@ -1022,7 +1023,7 @@ begin
   lo := pcr_fma(a, bl_sm, lo);
 end;
 
-procedure pcr_d_mul(var hi, lo: Double; ah, al, bh, bl: Double); inline;
+procedure pcr_d_mul(out hi, lo: Double; ah, al, bh, bl: Double); inline;
 var s_dm, t_dm, ah_dm: Double;
 begin
   ah_dm := ah;             // save ah before pcr_a_mul may overwrite hi

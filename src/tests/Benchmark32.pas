@@ -238,6 +238,7 @@ function wrap_pow_p(x, y: Single): Single;      begin Result := pcr_powf(x, y); 
 function wrap_compound_p(x, y: Single): Single; begin Result := pcr_compoundf(x, y); end;
 
 begin
+  PWins := 0; CWins := 0; PTies := 0;
   {$IFDEF AVX2}
   WriteLn('Compiled with AVX2.');
   {$ENDIF}

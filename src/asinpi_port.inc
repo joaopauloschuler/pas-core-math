@@ -286,6 +286,7 @@ var
   vmsk: UInt64;
   rnd: UInt64;
 begin
+  Result := 0;
   rm := pcr_GetRoundMode;
   t.f := x;
   se := Int32((t.u shr 52) and $7FF) - $3FF;
@@ -422,6 +423,7 @@ var
   Vh, Vl: UInt64;
   rnd: UInt64;
 begin
+  Result := 0;
   rm := pcr_GetRoundMode;
   t.f := x;
   e := Int32((t.u shr 52) and $7FF) - $3FF;

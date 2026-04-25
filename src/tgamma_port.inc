@@ -213,6 +213,7 @@ type TTGFlatArr = array of Tb64u64;
 function TGFlat(const t: array of Tb64u64): TTGFlatArr;
 var i: Int32;
 begin
+  Result := nil;
   SetLength(Result, Length(t));
   for i := 0 to High(t) do Result[i] := t[i];
 end;

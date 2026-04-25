@@ -239,6 +239,7 @@ function pcm_hypot(x, y: Double): Double;  begin Result := pcr_hypot(x, y);  end
 function pcm_pow(x, y: Double): Double;    begin Result := pcr_pow(x, y);    end;
 
 begin
+  PCMWins := 0; FPCWins := 0; PTies := 0;
   {$IFDEF AVX2}
   WriteLn('Compiled with AVX2.');
   {$ENDIF}
