@@ -147,6 +147,11 @@ const
   // pi/2 to error < 2^-197.96
   TINT_PI2:  TInt64 = (m: $C4C6628B80DC1CD1; h: $C90FDAA22168C234;
                        l: $29024E088A67CC74; ex: 1; sgn: 0);
+  // 1/2 (used by atan2pi)
+  TINT_ONE_HALF: TInt64 = (m: 0; h: $8000000000000000; l: 0; ex: 0; sgn: 0);
+  // 1/pi to relative error < 2^-198.59 (used by atan2pi)
+  TINT_ONE_OVER_PI: TInt64 = (m: $FC2757D1F534DDC0; h: $A2F9836E4E441529;
+                              l: $DB6295993C439042; ex: -1; sgn: 0);
 
   // Helpers used inside InvTInt
   cTI_1pm1022: Tb64u64 = (u: $0010000000000000); // 0x1p-1022 (smallest normal)
@@ -1005,7 +1010,11 @@ begin
   end;
   if a.ex <= -1074 then begin
     if a.ex < -1074 then begin
-      if a.sgn <> 0 then Result := -5e-324 * 0.5 else Result := 5e-324 * 0.5;
+      // |a| < 2^-1075 — round-to-nearest-even yields +/-0. The C source
+      // computes `0x1p-1074 * 0.5` and relies on runtime IEEE rounding to
+      // produce 0; FPC's compile-time constant folder rounds half-up to
+      // 0x1p-1074 (smallest subnormal) instead, so we hard-code 0 here.
+      if a.sgn <> 0 then Result := -0.0 else Result := 0.0;
       Exit;
     end;
     mid := (a.h = (UInt64(1) shl 63)) and (a.m = 0) and (a.l = 0);
