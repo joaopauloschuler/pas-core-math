@@ -4025,34 +4025,34 @@ begin
   Result := ExpAsLdexp(lb, ie);
 end;
 
-{$I cos_port_64.inc}
-{$I sin_port_64.inc}
-{$I tan_port_64.inc}
-{$I sincos_port_64.inc}
-{$I sinpi_port_64.inc}
-{$I atanpi_port_64.inc}
-{$I cosh_port_64.inc}
-{$I tanpi_port_64.inc}
-{$I sinh_port_64.inc}
-{$I acosh_port_64.inc}
-{$I atanh_port_64.inc}
-{$I asinh_port_64.inc}
-{$I log1p_port_64.inc}
-{$I log_port_64.inc}
-{$I log10_port_64.inc}
-{$I erf_port_64.inc}
-{$I exp2m1_port_64.inc}
-{$I exp10m1_port_64.inc}
-{$I acospi_port_64.inc}
-{$I tgamma_port_64.inc}
-{$I erfc_port_64.inc}
-{$I hypot_port_64.inc}
-{$I lgamma_port_64.inc}
-{$I log10p1_port_64.inc}
-{$I log2p1_port_64.inc}
-{$I atan2_port_64.inc}
-{$I atan2pi_port_64.inc}
-{$I asinpi_port_64.inc}
-{$I pow_port_64.inc}
+{$I inc_64/cos_port_64.inc}
+{$I inc_64/sin_port_64.inc}
+{$I inc_64/tan_port_64.inc}
+{$I inc_64/sincos_port_64.inc}
+{$I inc_64/sinpi_port_64.inc}
+{$I inc_64/atanpi_port_64.inc}
+{$I inc_64/cosh_port_64.inc}
+{$I inc_64/tanpi_port_64.inc}
+{$I inc_64/sinh_port_64.inc}
+{$I inc_64/acosh_port_64.inc}
+{$I inc_64/atanh_port_64.inc}
+{$I inc_64/asinh_port_64.inc}
+{$I inc_64/log1p_port_64.inc}
+{$I inc_64/log_port_64.inc}
+{$I inc_64/log10_port_64.inc}
+{$I inc_64/erf_port_64.inc}
+{$I inc_64/exp2m1_port_64.inc}
+{$I inc_64/exp10m1_port_64.inc}
+{$I inc_64/acospi_port_64.inc}
+{$I inc_64/tgamma_port_64.inc}
+{$I inc_64/erfc_port_64.inc}
+{$I inc_64/hypot_port_64.inc}
+{$I inc_64/lgamma_port_64.inc}
+{$I inc_64/log10p1_port_64.inc}
+{$I inc_64/log2p1_port_64.inc}
+{$I inc_64/atan2_port_64.inc}
+{$I inc_64/atan2pi_port_64.inc}
+{$I inc_64/asinpi_port_64.inc}
+{$I inc_64/pow_port_64.inc}
 
 end.

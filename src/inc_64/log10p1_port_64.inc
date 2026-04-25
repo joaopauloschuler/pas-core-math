@@ -24,7 +24,7 @@
 // ===========================================================================
 
 const
-{$I log10p1_const_64.inc}
+{$I inc_64/log10p1_const_64.inc}
 
 // ---------- Local d_mul / s_mul matching log10p1.c order --------------------
 // log10p1.c d_mul: a_mul(hi,lo,ah,bh); lo = fma(ah,bl,lo); lo = fma(al,bh,lo)

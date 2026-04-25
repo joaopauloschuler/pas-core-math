@@ -14,7 +14,7 @@
 // FE side effects diverge.
 // ---------------------------------------------------------------------------
 
-{$I atan2pi_const_64.inc}
+{$I inc_64/atan2pi_const_64.inc}
 
 const
   cA2pi_MASK: UInt64 = UInt64($7FFFFFFFFFFFFFFF);

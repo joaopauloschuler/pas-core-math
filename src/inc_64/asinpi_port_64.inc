@@ -6,7 +6,7 @@
 // distinct from asin.c's double-double version that pcr_asin ports.
 // ---------------------------------------------------------------------------
 
-{$I asinpi_const_64.inc}
+{$I inc_64/asinpi_const_64.inc}
 
 // ---------------------------------------------------------------------------
 // Local u128 helpers

@@ -25,7 +25,7 @@
 // ===========================================================================
 
 const
-{$I log2p1_const_64.inc}
+{$I inc_64/log2p1_const_64.inc}
 
 // Local d_mul matching log2p1.c order (a_mul + fma(ah,bl,lo) + fma(al,bh,lo)).
 procedure Log2p1DMul(var hi, lo: Double; ah, al, bh, bl: Double); inline;

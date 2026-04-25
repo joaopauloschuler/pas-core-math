@@ -17,7 +17,7 @@
 //   * Tables are pre-shifted at generation time; see tools/pow_gen.py.
 // ---------------------------------------------------------------------------
 
-{$I pow_const_64.inc}
+{$I inc_64/pow_const_64.inc}
 
 const
   // Named constants used by the fast-path log/exp helpers (anti-x87 typecasts).

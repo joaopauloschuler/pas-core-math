@@ -16,7 +16,7 @@
 // MulDIntInt) are convention-agnostic. See log_gen.py for details.
 // ---------------------------------------------------------------------------
 
-{$I log_const_64.inc}
+{$I inc_64/log_const_64.inc}
 
 const
   cLogOFFSET: Int32 = 362;

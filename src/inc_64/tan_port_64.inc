@@ -167,7 +167,7 @@ end;
 // Tinv[256]: 64-bit inverse seed table used by InvDInt.
 // ---------------------------------------------------------------------------
 const
-{$I tan_tinv_64.inc}
+{$I inc_64/tan_tinv_64.inc}
   cTanDIntOne: TDInt64 = (hi: QWord($8000000000000000); lo: 0; ex: 1; sgn: 0);
 
 // Subtract u128 "hi128:lo128" = 2^127 from a u64*u64 product, returning 128-bit.
