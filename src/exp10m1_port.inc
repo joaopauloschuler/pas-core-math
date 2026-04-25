@@ -6,15 +6,15 @@
 
 const
   cExp10m1LN10H:    Tb64u64 = (u:$40026BB1BBB55516);   // log(10) hi
-  cExp10m1LN10L:    Tb64u64 = (u:$BCAF48AD494EA3E9);   // log(10) lo
+  cExp10m1LN10L:    Tb64u64 = (u:QWord($BCAF48AD494EA3E9));   // log(10) lo
   cExp10m1InvLog210: Tb64u64 = (u:$40CA934F0979A371);  // 2^12 * log(10)/log(2)
   cExp10m1Log210H:  Tb64u64 = (u:$3F134413509F79FF);   // log(2)/log(10)/2^12 hi
-  cExp10m1Log210M:  Tb64u64 = (u:$BB89DC1DA9800000);   // mid (30-bit so M*k exact)
-  cExp10m1Log210L:  Tb64u64 = (u:$B984FD20DBA1F655);   // lo
+  cExp10m1Log210M:  Tb64u64 = (u:QWord($BB89DC1DA9800000));   // mid (30-bit so M*k exact)
+  cExp10m1Log210L:  Tb64u64 = (u:QWord($B984FD20DBA1F655));   // lo
   cExp10m1C2:       Tb64u64 = (u:$40053524C73CEA69);   // log(10)^2 / 2
 
   // Bit-pattern thresholds.
-  cExp10m1HugeNeg:    UInt64 = $C03041704C068EF0;      // x = -NaN or x <= -0x1.041704c068efp+4
+  cExp10m1HugeNeg:    UInt64 = QWord($C03041704C068EF0);      // x = -NaN or x <= -0x1.041704c068efp+4
   cExp10m1HugePosAx:  UInt64 = $40734413509F79FE;      // ax > this -> +NaN or overflow
   cExp10m1VTinyAx:    UInt64 = $3C90000000000000;      // |x| <= 2^-54
   cExp10m1UltraTiny:  UInt64 = $3970000000000000;      // |x| <= 2^-104

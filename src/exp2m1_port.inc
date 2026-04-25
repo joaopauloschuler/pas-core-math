@@ -11,7 +11,7 @@ const
   cExp2m1Log2L:   Tb64u64 = (u:$3BBABC9E3B39803F);   // log(2) * 2^-12 lo
   cExp2m1C2:      Tb64u64 = (u:$3FCEBFBDFF82C58F);   // log(2)^2 / 2
 
-  cExp2m1HugeNeg:    UInt64 = $C04B000000000000;     // x <= -54 or -NaN/-Inf
+  cExp2m1HugeNeg:    UInt64 = QWord($C04B000000000000);     // x <= -54 or -NaN/-Inf
   cExp2m1HugePos:    UInt64 = $4090000000000000;     // |x| >= 1024
   cExp2m1VTinyAx:    UInt64 = $3CC0527DBD87E24D;     // |x| <= 0x1.0527...p-51
   cExp2m1UltraTiny:  UInt64 = $3970000000000000;     // |x| <= 2^-104

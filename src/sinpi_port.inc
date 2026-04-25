@@ -16,9 +16,9 @@
 const
   // Fast-path polynomial c[0..3] for |x| <= 0x1.2p-5 branch (sinpi.c:208)
   cSinpiFastC: array[0..3] of Tb64u64 = (
-    (u:$C014ABBCE625BE51), //  -0x1.4abbce625be51p+2
+    (u:QWord($C014ABBCE625BE51)), //  -0x1.4abbce625be51p+2
     (u:$400466BC67754B46), //   0x1.466bc67754b46p+1
-    (u:$BFE32D2CC12A51F4), //  -0x1.32d2cc12a51f4p-1
+    (u:QWord($BFE32D2CC12A51F4)), //  -0x1.32d2cc12a51f4p-1
     (u:$3FB5060540058476)  //   0x1.5060540058476p-4
   );
 
@@ -40,29 +40,29 @@ const
 
   // as_sinpi_zero polynomial tables (sinpi.c:89-92). Different arity from cospi.
   cSinpiZeroCh: array[0..3, 0..1] of Tb64u64 = (
-    ((u:$C014ABBCE625BE53),(u:$3CB05511C68477BE)),  // -0x1.4abbce625be53p+2, 0x1.05511c68477bep-52
-    ((u:$400466BC6775AAE2),(u:$BC96DC0CBEFAE1DA)),  //  0x1.466bc6775aae2p+1, -0x1.6dc0cbefae1dap-54
-    ((u:$BFE32D2CCE62BD86),(u:$3C8066BD54973829)),  // -0x1.32d2cce62bd86p-1, 0x1.066bd54973829p-55
+    ((u:QWord($C014ABBCE625BE53)),(u:$3CB05511C68477BE)),  // -0x1.4abbce625be53p+2, 0x1.05511c68477bep-52
+    ((u:$400466BC6775AAE2),(u:QWord($BC96DC0CBEFAE1DA))),  //  0x1.466bc6775aae2p+1, -0x1.6dc0cbefae1dap-54
+    ((u:QWord($BFE32D2CCE62BD86)),(u:$3C8066BD54973829)),  // -0x1.32d2cce62bd86p-1, 0x1.066bd54973829p-55
     ((u:$3FB50783487EE781),(u:$3C5832989F39A743))   //  0x1.50783487ee781p-4, 0x1.832989f39a743p-58
   );
   cSinpiZeroCl: array[0..2] of Tb64u64 = (
-    (u:$BF7E3074FDE861F0), // -0x1.e3074fde861fp-8
+    (u:QWord($BF7E3074FDE861F0)), // -0x1.e3074fde861fp-8
     (u:$3F3E8F4344534DA6), //  0x1.e8f4344534da6p-12
-    (u:$BEF6F9CD7B8CB9DB)  // -0x1.6f9cd7b8cb9dbp-16
+    (u:QWord($BEF6F9CD7B8CB9DB))  // -0x1.6f9cd7b8cb9dbp-16
   );
 
   // as_sinpi_zero reduction constants (pi split into pi0 + pi1 + pi2, sinpi.c:96)
   cSinpiZeroPi0: Tb64u64 = (u: $4009200000000000); // 0x1.92p+1  (6.3125 exactly)
   cSinpiZeroPi1: Tb64u64 = (u: $3F4FB54442D1846A); // 0x1.fb54442d1846ap-11
-  cSinpiZeroPi2: Tb64u64 = (u: $BBED9CCEBA3F91F2); // -0x1.d9cceba3f91f2p-65
+  cSinpiZeroPi2: Tb64u64 = (u: QWord($BBED9CCEBA3F91F2)); // -0x1.d9cceba3f91f2p-65
 
   // Sinpi-specific exception database (sinpi.c:140-145) — 4 entries only.
   cSinpiDb4_Iq: array[0..3] of Int32 = (76, 108, 490, 903);
   cSinpiDb4_X:  array[0..3] of Tb64u64 = (
-    (u:$BFD276B3FEF46600), // -0x1.276b3fef466p-2
-    (u:$BFD33CAEA0F24C00), // -0x1.33caea0f24cp-2
-    (u:$BFE8A1E8A3E82C00), // -0x1.8a1e8a3e82cp-1
-    (u:$BFDBDD02D1AD6000)  // -0x1.bdd02d1ad60p-2
+    (u:QWord($BFD276B3FEF46600)), // -0x1.276b3fef466p-2
+    (u:QWord($BFD33CAEA0F24C00)), // -0x1.33caea0f24cp-2
+    (u:QWord($BFE8A1E8A3E82C00)), // -0x1.8a1e8a3e82cp-1
+    (u:QWord($BFDBDD02D1AD6000))  // -0x1.bdd02d1ad60p-2
   );
   cSinpiDb4_R: array[0..3] of Tb64u64 = (
     (u:$3FBDB8A79A80C3A0), // 0x1.db8a79a80c3a0p-4
@@ -73,7 +73,7 @@ const
   cSinpiDb4_D: array[0..3] of Tb64u64 = (
     (u:$3910000000000000), //  0x1p-110
     (u:$3920000000000000), //  0x1p-109
-    (u:$BC80000000000000), // -0x1p-55
+    (u:QWord($BC80000000000000)), // -0x1p-55
     (u:$3C80000000000000)  //  0x1p-55
   );
 

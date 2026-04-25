@@ -27,7 +27,7 @@ const
 
   // ONE_OVER_LOG10 dint — C dint has ex=-2; pascoremath convention is +1, so ex=-1.
   cLog10OneOverLog10Dint: TDInt64 =
-    (hi:$DE5BD8A937287195; lo:$355BAAAFAD33DC32; ex:-1; sgn:0);
+    (hi:QWord($DE5BD8A937287195); lo:$355BAAAFAD33DC32; ex:-1; sgn:0);
 
   // pow10[0..22] = bit patterns of 10^n; entries 23..31 are zero (sentinel).
   cLog10Pow10: array[0..31] of Tb64u64 = (

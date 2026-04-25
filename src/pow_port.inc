@@ -26,8 +26,8 @@ const
   cPowLog1Threshold: Tb64u64 = (u: $3E70000000000000); // 0x1p-24
 
   // exp_1 thresholds and constants
-  cPowRho0:    Tb64u64 = (u: $C0874910EE4E8A27); // -0x1.74910ee4e8a27p+9
-  cPowRho1:    Tb64u64 = (u: $C08483B8CCA421AF); // -0x1.483b8cca421afp+9
+  cPowRho0:    Tb64u64 = (u: QWord($C0874910EE4E8A27)); // -0x1.74910ee4e8a27p+9
+  cPowRho1:    Tb64u64 = (u: QWord($C08483B8CCA421AF)); // -0x1.483b8cca421afp+9
   cPowRho2:    Tb64u64 = (u: $40862E42E709A95B); // 0x1.62e42e709a95bp+9
   cPowRho3:    Tb64u64 = (u: $40862E4316EA5DF9); // 0x1.62e4316ea5df9p+9
   cPowInvLog2: Tb64u64 = (u: $40B71547652B82FE); // 0x1.71547652b82fep+12
@@ -820,7 +820,7 @@ end;
 function PcrPowPas(x, y: Double): Double;
 const
   cInfPos:    Tb64u64 = (u: $7FF0000000000000);
-  cInfNeg:    Tb64u64 = (u: $FFF0000000000000);
+  cInfNeg:    Tb64u64 = (u: QWord($FFF0000000000000));
   cPow1pm100: Tb64u64 = (u: $39B0000000000000); // 0x1p-100
 var
   s, x0: Double;

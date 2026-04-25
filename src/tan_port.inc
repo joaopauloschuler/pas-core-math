@@ -168,7 +168,7 @@ end;
 // ---------------------------------------------------------------------------
 const
 {$I tan_tinv.inc}
-  cTanDIntOne: TDInt64 = (hi: $8000000000000000; lo: 0; ex: 1; sgn: 0);
+  cTanDIntOne: TDInt64 = (hi: QWord($8000000000000000); lo: 0; ex: 1; sgn: 0);
 
 // Subtract u128 "hi128:lo128" = 2^127 from a u64*u64 product, returning 128-bit.
 // Used to compute 2^127 - h*t.
@@ -271,7 +271,7 @@ const
   );
   cTanExceptionsL: array[0..1] of Tb64u64 = (
     (u:$3B3FFFFFFFFFFFFF), // 0x1.fffffffffffffp-76
-    (u:$B74658BCEDB6E1D4)  // -0x1.658bcedb6e1d4p-147
+    (u:QWord($B74658BCEDB6E1D4))  // -0x1.658bcedb6e1d4p-147
   );
 
 function TanAccurate(x: Double): Double;

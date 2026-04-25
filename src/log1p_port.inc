@@ -11,11 +11,11 @@ const
   cLog1pEpsFastMid:   Tb64u64 = (u:$3CB9400000000000); // 0x1.94p-52
   cLog1pEpsFastBig:   Tb64u64 = (u:$3BEA000000000000); // 0x1.ap-65
   cLog1pL1Per:        Tb64u64 = (u:$3FE62E42FEFA4000); // 0x1.62e42fefa4p-1
-  cLog1pL0Per:        Tb64u64 = (u:$BD48432A1B0E2634); // -0x1.8432a1b0e2634p-43
+  cLog1pL0Per:        Tb64u64 = (u:QWord($BD48432A1B0E2634)); // -0x1.8432a1b0e2634p-43
   cLog1pInvLog2Scl:   Tb64u64 = (u:$40F71547652B82FE); // 0x1.71547652b82fep+16
   // refine je-dependent coefficients
   cLog1pR_L2:         Tb64u64 = (u:$3FE62E42FEFA4000); // 0x1.62e42fefa4p-1
-  cLog1pR_L1:         Tb64u64 = (u:$BD48432A1B0E2800); // -0x1.8432a1b0e28p-43
+  cLog1pR_L1:         Tb64u64 = (u:QWord($BD48432A1B0E2800)); // -0x1.8432a1b0e28p-43
   cLog1pR_L0:         Tb64u64 = (u:$3A8CC01F97B57A08); // 0x1.cc01f97b57a08p-87
 
 // ---------- Local helpers (C-grouping; not normalized) -----------------------

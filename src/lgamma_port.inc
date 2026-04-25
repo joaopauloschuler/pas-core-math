@@ -5,7 +5,7 @@
 // ---------------------------------------------------------------------------
 
 const
-  cLgammaSXBnd:    Tb64u64 = (u:$C004E147AE147AE1); // -0x1.4e147ae147ae1p+1, ~ -2.61
+  cLgammaSXBnd:    Tb64u64 = (u:QWord($C004E147AE147AE1)); // -0x1.4e147ae147ae1p+1, ~ -2.61
   cLgammaLn2Hi:    Tb64u64 = (u:$3FE62E42FEF80000); // 0x1.62e42fef8p-1
   cLgammaLn2Lo:    Tb64u64 = (u:$3DB1CF79ABC9E3B4); // 0x1.1cf79abc9e3b4p-36
   cLgammaLn2H3:    Tb64u64 = (u:$3FE62E42FEFA3800); // 0x1.62e42fefa38p-1

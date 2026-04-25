@@ -7,7 +7,7 @@
 
 const
   cAcospiOnePiH:  Tb64u64 = (u:$3FD45F306DC9C883);  //  0x1.45f306dc9c883p-2
-  cAcospiOnePiL:  Tb64u64 = (u:$BC76B01EC5417056);  // -0x1.6b01ec5417056p-56
+  cAcospiOnePiL:  Tb64u64 = (u:QWord($BC76B01EC5417056));  // -0x1.6b01ec5417056p-56
   cAcospiPiHi:    Tb64u64 = (u:$400921FB54442D18);  //  0x1.921fb54442d18p+1
   cAcospiPiLo:    Tb64u64 = (u:$3CA1A62633145C07);  //  0x1.1a62633145c07p-53
   cAcospiPiHalfH: Tb64u64 = (u:$3FF921FB54442D18);  //  pi/2 hi

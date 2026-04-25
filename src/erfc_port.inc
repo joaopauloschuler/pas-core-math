@@ -59,7 +59,7 @@ const
   // erfc_asympt_accurate subnormal-output exception
   cErfcSubExpX:    Tb64u64 = (u:$403A8F7BFBD15495); // 0x1.a8f7bfbd15495p+4
   cErfcSubExpA:    Tb64u64 = (u:$0000000000000001); // 0x1p-1074
-  cErfcSubExpFmaB: Tb64u64 = (u:$BFD0000000000000); // -0.25
+  cErfcSubExpFmaB: Tb64u64 = (u:QWord($BFD0000000000000)); // -0.25
   cErfcSubExpC:    Tb64u64 = (u:$00099EF5883F656C); // 0x1.99ef5883f656cp-1024
 
   cErfcAccUpper:   Tb64u64 = (u:$400B59FFB450828C); // 0x1.b59ffb450828cp+0

@@ -25,14 +25,14 @@
 const
   // 1/(2pi) high/low double-double approximation used by reduce_fast for |x| < 2pi.
   cCosCH: Tb64u64 = (u: $3FC45F306DC9C883); //  0x1.45f306dc9c883p-3
-  cCosCL: Tb64u64 = (u: $BC66B01EC5417056); // -0x1.6b01ec5417056p-57
+  cCosCL: Tb64u64 = (u: QWord($BC66B01EC5417056)); // -0x1.6b01ec5417056p-57
 
   // Fast-path threshold: for |x| <= 0x1.6a09e667f3bccp-27 we return x - x*2^-28.
   cCosTinyBits: UInt64 = $3E46A09E667F3BCC;
   cCosPthresh: Tb64u64 = (u: $4009921FB54442D1); // 0x1.921fb54442d17p+2 ≈ 2*pi
   cCos1pm11:   Tb64u64 = (u: $3F40000000000000); // 0x1p-11
   cCos1p11:    Tb64u64 = (u: $40A0000000000000); // 0x1p+11
-  cCosNeg1pm28:Tb64u64 = (u: $BE30000000000000); // -0x1p-28
+  cCosNeg1pm28:Tb64u64 = (u: QWord($BE30000000000000)); // -0x1p-28
   cCosErrSin:  Tb64u64 = (u: $3BAAA00000000000); // 0x1.55p-69
   cCosErrCos:  Tb64u64 = (u: $3BA8100000000000); // 0x1.81p-69
   cCosErrReduce1: Tb64u64 = (u: $39BD900000000000); // 0x1.d9p-105
@@ -393,7 +393,7 @@ end;
 // Ported faithfully from cos_accurate() in cos.c:1861.
 // ---------------------------------------------------------------------------
 const
-  cCosMagic: TDInt64 = (hi: $8000000000000000; lo: 0; ex: -10; sgn: 0);
+  cCosMagic: TDInt64 = (hi: QWord($8000000000000000); lo: 0; ex: -10; sgn: 0);
 
 function CosAccurate(x: Double): Double;
 var

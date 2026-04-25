@@ -26,7 +26,7 @@ const
   cAtan2Pi2H:   Tb64u64 = (u: $3FF921FB54442D18); // 0x1.921fb54442d18p+0
   cAtan2Pi2L:   Tb64u64 = (u: $3C91A62633145C07); // 0x1.1a62633145c07p-54
   cAtan2P54Pos: Tb64u64 = (u: $3C90000000000000); //  0x1p-54
-  cAtan2P54Neg: Tb64u64 = (u: $BC90000000000000); // -0x1p-54
+  cAtan2P54Neg: Tb64u64 = (u: QWord($BC90000000000000)); // -0x1p-54
   cAtan2P105:   Tb64u64 = (u: $4680000000000000); //  0x1p+105
   cAtan2PMin22: Tb64u64 = (u: $0010000000000000); //  0x1p-1022 (smallest normal)
   cAtan2PM915:  Tb64u64 = (u: $44C0000000000000); //  0x1p-915

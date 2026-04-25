@@ -7,7 +7,7 @@
 const
   cTGOverThr:     Tb64u64 = (u:$4060573FAE561F64);  // 0x1.573fae561f648p+7
   cTGSubMin:      Tb64u64 = (u:$0010000000000000);  // 0x1p-1022
-  cTGSubMinNeg:   Tb64u64 = (u:$8010000000000000);  // -0x1p-1022
+  cTGSubMinNeg:   Tb64u64 = (u:QWord($8010000000000000));  // -0x1p-1022
   cTGOvflPos:     Tb64u64 = (u:$7FE8000000000000);  // 0x1.fp1023
   cTGTinyAxThr:   UInt64  = $71E0000000000000;      // |x| < 2^-112 boundary (ax)
   cTGSpecPow1024H:Tb64u64 = (u:$7FEFFFFFFFFFFFFF);  // 0x1.fffffffffffffp+1023
