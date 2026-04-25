@@ -467,3 +467,560 @@ begin
   MulQInt(r, cPowT23[i1], r);
   r.ex := r.ex + M;
 end;
+
+// --- 5.02j: rounding-boundary detection (is_exact / exact_pow) ------------
+
+// Count trailing zeros (64-bit). Undefined if x = 0.
+function pcr_ctzll(x: UInt64): Integer; inline;
+begin
+  pcr_ctzll := Integer(BsfQWord(x));
+end;
+
+
+// Mirrors C fast_extract (pow.h): e = unbiased exponent (subnormal returns -1023);
+// m = significand with implicit bit added for normals.
+procedure PowFastExtract(out e: Int64; out m: UInt64; x: Double); inline;
+var u: Tb64u64;
+begin
+  u.f := x;
+  e := (u.u shr 52) and $7FF;
+  m := (u.u and (UInt64($FFFFFFFFFFFFFFFF) shr 12));
+  if e <> 0 then m := m + (UInt64(1) shl 52);
+  e := e - $3FF;
+end;
+
+// Mirrors C extract (pow.h): returns (e, m) such that x = 2^e * m with m odd.
+procedure PowExtract(out e: Int64; out m: UInt64; x: Double); inline;
+var u: Tb64u64; t: Integer;
+begin
+  u.f := x;
+  e := (u.u shr 52) and $7FF;
+  m := (u.u and (UInt64($FFFFFFFFFFFFFFFF) shr 12));
+  if e <> 0 then m := m + (UInt64(1) shl 52);
+  if m = 0 then begin t := 0; end else t := pcr_ctzll(m);
+  m := m shr t;
+  if e <> 0 then
+    e := e + Int64(t) - $433
+  else
+    e := Int64(t) - $432;
+end;
+
+// Mirrors is_int(x): true iff x is a finite integer.
+function PowIsInt(x: Double): Boolean; inline;
+begin
+  PowIsInt := (x = pcr_roundeven(x));
+end;
+
+// Multiply x by 2^e. Mirrors C pow2(double*, int64_t). e in [-2148, 2046] for
+// normal-range results; saturates outside.
+procedure PowPow2(var x: Double; e: Int64);
+var e2: Tb64u64;
+begin
+  if (e and 1) <> 0 then x := x * Double(2.0);
+  e2.u := UInt64(((e shr 1) + $3FF) and $7FF) shl 52;
+  x := (x * e2.f) * e2.f;
+end;
+
+// Mirrors round_54: shortcut rounding of a TDInt64 to 54 bits, used by exact_pow.
+// Returns G (binary exponent of the LSB of k) and k (54-bit signed mantissa).
+// Pascal +1 ex convention: G_C = ex_P - 54.
+procedure PowRound54(out Glsb, k: Int64; const x: TDInt64); inline;
+begin
+  Glsb := x.ex - 54;
+  k := Int64((x.hi shr 10) + ((x.hi shr 9) and 1));
+end;
+
+// Mirrors C exact_pow (pow.c:1232). Algorithm detectRoundingBoundaryCase from [4].
+// On entry z is the dint approximation of x^y from phase 2 (relative err < 2^-117).
+// Returns true (and writes r) when the result is exactly representable on 54 bits.
+function PowExactPow(out r: Double; x, y: Double; const z: TDInt64;
+                     {%H-}exact: Integer): Boolean;
+var
+  s: Int64;
+  m, n, t, kpow, mpow: UInt64;
+  E, F, Glsb, k, g: Int64;
+  cnt: Integer;
+  d: TDInt64;
+begin
+  PowExactPow := False;
+  if z.sgn = 1 then s := -1 else s := 1;
+
+  PowExtract(E, m, x);
+
+  if m = 1 then begin
+    // x is a power of 2
+    if PowIsInt(Double(E) * y) then begin
+      if z.sgn = 1 then r := -1.0 else r := 1.0;
+      PowPow2(r, Trunc(Double(E) * y));
+      PowExactPow := True;
+    end;
+    exit;
+  end;
+
+  if (y < 0.0) or (y > 34.0) then exit;
+
+  PowExtract(F, n, y);
+  if (n > 34) or (F < -5) then exit;
+
+  if F < 0 then begin
+    // case (b): check that E is divisible by 2^-F
+    if (E and (Int64(UInt64($FFFFFFFFFFFFFFFF) shr (64 + F)))) <> 0 then exit;
+    g := Int64((UInt64(E) shr -F)) * Int64(n);
+    PowRound54(Glsb, k, z);
+
+    // |2^G*k - z| >= 2^-116*z ?
+    if k = 0 then exit;
+    cnt := pcr_clzll(UInt64(k));
+    d.hi := UInt64(k) shl cnt;
+    d.lo := 0;
+    d.ex := Glsb + 64 - cnt;       // Pascal +1 convention
+    d.sgn := Byte(1 - z.sgn);
+    AddDInt(d, z, d);              // exact (Sterbenz)
+    d.ex := d.ex + 116;
+    if CmpDIntAbs(d, z) >= 0 then exit;
+
+    if Glsb > g then exit;
+
+    // Check whether k is an odd number multiplied by 2^(g-Glsb).
+    if (UInt64(k) and (not (UInt64($FFFFFFFFFFFFFFFE) shl (g - Glsb)))) =
+       (UInt64(1) shl (g - Glsb)) then begin
+      r := Double((Int64(UInt64(k) shr (g - Glsb))) * s);
+      PowPow2(r, g);
+      PowExactPow := True;
+      exit;
+    end;
+    exit;
+  end;
+
+  // case (a): n*2^F integer, 1 <= y <= 34
+  t := n shl F;
+  kpow := 1;
+  mpow := m;
+  while t <> 0 do begin
+    if (t and 1) <> 0 then begin
+      // detect overflow of mpow*kpow
+      if (mpow <> 0) and (kpow > UInt64($FFFFFFFFFFFFFFFF) div mpow) then exit;
+      kpow := mpow * kpow;
+    end;
+    t := t shr 1;
+    if t <> 0 then begin
+      if (mpow <> 0) and (mpow > UInt64($FFFFFFFFFFFFFFFF) div mpow) then exit;
+      mpow := mpow * mpow;
+    end;
+  end;
+  if (kpow shr 54) <> 0 then exit;
+  r := Double(Int64(kpow) * s);
+  PowPow2(r, E * Int64(n shl F));
+  PowExactPow := True;
+end;
+
+// Returns 1 (or sign-bit-style nonzero) if x^y is exactly representable.
+// Mirrors C is_exact (pow.c:1349). 0 = not exact, nonzero = exact.
+function PowIsExact(x, y: Double): Integer;
+const
+  cXMax: array[0..33] of UInt64 = (
+    0, UInt64($FFFFFFFFFFFFFFFF),
+    94906265, 208063, 9741, 1551, 455, 189, 97,
+    59, 39, 27, 21, 15, 13, 11, 9, 7, 7, 5, 5,
+    5, 5, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3 );
+var
+  v, w: Tb64u64;
+  m, n, my, n0: UInt64;
+  e, f, ez: Int64;
+  t, y_int, i: Integer;
+  dm, sd: Double;
+begin
+  PowIsExact := 0;
+  v.f := x; w.f := y;
+
+  // Early exit: |x|<>1 AND low 42 bits of y nonzero.
+  if ((v.u shl 1) <> UInt64($7FE0000000000000)) and ((w.u shl 22) <> 0) then exit;
+
+  if (v.u shl 1) = UInt64($7FE0000000000000) then begin
+    PowIsExact := 1; exit;
+  end;
+
+  if (y >= 0) and PowIsInt(y) then begin
+    m := v.u and UInt64($FFFFFFFFFFFFF);
+    e := Int64((v.u shl 1) shr 53) - $433;
+    if e >= -1074 then m := m or UInt64($10000000000000)
+    else e := e + 1;
+    if m = 0 then exit;
+    t := pcr_ctzll(m);
+    m := m shr t;
+    e := e + t;
+    if (y = 0.0) or (y = 1.0) then begin PowIsExact := 1; exit; end;
+    if m = 1 then begin
+      if (-1074 <= y * e) and (y * e < 1024) then PowIsExact := 1;
+      exit;
+    end;
+    if (y < 0) or (33 < y) then exit;
+    y_int := Trunc(y);
+    if m > cXMax[y_int] then exit;
+    my := m * m;
+    for i := 2 to y_int - 1 do my := my * m;
+    t := 64 - pcr_clzll(m);
+    ez := e * y_int + t;
+    if (ez <= -1074) or (1024 < ez) then exit;
+    if e * y_int >= -1074 then PowIsExact := 1;
+    exit;
+  end;
+
+  // y = n*2^f (n odd)
+  n := w.u and UInt64($FFFFFFFFFFFFF);
+  f := Int64((w.u shl 1) shr 53) - $433;
+  if f >= -1074 then n := n or UInt64($10000000000000)
+  else f := f + 1;
+  if n = 0 then exit;
+  t := pcr_ctzll(n);
+  n := n shr t;
+  f := f + t;
+
+  m := v.u and UInt64($FFFFFFFFFFFFF);
+  e := Int64((v.u shl 1) shr 53) - $433;
+  if e >= -1074 then m := m or UInt64($10000000000000)
+  else e := e + 1;
+  if m = 0 then exit;
+  t := pcr_ctzll(m);
+  m := m shr t;
+  e := e + t;
+
+  if y < 0 then begin
+    if m <> 1 then exit;
+    if f >= 0 then begin
+      if f < 12 then ez := (-Int64(n) * e) shl f else ez := 1024;
+    end else begin
+      t := pcr_ctzll(UInt64(e));
+      if -f > t then exit;
+      ez := (-e shr -f) * Int64(n);
+    end;
+    if (-1074 <= ez) and (ez < 1024) then PowIsExact := 1;
+    exit;
+  end;
+
+  // y > 0, non-integer, y = n*2^f with n odd, f < 0.
+  // x must be a 2^(-f)-th power; m must be a square repeatedly.
+  while True do begin
+    f := f + 1; if f > 0 then break;
+    if (e and 1) <> 0 then exit;
+    e := e div 2;
+    dm := Double(m);
+    sd := Double(Round(Sqrt(dm)));
+    if sd * sd <> dm then exit;
+    m := UInt64(Trunc(sd));
+  end;
+
+  if m > 1 then begin
+    if 33 < n then exit;
+    if m > cXMax[n] then exit;
+  end;
+  my := m; n0 := n;
+  while n0 > 1 do begin my := my * m; n0 := n0 - 1; end;
+  t := 64 - pcr_clzll(my);
+  if (-1074 <= e * Int64(n)) and (e * Int64(n) + t <= 1024) then
+    PowIsExact := 1;
+end;
+
+// --- 5.02k: main pcr_pow_pas with three Ziv phases ------------------------
+
+// Convert a double to a TQInt64. Mirrors qint_fromd (pow.h:371).
+procedure PowQIntFromD(out a: TQInt64; b: Double); inline;
+var t: Integer;
+begin
+  PowFastExtract(a.ex, a.r0, b);
+  t := pcr_clzll(a.r0);
+  a.sgn := Byte(b < 0.0);
+  if t > 11 then a.ex := a.ex - (t - 12);
+  a.r0 := a.r0 shl t;
+  a.r1 := 0; a.r2 := 0; a.r3 := 0;
+end;
+
+// Subnormalize a TQInt64 prior to conversion. Mirrors C subnormalize_qint.
+// QInt convention matches C — use C thresholds directly.
+procedure PowSubnormalizeQInt(var a: TQInt64);
+var
+  ex: UInt64;
+  hi, md, lo: UInt64;
+begin
+  if a.ex > -1023 then exit;
+  ex := UInt64(-(1011 + a.ex));
+  hi := a.r0 shr ex;
+  md := (a.r0 shr (ex - 1)) and 1;
+  if ((a.r0 and (UInt64($FFFFFFFFFFFFFFFF) shr ex)) or a.r1 or a.r2 or a.r3) <> 0 then
+    lo := 1
+  else
+    lo := 0;
+  // round-to-nearest-even (default; we don't query fegetround)
+  if lo <> 0 then hi := hi + md
+  else hi := hi + (hi and md);
+  a.r0 := hi shl ex;
+  a.r1 := 0; a.r2 := 0; a.r3 := 0;
+  if a.r0 = 0 then begin
+    a.ex := a.ex + 1;
+    a.r0 := UInt64(1) shl 63;
+  end;
+end;
+
+// Convert a TQInt64 to a double. Mirrors qint_tod (pow.h:431).
+function PowQIntToD(var a: TQInt64): Double;
+const
+  c2pm53: Tb64u64 = (u: $3CA0000000000000);
+  c2pm54: Tb64u64 = (u: $3C90000000000000);
+  c1p1023: Tb64u64 = (u: $7FE0000000000000);
+var
+  r, e: Tb64u64;
+  rd: Double;
+begin
+  PowSubnormalizeQInt(a);
+  r.u := (a.r0 shr 11) or (UInt64($3FF) shl 52);
+  rd := 0.0;
+  if (a.r0 and $400) <> 0 then rd := rd + c2pm53.f;
+  if ((a.r0 and $3FF) <> 0) or (a.r1 <> 0) or (a.r2 <> 0) or (a.r3 <> 0) then
+    rd := rd + c2pm54.f;
+  if a.sgn <> 0 then rd := -rd;
+  r.u := r.u or (UInt64(a.sgn) shl 63);
+  r.f := r.f + rd;
+
+  if a.ex > -1023 then begin
+    if a.ex > 1023 then begin
+      if a.ex = 1024 then begin
+        r.f := r.f * Double(2.0);
+        e.u := c1p1023.u;
+      end else begin
+        r.f := cPowDblMax.f;
+        e.f := cPowDblMax.f;
+      end;
+    end else
+      e.u := UInt64((a.ex + 1023) and $7FF) shl 52;
+  end else begin
+    if a.ex < -1074 then begin
+      if a.ex = -1075 then begin
+        r.f := r.f * Double(0.5);
+        e.f := cPowMinSub.f;
+      end else begin
+        r.f := cPowMinSub.f;
+        e.f := cPowMinSub.f;
+      end;
+    end else
+      e.u := UInt64(1) shl UInt64(a.ex + 1074);
+  end;
+  PowQIntToD := r.f * e.f;
+end;
+
+// Returns 1 if x is a signaling NaN (assumes x is a NaN).
+function PowIsSignaling(x: Double): Boolean; inline;
+var u: Tb64u64;
+begin
+  u.f := x;
+  PowIsSignaling := (u.u and (UInt64(1) shl 51)) = 0;
+end;
+
+// Main entry point. Correctly-rounded x^y for binary64.
+// Mirrors cr_pow (pow.c:1495).
+function PcrPowPas(x, y: Double): Double;
+const
+  cInfPos:    Tb64u64 = (u: $7FF0000000000000);
+  cInfNeg:    Tb64u64 = (u: $FFF0000000000000);
+  cPow1pm100: Tb64u64 = (u: $39B0000000000000); // 0x1p-100
+var
+  s, x0: Double;
+  xu, yu: Tb64u64;
+  cancel: Integer;
+  lh, ll, rh, rl, res_h, res_l, res_min, res_max, errc: Double;
+  ey: Integer;
+  cs0, cs1: Double;
+  y_parity: Integer;
+  ay: Double;
+  exact: Integer;
+  Xd, Yd, Rd_dint: TDInt64;
+  qX, qY, qR, qZ: TQInt64;
+  rd: UInt64;
+  ex64: UInt64;
+  m54: UInt64;
+  err_arr: array[0..1] of Tb64u64;
+  e_exact: Double;
+  r1q, r2q, r3q: UInt64;
+begin
+  err_arr[0].u := $3BF2700000000000;  // 0x1.27p-64 (~ 2^-63.797)
+  err_arr[1].u := $3C55700000000000;  // 0x1.57p-58 (~ 2^-57.579)
+
+  s := 1.0;
+  x0 := x;
+  xu.f := x; yu.f := y;
+
+  // === NaN / Inf special cases ===
+  if (xu.u >= UInt64($7FF0000000000000)) or (yu.u >= UInt64($7FF0000000000000)) then
+  begin
+    if x <> x then begin   // x is NaN
+      if (y = 0.0) and not PowIsSignaling(x) then begin PcrPowPas := 1.0; exit; end;
+      PcrPowPas := x + x; exit;
+    end;
+    if y <> y then begin   // y is NaN
+      if (x = 1.0) and not PowIsSignaling(y) then begin PcrPowPas := 1.0; exit; end;
+      PcrPowPas := y + y; exit;
+    end;
+
+    // x = +Inf
+    if xu.u = cInfPos.u then begin
+      if y = 0.0 then begin PcrPowPas := 1.0; exit; end;
+      if y < 0.0 then begin PcrPowPas := 0.0; exit; end;
+      if y > 0.0 then begin PcrPowPas := cInfPos.f; exit; end;
+    end;
+    // x = -Inf
+    if xu.u = cInfNeg.u then begin
+      if PowIsInt(y) and not PowIsInt(y * 0.5) then begin
+        if y < 0.0 then begin PcrPowPas := -0.0; exit; end;
+        PcrPowPas := -cInfPos.f; exit;
+      end;
+      if y < 0.0 then begin PcrPowPas := 0.0; exit; end;
+      if y > 0.0 then begin PcrPowPas := cInfPos.f; exit; end;
+    end;
+
+    // y = +Inf
+    if yu.u = cInfPos.u then begin
+      if x = 0.0 then begin PcrPowPas := 0.0; exit; end;
+      if (x = -1.0) or (x = 1.0) then begin PcrPowPas := 1.0; exit; end;
+      if (-1.0 < x) and (x < 1.0) then begin PcrPowPas := 0.0; exit; end;
+      if (x < -1.0) or (1.0 < x) then begin PcrPowPas := cInfPos.f; exit; end;
+    end;
+    // y = -Inf
+    if yu.u = cInfNeg.u then begin
+      if x = 0.0 then begin PcrPowPas := cInfPos.f; exit; end;
+      if (x = -1.0) or (x = 1.0) then begin PcrPowPas := 1.0; exit; end;
+      if (-1.0 < x) and (x < 1.0) then begin PcrPowPas := cInfPos.f; exit; end;
+      if (x < -1.0) or (1.0 < x) then begin PcrPowPas := 0.0; exit; end;
+    end;
+  end;
+
+  // === x <= 0 cascade ===
+  if x <= 0.0 then begin
+    if y = 0.0 then begin PcrPowPas := 1.0; exit; end;
+
+    if xu.u = 0 then begin   // x = +0.0
+      if PowIsInt(y) and not PowIsInt(y * 0.5) then begin
+        if y < 0.0 then begin PcrPowPas := cInfPos.f; exit; end;
+        PcrPowPas := 0.0; exit;
+      end;
+      if y > 0.0 then begin PcrPowPas := 0.0; exit; end;
+      PcrPowPas := cInfPos.f; exit;
+    end;
+    if xu.u = UInt64($8000000000000000) then begin   // x = -0.0
+      if PowIsInt(y) and not PowIsInt(y * 0.5) then begin
+        if y < 0.0 then begin PcrPowPas := -cInfPos.f; exit; end;
+        PcrPowPas := -0.0; exit;
+      end;
+      if y > 0.0 then begin PcrPowPas := 0.0; exit; end;
+      PcrPowPas := cInfPos.f; exit;
+    end;
+
+    if not PowIsInt(y) then begin PcrPowPas := cNaNDoublePos.f; exit; end;
+
+    cs0 := 1.0; cs1 := -1.0;
+    ay := y; if ay < 0 then ay := -ay;
+    if ay >= Double(9007199254740992.0) then y_parity := 0  // 2^53
+    else y_parity := Integer(Trunc(y) and 1);
+    if y_parity = 0 then s := cs0 else s := cs1;
+    x := -x;
+  end;
+
+  // === Phase 1: fast path (double-double) ===
+  cancel := PowLog1(lh, ll, x);
+
+  // Avoid spurious underflow/overflow in y*log(x).
+  ey := (yu.u shr 52) and $7FF;
+  if (ey < $36) or (ey >= $7F5) then begin
+    lh := cNaNDoublePos.f; ll := cNaNDoublePos.f;
+  end;
+
+  pcr_s_mul(rh, rl, y, lh, ll);
+
+  PowExp1(res_h, res_l, rh, rl, s);
+
+  errc := err_arr[cancel].f;
+  res_min := res_h + pcr_fma(errc, -res_h, res_l);
+  res_max := res_h + pcr_fma(errc,  res_h, res_l);
+
+  exact := PowIsExact(x, y);
+
+  if res_min = res_max then begin
+    PcrPowPas := res_max; exit;
+  end;
+
+  // Easy cases short-circuit
+  if y = 1.0 then begin PcrPowPas := s * x; exit; end;
+  if y = 2.0 then begin PcrPowPas := x * x; exit; end;
+  if y = 0.5 then begin PcrPowPas := Sqrt(x); exit; end;
+  if y = 0.0 then begin PcrPowPas := 1.0; exit; end;
+
+  // === Phase 2: dint slow path ===
+  DIntFromD(Xd, x);
+  DIntFromD(Yd, y);
+  Xd.sgn := 0;
+
+  PowLog2(Rd_dint, Xd);
+  MulDInt21(Rd_dint, Rd_dint, Yd);
+  PowExp2(Rd_dint, Rd_dint);
+
+  // Rounding test (Pascal +1 ex convention: subtract 1 from C thresholds).
+  // C R.ex < -1075 ; underflow -> -1074 in Pascal
+  if Rd_dint.ex < -1074 then begin
+    PcrPowPas := 0.5 * (s * cPowMinSub.f); exit;
+  end;
+
+  if Rd_dint.ex < -1021 then begin   // C: < -1022
+    // subnormal: ex_C = -(1022 + R.ex_C); Pascal R.ex_P = R.ex_C + 1
+    ex64 := UInt64(-(1021 + Rd_dint.ex));   // 1 .. 53
+    m54 := (Rd_dint.lo shr (10 + ex64)) or (Rd_dint.hi shl (54 - ex64));
+    if m54 + 14 > 28 then rd := 1 else rd := 0;
+  end else begin
+    // normal case: rd = 0 iff lo <= 28 or lo >= 2^64-28
+    m54 := (Rd_dint.lo shr 10) or (Rd_dint.hi shl 54);
+    if m54 + 28 > 56 then rd := 1 else rd := 0;
+  end;
+
+  Rd_dint.sgn := Byte(s = -1.0);
+
+  if rd <> 0 then begin
+    PcrPowPas := DToD(Rd_dint); exit;
+  end;
+
+  // Detect rounding boundary cases
+  if PowExactPow(e_exact, x0, y, Rd_dint, exact) then begin
+    PcrPowPas := e_exact; exit;
+  end;
+
+  // === Phase 3: qint very-slow path ===
+  PowQIntFromD(qX, x);
+  PowQIntFromD(qY, y);
+  qX.sgn := 0;
+
+  PowLog3(qR, qX);
+  MulQInt41(qR, qR, qY);
+  PowExp3(qZ, qR);
+
+  // Extra rounding test
+  r1q := (qZ.r0 shl 54) or (qZ.r1 shr 10);
+  r2q := (qZ.r1 shl 54) or (qZ.r2 shr 10);
+  r3q := (qZ.r2 shl 54) or (qZ.r3 shr 10);
+  if ((r1q = 0) and (r2q = 0) and (r3q <= 60)) or
+     (((not r1q) = 0) and (((not r2q) = 0)) and (r3q + 120 <= 60)) then
+    rd := 0
+  else
+    rd := 1;
+
+  if rd <> 0 then begin
+    qZ.sgn := Byte(s = -1.0);
+    qZ.r3 := qZ.r3 and (UInt64($FFFFFFFFFFFFFFFF) shl 10);
+    PcrPowPas := PowQIntToD(qZ); exit;
+  end;
+
+  // qR very small: x^y near 1
+  if qR.ex < -56 then begin
+    if qR.sgn = 0 then PcrPowPas := 1.0 + cPow1pm100.f
+    else PcrPowPas := 1.0 - cPow1pm100.f;
+    exit;
+  end;
+
+  // Should not reach here for any valid input.
+  PcrPowPas := cNaNDoublePos.f;
+end;

@@ -4090,6 +4090,7 @@ end;
 {$I atan2_port.inc}
 {$I atan2pi_port.inc}
 {$I asinpi_port.inc}
+{$I pow_port.inc}
 
 // ---------------------------------------------------------------------------
 // Stubs — delegate to C reference until each function is ported.
@@ -4132,7 +4133,7 @@ function  pcr_tgamma(x: Double): Double;  begin Result := pcr_tgamma_pas(x); end
 function  pcr_atan2(y, x: Double): Double;  begin Result := pcr_atan2_pas(y, x); end;
 function  pcr_atan2pi(y, x: Double): Double; begin Result := pcr_atan2pi_pas(y, x); end;
 function  pcr_hypot(x, y: Double): Double;  begin Result := pcr_hypot_pas(x, y); end;
-function  pcr_pow(x, y: Double): Double;    begin Result := cr_pow(x, y);     end;
+function  pcr_pow(x, y: Double): Double;    begin Result := PcrPowPas(x, y);  end;
 // pcr_sincos — ported above
 
 end.
