@@ -35,6 +35,7 @@ function pcr_log1p(x: Double): Double;
 function pcr_log(x: Double): Double;
 function pcr_log10(x: Double): Double;
 function pcr_log10p1(x: Double): Double;
+function pcr_log2p1(x: Double): Double;
 function pcr_erf(x: Double): Double;
 function pcr_erfc(x: Double): Double;
 function pcr_exp2m1(x: Double): Double;
@@ -70,7 +71,7 @@ function  pcr_lgamma(x: Double): Double; inline;
 // pcr_log10p1 declared in ported section above
 // pcr_log1p declared in ported section above
 // pcr_log2 declared in ported section above
-function  pcr_log2p1(x: Double): Double; inline;
+// pcr_log2p1 declared in ported section above
 // pcr_sin declared in ported section above
 // pcr_sinh declared in ported section above
 // pcr_sinpi declared in ported section above
@@ -4084,6 +4085,7 @@ end;
 {$I hypot_port.inc}
 {$I lgamma_port.inc}
 {$I log10p1_port.inc}
+{$I log2p1_port.inc}
 
 // ---------------------------------------------------------------------------
 // Stubs — delegate to C reference until each function is ported.
@@ -4116,7 +4118,7 @@ function  pcr_lgamma(x: Double): Double;  begin Result := pcr_lgamma_pas(x); end
 // pcr_log10p1 — ported above
 // pcr_log1p — ported above
 // pcr_log2 — ported above
-function  pcr_log2p1(x: Double): Double;  begin Result := cr_log2p1(x);  end;
+// pcr_log2p1 — ported above
 // pcr_sin — ported above
 // pcr_sinh — ported above
 // pcr_sinpi — ported above
