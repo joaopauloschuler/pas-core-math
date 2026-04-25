@@ -4077,6 +4077,7 @@ end;
 {$I exp2m1_port.inc}
 {$I exp10m1_port.inc}
 {$I acospi_port.inc}
+{$I tgamma_port.inc}
 
 // ---------------------------------------------------------------------------
 // Stubs — delegate to C reference until each function is ported.
@@ -4115,7 +4116,7 @@ function  pcr_log2p1(x: Double): Double;  begin Result := cr_log2p1(x);  end;
 // pcr_sinpi — ported above
 // pcr_tan — ported above
 // pcr_tanpi — ported above
-function  pcr_tgamma(x: Double): Double;  begin Result := cr_tgamma(x);  end;
+function  pcr_tgamma(x: Double): Double;  begin Result := pcr_tgamma_pas(x); end;
 function  pcr_atan2(y, x: Double): Double;  begin Result := cr_atan2(y, x);   end;
 function  pcr_atan2pi(y, x: Double): Double; begin Result := cr_atan2pi(y, x); end;
 function  pcr_hypot(x, y: Double): Double;  begin Result := cr_hypot(x, y);   end;
