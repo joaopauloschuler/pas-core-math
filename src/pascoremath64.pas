@@ -4081,6 +4081,7 @@ end;
 {$I tgamma_port.inc}
 {$I erfc_port.inc}
 {$I hypot_port.inc}
+{$I lgamma_port.inc}
 
 // ---------------------------------------------------------------------------
 // Stubs — delegate to C reference until each function is ported.
@@ -4107,7 +4108,7 @@ function  pcr_asinpi(x: Double): Double;  begin Result := cr_asinpi(x);  end;
 // pcr_exp2 — ported above
 // pcr_exp2m1 — ported above
 // pcr_expm1 — ported above
-function  pcr_lgamma(x: Double): Double;  begin Result := cr_lgamma(x);  end;
+function  pcr_lgamma(x: Double): Double;  begin Result := pcr_lgamma_pas(x); end;
 // pcr_log — ported above
 // pcr_log10 — ported above
 function  pcr_log10p1(x: Double): Double; begin Result := cr_log10p1(x); end;
