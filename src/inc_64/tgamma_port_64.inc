@@ -254,7 +254,7 @@ begin
   dxh := o - Double(1.0);
   dx  := pcr_fma(r, t.f, -Double(1.0));
   dx2 := dx * dx;
-  f := dx2 * ((cTGLogC[0].f + dx*cTGLogC[1].f) + dx2*(cTGLogC[2].f + dx*cTGLogC[3].f));
+  f := dx2 * ((cTGLogC_0.f + dx*cTGLogC_1.f) + dx2*(cTGLogC_2.f + dx*cTGLogC_3.f));
   lt := (cTGLogL1[i1, 1].f + cTGLogL2[i2, 1].f) + ed * cTGLogTblH.f;
   lh := lt + dxh;
   ll := (lt - lh) + dxh;
@@ -284,13 +284,13 @@ begin
   shv := cTGSt[kx, 1].f; slv := cTGSt[kx, 0].f;
   chv := cTGSt[ky, 1].f; cl  := cTGSt[ky, 0].f;
 
-  P := d2 * (cTGSinpC[1].f + d2 * (cTGSinpC[2].f + d2 * cTGSinpC[3].f));
-  Q := d2 * (cTGSinpS[1].f + d2 * (cTGSinpS[2].f + d2 * cTGSinpS[3].f));
+  P := d2 * (cTGSinpC_1.f + d2 * (cTGSinpC_2.f + d2 * cTGSinpC_3.f));
+  Q := d2 * (cTGSinpS_1.f + d2 * (cTGSinpS_2.f + d2 * cTGSinpS_3.f));
 
-  TGFastTwoSum(qh, ql, cTGSinpS[0].f, Q); ql := ql + cTGSinpS0.f;
+  TGFastTwoSum(qh, ql, cTGSinpS_0.f, Q); ql := ql + cTGSinpS0.f;
   chv := TGMul(qh, ql, chv, cl, cl);
 
-  TGFastTwoSum(th, tl, cTGSinpC[0].f, P); tl := tl + cTGSinpC0.f;
+  TGFastTwoSum(th, tl, cTGSinpC_0.f, P); tl := tl + cTGSinpC0.f;
   th := TGMulD(d, th, tl, tl);
 
   ph := TGMul(th, tl, shv, slv, pl);
@@ -322,11 +322,11 @@ begin
   rh := TGMul(cTGExpE0[i0, 1].f, cTGExpE0[i0, 0].f,
               cTGExpE1[i1, 1].f, cTGExpE1[i1, 0].f, rl);
   // fl = xh * polyd(xh, 4, c+1)
-  fl := xh * (cTGExpC[1, 0].f + xh * (cTGExpC[2, 0].f + xh * (cTGExpC[3, 0].f + xh * cTGExpC[4, 0].f)));
+  fl := xh * (cTGExpC_1_0.f + xh * (cTGExpC_2_0.f + xh * (cTGExpC_3_0.f + xh * cTGExpC_4_0.f)));
   // fh = polydd(xh, xl, 1, c, &fl)  — only c[0] entry; seeded by fl
   // Inline polydd for n=1: chv = fasttwosum(c[0][0], fl); cl = e + c[0][1]; loop 0 times.
-  TGFastTwoSum(fh, fl, cTGExpC[0, 0].f, fl);
-  fl := fl + cTGExpC[0, 1].f;
+  TGFastTwoSum(fh, fl, cTGExpC_0_0.f, fl);
+  fl := fl + cTGExpC_0_1.f;
   fh := TGMul(xh, xl, fh, fl, fl);
   TGFastTwoSum(fh, el, Double(1.0), fh); fl := fl + el;
   rh := TGMul(rh, rl, fh, fl, rl);
@@ -341,7 +341,6 @@ function TGLgammaAsym(xh: Double; var xl: Double): Double;
 var
   zh, dz, zl, ll, lh, z2h, z2l, fh, fl, x2, x4: Double;
   q0, q2, q4, q6, q8: Double;
-  bArr: array of Tb64u64;
 begin
   zh := Double(1.0) / xh;
   dz := xl * zh;
@@ -353,32 +352,27 @@ begin
   x2 := z2h * z2h;
   if xh > Double(11.5) then
   begin
-    TGFastSum(lh, ll, lh, ll, cTGLgBig[0, 0].f, cTGLgBig[0, 1].f);
-    q0 := cTGLgBig[2, 0].f + z2h * cTGLgBig[3, 0].f;
-    q2 := cTGLgBig[4, 0].f + z2h * cTGLgBig[5, 0].f;
-    q4 := cTGLgBig[6, 0].f + z2h * cTGLgBig[7, 0].f;
+    TGFastSum(lh, ll, lh, ll, cTGLgBig_0_0.f, cTGLgBig_0_1.f);
+    q0 := cTGLgBig_2_0.f + z2h * cTGLgBig_3_0.f;
+    q2 := cTGLgBig_4_0.f + z2h * cTGLgBig_5_0.f;
+    q4 := cTGLgBig_6_0.f + z2h * cTGLgBig_7_0.f;
     fl := z2h * (q0 + x2 * (q2 + x2 * q4));
-    SetLength(bArr, 2);
-    bArr[0] := cTGLgBig[1, 0]; bArr[1] := cTGLgBig[1, 1];
-    fh := TGPolyDD(z2h, z2l, 1, bArr, fl);
+    fh := TGPolyDD(z2h, z2l, 1, [cTGLgBig_1_0, cTGLgBig_1_1], fl);
   end
   else
   begin
-    TGFastSum(lh, ll, lh, ll, cTGLgSml[0, 0].f, cTGLgSml[0, 1].f);
+    TGFastSum(lh, ll, lh, ll, cTGLgSml_0_0.f, cTGLgSml_0_1.f);
     x4 := x2 * x2;
-    q0 := cTGLgSml[3, 0].f + z2h * cTGLgSml[4, 0].f;
-    q2 := cTGLgSml[5, 0].f + z2h * cTGLgSml[6, 0].f;
-    q4 := cTGLgSml[7, 0].f + z2h * cTGLgSml[8, 0].f;
-    q6 := cTGLgSml[9, 0].f + z2h * cTGLgSml[10, 0].f;
-    q8 := cTGLgSml[11, 0].f + z2h * cTGLgSml[12, 0].f;
+    q0 := cTGLgSml_3_0.f + z2h * cTGLgSml_4_0.f;
+    q2 := cTGLgSml_5_0.f + z2h * cTGLgSml_6_0.f;
+    q4 := cTGLgSml_7_0.f + z2h * cTGLgSml_8_0.f;
+    q6 := cTGLgSml_9_0.f + z2h * cTGLgSml_10_0.f;
+    q8 := cTGLgSml_11_0.f + z2h * cTGLgSml_12_0.f;
     q4 := q4 + x2 * (q6 + x2 * q8);
     q0 := q0 + x2 * q2;
     q0 := q0 + x4 * q4;
     fl := z2h * q0;
-    SetLength(bArr, 4);
-    bArr[0] := cTGLgSml[1, 0]; bArr[1] := cTGLgSml[1, 1];
-    bArr[2] := cTGLgSml[2, 0]; bArr[3] := cTGLgSml[2, 1];
-    fh := TGPolyDD(z2h, z2l, 2, bArr, fl);
+    fh := TGPolyDD(z2h, z2l, 2, [cTGLgSml_1_0, cTGLgSml_1_1, cTGLgSml_2_0, cTGLgSml_2_1], fl);
   end;
   fh := TGMul(zh, zl, fh, fl, fl);
   TGFastSum(lh, ll, lh, ll, fh, fl);
@@ -435,10 +429,10 @@ begin
       cFlat[2*i+1] := cTGAccSmallCc[i, 1];
     end;
     x2 := x * x; x4 := x2 * x2;
-    c0v := cTGAccSmallC[0].f + x*cTGAccSmallC[1].f
-           + x2*(cTGAccSmallC[2].f + x*cTGAccSmallC[3].f);
-    c4v := cTGAccSmallC[4].f + x*cTGAccSmallC[5].f
-           + x2*(cTGAccSmallC[6].f + x*cTGAccSmallC[7].f);
+    c0v := cTGAccSmallC_0.f + x*cTGAccSmallC_1.f
+           + x2*(cTGAccSmallC_2.f + x*cTGAccSmallC_3.f);
+    c4v := cTGAccSmallC_4.f + x*cTGAccSmallC_5.f
+           + x2*(cTGAccSmallC_6.f + x*cTGAccSmallC_7.f);
     c0v := c0v + x4*c4v;
     cl := x * c0v;
     ch := TGPolyDDD(x, 28, cFlat, cl);
@@ -693,10 +687,10 @@ begin
       ccFlat[2*i+1] := cTGSmallCc[i, 1];
     end;
     x2 := x * x; x4 := x2 * x2; x8 := x4 * x4;
-    c0v := cTGSmallC[0].f + x*cTGSmallC[1].f + x2*(cTGSmallC[2].f + x*cTGSmallC[3].f);
-    c4v := cTGSmallC[4].f + x*cTGSmallC[5].f + x2*(cTGSmallC[6].f + x*cTGSmallC[7].f);
-    c8v := cTGSmallC[8].f + x*cTGSmallC[9].f + x2*(cTGSmallC[10].f + x*cTGSmallC[11].f);
-    c12v:= cTGSmallC[12].f + x*cTGSmallC[13].f + x2*(cTGSmallC[14].f + x*cTGSmallC[15].f);
+    c0v := cTGSmallC_0.f + x*cTGSmallC_1.f + x2*(cTGSmallC_2.f + x*cTGSmallC_3.f);
+    c4v := cTGSmallC_4.f + x*cTGSmallC_5.f + x2*(cTGSmallC_6.f + x*cTGSmallC_7.f);
+    c8v := cTGSmallC_8.f + x*cTGSmallC_9.f + x2*(cTGSmallC_10.f + x*cTGSmallC_11.f);
+    c12v:= cTGSmallC_12.f + x*cTGSmallC_13.f + x2*(cTGSmallC_14.f + x*cTGSmallC_15.f);
     c0v := c0v + x4*c4v;
     c8v := c8v + x4*c12v;
     cl := x * (c0v + x8 * c8v);
@@ -825,10 +819,10 @@ begin
   d := z - (ipos + Double(3.5));
   d2 := d*d; d4 := d2*d2;
   // FMA-contracted polynomial to match gcc -O2 -ffp-contract=fast output.
-  fl := d * (pcr_fma(d, cTGMainC[11].f, cTGMainC[10].f)
-            + d2*pcr_fma(d, cTGMainC[13].f, cTGMainC[12].f)
-            + d4*(pcr_fma(d, cTGMainC[15].f, cTGMainC[14].f)
-                  + d2*pcr_fma(d, cTGMainC[17].f, cTGMainC[16].f)));
+  fl := d * (pcr_fma(d, cTGMainC_11.f, cTGMainC_10.f)
+            + d2*pcr_fma(d, cTGMainC_13.f, cTGMainC_12.f)
+            + d4*(pcr_fma(d, cTGMainC_15.f, cTGMainC_14.f)
+                  + d2*pcr_fma(d, cTGMainC_17.f, cTGMainC_16.f)));
   fh := TGPolyDDD(d, 10, ccFlat, fl);
   jm := Int32(Trunc(Abs(ipos)));
   wh := Double(1.0); wl := Double(0.0);
