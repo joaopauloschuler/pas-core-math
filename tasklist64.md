@@ -1256,7 +1256,28 @@ Splitting A/B/C into separate commits per file means a regression bisects to the
 - [ ] **6.2** log family — `log_port_64.inc`, `log10_port_64.inc`, `log1p_port_64.inc`, `log2p1_port_64.inc`, `log10p1_port_64.inc`. (`log2` body lives in `pascoremath64.pas`.)
 - [ ] **6.3** trig family — `sin_port_64.inc`, `cos_port_64.inc`, `tan_port_64.inc`, `sincos_port_64.inc`, `sinpi_port_64.inc`, `tanpi_port_64.inc`. (`cospi`, `atanpi`, `tan` bodies share space inside `pascoremath64.pas`; `cos`/`sin` have both inc files and helper code in the unit.)
 - [ ] **6.4** inverse-trig family — `atan2_port_64.inc`, `atan2pi_port_64.inc`, `asinpi_port_64.inc`, `acospi_port_64.inc`, `atanh_port_64.inc`. (`atan`, `acos`, `asin`, `atanpi` bodies live in `pascoremath64.pas`.)
-- [ ] **6.5** hyperbolic family — `sinh_port_64.inc`, `cosh_port_64.inc`, `asinh_port_64.inc`, `acosh_port_64.inc`, `atanh_port_64.inc`. (`tanh` body lives in `pascoremath64.pas`.)
+- [X] **6.5** hyperbolic family — `sinh_port_64.inc`, `cosh_port_64.inc`,
+  `asinh_port_64.inc`, `acosh_port_64.inc`, `atanh_port_64.inc`, plus tanh
+  region of `pascoremath64.pas`.
+  - **Done (2026-04-26):** all six functions audit-clean across A/B/C and
+    pass `TestHarness64 --pct 1` with max_ulp=0.
+  - **Cross-file dependency caught:** `cAcoshC` and `cAcoshRefineCh` /
+    `cAcoshRefineCl` (declared in acosh) are also referenced from atanh
+    and asinh. Lifting them in acosh broke the build until the readers
+    were updated; future cross-cutting Pillar B passes should grep for
+    the array name across all `.inc` / `.pas` files before commit.
+    Asinh ended up combining its A and B passes into one commit because
+    of this.
+  - **Shared `cTanhExpCh`** lifted in `pascoremath64.pas` (used by tanh,
+    cosh, sinh via `TanhExpAccurate`).
+  - **Benchmark deltas (post-Phase 6.5, `taskset -c 1`, 200M calls):**
+    cosh 251.3 vs 199.6 Mops/s (+26 %, FASTER), sinh 378.1 vs 200.8
+    (+88 %, FASTER), tanh 200.4 vs 197.2 (TIE), acosh 285.3 vs 155.9
+    (+83 %, FASTER), asinh 187.8 vs 190.1 (TIE), atanh 254.5 vs 196.5
+    (+30 %, FASTER). Pillar A unrolls + Pillar B named-scalar lifts
+    appear to give FPC enough constant-folding visibility to pass C in
+    most of the family; tanh and asinh are dominated by other work
+    (sqrt, fma chains, Ziv refinement) so see less benefit.
 - [ ] **6.6** special-functions family — `erf_port_64.inc`, `erfc_port_64.inc`, `tgamma_port_64.inc`, `lgamma_port_64.inc`
 - [ ] **6.7** miscellaneous — `hypot_port_64.inc`, `cbrt_port_64.inc`, `rsqrt_port_64.inc`, `pow_port_64.inc` (mostly already compliant; spot-fix only)
 
