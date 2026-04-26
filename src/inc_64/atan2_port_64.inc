@@ -337,8 +337,24 @@ begin
   end;
 
   t0 := cAtan2T2[jt].f;
+  {$IFDEF AVX2}
+  // zn = (-t0)*x + y ; zd = t0*y + x  (hardware FMA, avoids pcr_fma call/ret).
+  asm
+    movsd        xmm0, t0
+    movsd        xmm1, x
+    movsd        xmm2, y
+    vfnmadd213sd xmm0, xmm1, xmm2          // xmm0 = -(t0*x) + y
+    movsd        zn, xmm0
+    movsd        xmm0, t0
+    movsd        xmm1, y
+    movsd        xmm2, x
+    vfmadd213sd  xmm0, xmm1, xmm2          // xmm0 = t0*y + x
+    movsd        zd, xmm0
+  end ['xmm0', 'xmm1', 'xmm2'];
+  {$ELSE}
   zn := pcr_fma(-t0, x, y);
   zd := pcr_fma( t0, y, x);
+  {$ENDIF}
   z  := zn / zd;
 
   z2 := z * z;

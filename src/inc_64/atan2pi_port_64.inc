@@ -383,8 +383,25 @@ begin
      and (ey - ex >= -341) and (ey - ex <= 341) then
   begin
     err := Atan2piFast(h, l, y, x);
+    {$IFDEF AVX2}
+    asm
+      movsd        xmm0, h
+      movsd        xmm1, err
+      movsd        xmm2, l
+      vfnmadd213sd xmm0, xmm1, xmm2          // -(h*err) + l
+      movsd        left, xmm0
+      movsd        xmm0, h
+      movsd        xmm1, err
+      movsd        xmm2, l
+      vfmadd213sd  xmm0, xmm1, xmm2          // h*err + l
+      movsd        right, xmm0
+    end ['xmm0', 'xmm1', 'xmm2'];
+    left  := h + left;
+    right := h + right;
+    {$ELSE}
     left  := h + pcr_fma(h, -err, l);
     right := h + pcr_fma(h,  err, l);
+    {$ENDIF}
     if left = right then begin
       Result := left;
       Exit;
