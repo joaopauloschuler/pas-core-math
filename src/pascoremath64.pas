@@ -1308,16 +1308,23 @@ const
     (u:$3C7562172A361FD3),(u:QWord($BC87A0A8CA13571F)),(u:QWord($BC887DF6378811C7)),(u:QWord($BC6C57BC2E24AA15)),
     (u:$0000000000000000));
 
-  // c[5][2]: inner asin polynomial (after substitution) for the accurate path.
-  cAcosCHi: array[0..4] of Tb64u64 = (
-    (u:$3FF0000000000000),(u:$3FC5555555555555),(u:$3FB3333333333333),
-    (u:$3FA6DB6DB6DB6DB7),(u:$3F9F1C71C71C6D5B));
-  cAcosCLo: array[0..4] of Tb64u64 = (
-    (u:QWord($B93FC2C76456515B)),(u:$3C65555555623513),(u:$3C49997E3427441B),
-    (u:QWord($BC1CB95FF08658E6)),(u:$3C3B125BCCDCC89E));
-  // ct[3]: outer polynomial tail (degree 5..7) used as seed for polydd.
-  cAcosCt: array[0..2] of Tb64u64 = (
-    (u:$3F96E8BA2EC8CB69),(u:$3F91C4EA7A15C997),(u:$3F8CA8355D39BB67));
+  // Phase 6.4/B: c[5][2] inner asin polynomial (accurate path) — lifted to
+  // named cAcosCHi_<i> / cAcosCLo_<i> Tb64u64 scalars; original arrays dropped.
+  // Reused by both AcosRefine and the asin AccPath.
+  cAcosCHi_0: Tb64u64 = (u:$3FF0000000000000);
+  cAcosCHi_1: Tb64u64 = (u:$3FC5555555555555);
+  cAcosCHi_2: Tb64u64 = (u:$3FB3333333333333);
+  cAcosCHi_3: Tb64u64 = (u:$3FA6DB6DB6DB6DB7);
+  cAcosCHi_4: Tb64u64 = (u:$3F9F1C71C71C6D5B);
+  cAcosCLo_0: Tb64u64 = (u:QWord($B93FC2C76456515B));
+  cAcosCLo_1: Tb64u64 = (u:$3C65555555623513);
+  cAcosCLo_2: Tb64u64 = (u:$3C49997E3427441B);
+  cAcosCLo_3: Tb64u64 = (u:QWord($BC1CB95FF08658E6));
+  cAcosCLo_4: Tb64u64 = (u:$3C3B125BCCDCC89E);
+  // Phase 6.4/B: ct[3] outer polynomial tail — lifted to named scalars.
+  cAcosCt_0: Tb64u64 = (u:$3F96E8BA2EC8CB69);
+  cAcosCt_1: Tb64u64 = (u:$3F91C4EA7A15C997);
+  cAcosCt_2: Tb64u64 = (u:$3F8CA8355D39BB67);
 
   cAcosOffH: array[0..1] of Tb64u64 = ((u:$0000000000000000),(u:$400921FB54442D18));
   cAcosOffL: array[0..1] of Tb64u64 = ((u:$0000000000000000),(u:$3CA1A62633145C07));
@@ -1342,14 +1349,24 @@ const
     (u:QWord($BFC771164BFD1F84)),(u:QWord($BFE4510EE8EB4E67)),(u:QWord($BFD011C543F23A17)),
     (u:$3FEFFFFFFFFFFDC0),(u:$3FB53EA6C7255E88),(u:$3F4FD737BE914578),
     (u:$3FEFFFFFFFFFFF70));
-  cAcosWcHi: array[0..6] of Tb64u64 = (
-    (u:$3FFC14601DAAF657),(u:$400211C0E2C2559E),(u:$3FFD318C90D9E8B7),
-    (u:$3E98000000000024),(u:$3FF7CDACB6BBE707),(u:$3FF91E006D41D8D8),
-    (u:$3E88000000000009));
-  cAcosWcLo: array[0..6] of Tb64u64 = (
-    (u:QWord($BC90000000000000)),(u:QWord($BCA0000000000000)),(u:QWord($BC90000000000000)),
-    (u:$3B30000000000000),(u:$3C90000000000000),(u:$3CA8000000000000),
-    (u:$3B20000000000000));
+  // Phase 6.4/B: lift cAcosWcHi/Lo[0..6] to named scalars; drop arrays.
+  // (cAcosWcIn kept as array — reads are .u, indexed by literal but not
+  // flagged; the unrolled k=0..6 scan in AcosRefine still uses cAcosWcIn[i].u
+  // for the integer-pattern comparison.)
+  cAcosWcHi_0: Tb64u64 = (u:$3FFC14601DAAF657);
+  cAcosWcHi_1: Tb64u64 = (u:$400211C0E2C2559E);
+  cAcosWcHi_2: Tb64u64 = (u:$3FFD318C90D9E8B7);
+  cAcosWcHi_3: Tb64u64 = (u:$3E98000000000024);
+  cAcosWcHi_4: Tb64u64 = (u:$3FF7CDACB6BBE707);
+  cAcosWcHi_5: Tb64u64 = (u:$3FF91E006D41D8D8);
+  cAcosWcHi_6: Tb64u64 = (u:$3E88000000000009);
+  cAcosWcLo_0: Tb64u64 = (u:QWord($BC90000000000000));
+  cAcosWcLo_1: Tb64u64 = (u:QWord($BCA0000000000000));
+  cAcosWcLo_2: Tb64u64 = (u:QWord($BC90000000000000));
+  cAcosWcLo_3: Tb64u64 = (u:$3B30000000000000);
+  cAcosWcLo_4: Tb64u64 = (u:$3C90000000000000);
+  cAcosWcLo_5: Tb64u64 = (u:$3CA8000000000000);
+  cAcosWcLo_6: Tb64u64 = (u:$3B20000000000000);
 
 function AcosRefine(x, phi: Double): Double;
 var
@@ -1367,7 +1384,6 @@ var
   t_u, w_u, xu: Tb64u64;
   e: Int64;
   m, ebit: UInt64;
-  k: Int32;
 begin
   s2  := x * x;
   dx2 := pcr_fma(x, x, -s2);
@@ -1406,24 +1422,24 @@ begin
   v  := v  * (-sgn);
   dv := dv * (-sgn);
 
-  fl := v2 * (cAcosCt[0].f + v2 * (cAcosCt[1].f + v2 * cAcosCt[2].f));
+  fl := v2 * (cAcosCt_0.f + v2 * (cAcosCt_1.f + v2 * cAcosCt_2.f));
   // fh = polydd(v2, dv2, 5, c, &fl) with incoming *l = fl:
   //   i=4: ch = fasttwosum(c[4][0], fl_in, &fl_out); cl = c[4][1] + fl_out
-  pcr_fasttwosum(chp, fl, cAcosCHi[4].f, fl);
-  clp := cAcosCLo[4].f + fl;
+  pcr_fasttwosum(chp, fl, cAcosCHi_4.f, fl);
+  clp := cAcosCLo_4.f + fl;
   // i=3..0: ch = muldd(v2, dv2, ch, cl, &cl); ch = fastsum(c[i][0], c[i][1], ch, cl, &cl)
   chp := pcr_muldd(v2, dv2, chp, clp, clp);
-  pcr_fasttwosum(th, tl, cAcosCHi[3].f, chp);
-  chp := th;  clp := (cAcosCLo[3].f + clp) + tl;
+  pcr_fasttwosum(th, tl, cAcosCHi_3.f, chp);
+  chp := th;  clp := (cAcosCLo_3.f + clp) + tl;
   chp := pcr_muldd(v2, dv2, chp, clp, clp);
-  pcr_fasttwosum(th, tl, cAcosCHi[2].f, chp);
-  chp := th;  clp := (cAcosCLo[2].f + clp) + tl;
+  pcr_fasttwosum(th, tl, cAcosCHi_2.f, chp);
+  chp := th;  clp := (cAcosCLo_2.f + clp) + tl;
   chp := pcr_muldd(v2, dv2, chp, clp, clp);
-  pcr_fasttwosum(th, tl, cAcosCHi[1].f, chp);
-  chp := th;  clp := (cAcosCLo[1].f + clp) + tl;
+  pcr_fasttwosum(th, tl, cAcosCHi_1.f, chp);
+  chp := th;  clp := (cAcosCLo_1.f + clp) + tl;
   chp := pcr_muldd(v2, dv2, chp, clp, clp);
-  pcr_fasttwosum(th, tl, cAcosCHi[0].f, chp);
-  chp := th;  clp := (cAcosCLo[0].f + clp) + tl;
+  pcr_fasttwosum(th, tl, cAcosCHi_0.f, chp);
+  chp := th;  clp := (cAcosCLo_0.f + clp) + tl;
   fh := chp;  fl := clp;
 
   fh := pcr_muldd(v, dv, fh, fl, fl);
@@ -1452,13 +1468,16 @@ begin
   ebit := UInt64(1) shl (e - 1);
   if ((t_u.u + ebit) and m) = 0 then
   begin
+    // Phase 6.4/A: 7-iteration unroll of the worst-case scan; reads are
+    // literal-indexed both on the .u side (cAcosWcIn) and the .f side.
     xu.f := x;
-    for k := 0 to 6 do
-      if xu.u = cAcosWcIn[k].u then
-      begin
-        Result := cAcosWcHi[k].f + cAcosWcLo[k].f;
-        Exit;
-      end;
+    if xu.u = cAcosWcIn[0].u then begin Result := cAcosWcHi_0.f + cAcosWcLo_0.f; Exit; end;
+    if xu.u = cAcosWcIn[1].u then begin Result := cAcosWcHi_1.f + cAcosWcLo_1.f; Exit; end;
+    if xu.u = cAcosWcIn[2].u then begin Result := cAcosWcHi_2.f + cAcosWcLo_2.f; Exit; end;
+    if xu.u = cAcosWcIn[3].u then begin Result := cAcosWcHi_3.f + cAcosWcLo_3.f; Exit; end;
+    if xu.u = cAcosWcIn[4].u then begin Result := cAcosWcHi_4.f + cAcosWcLo_4.f; Exit; end;
+    if xu.u = cAcosWcIn[5].u then begin Result := cAcosWcHi_5.f + cAcosWcLo_5.f; Exit; end;
+    if xu.u = cAcosWcIn[6].u then begin Result := cAcosWcHi_6.f + cAcosWcLo_6.f; Exit; end;
     w_u.f := ps;
     if ((w_u.u xor t_u.u) shr 63) <> 0 then
       Dec(t_u.u)
@@ -2877,22 +2896,22 @@ begin
   v  := v  * sgn;
   dv := dv * sgn;
 
-  fl := v2 * (cAcosCt[0].f + v2 * (cAcosCt[1].f + v2 * cAcosCt[2].f));
+  fl := v2 * (cAcosCt_0.f + v2 * (cAcosCt_1.f + v2 * cAcosCt_2.f));
   // fh = polydd(v2, dv2, 5, c, &fl) with incoming *l = fl (seeded variant)
-  pcr_fasttwosum(chp, fl, cAcosCHi[4].f, fl);
-  clp := cAcosCLo[4].f + fl;
+  pcr_fasttwosum(chp, fl, cAcosCHi_4.f, fl);
+  clp := cAcosCLo_4.f + fl;
   chp := pcr_muldd(v2, dv2, chp, clp, clp);
-  pcr_fasttwosum(th, tl, cAcosCHi[3].f, chp);
-  chp := th;  clp := (cAcosCLo[3].f + clp) + tl;
+  pcr_fasttwosum(th, tl, cAcosCHi_3.f, chp);
+  chp := th;  clp := (cAcosCLo_3.f + clp) + tl;
   chp := pcr_muldd(v2, dv2, chp, clp, clp);
-  pcr_fasttwosum(th, tl, cAcosCHi[2].f, chp);
-  chp := th;  clp := (cAcosCLo[2].f + clp) + tl;
+  pcr_fasttwosum(th, tl, cAcosCHi_2.f, chp);
+  chp := th;  clp := (cAcosCLo_2.f + clp) + tl;
   chp := pcr_muldd(v2, dv2, chp, clp, clp);
-  pcr_fasttwosum(th, tl, cAcosCHi[1].f, chp);
-  chp := th;  clp := (cAcosCLo[1].f + clp) + tl;
+  pcr_fasttwosum(th, tl, cAcosCHi_1.f, chp);
+  chp := th;  clp := (cAcosCLo_1.f + clp) + tl;
   chp := pcr_muldd(v2, dv2, chp, clp, clp);
-  pcr_fasttwosum(th, tl, cAcosCHi[0].f, chp);
-  chp := th;  clp := (cAcosCLo[0].f + clp) + tl;
+  pcr_fasttwosum(th, tl, cAcosCHi_0.f, chp);
+  chp := th;  clp := (cAcosCLo_0.f + clp) + tl;
   fh := chp;  fl := clp;
 
   fh := pcr_muldd(v, dv, fh, fl, fl);
