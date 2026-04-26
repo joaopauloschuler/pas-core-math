@@ -207,7 +207,7 @@ This Single-vs-Double-internal asymmetry does **not** apply to binary64 — FPC'
 
 **binary32.** The test harness performs an exhaustive bit-level comparison between `pcr_*f` and `cr_*f` for all 2³² single-precision float values (including NaN, infinities, subnormals, and signed zeros). A function is considered correct only when zero mismatches are found across the full input space.
 
-**binary64.** A 2⁶⁴ exhaustive sweep is not feasible. Verification combines: (a) random sampling across the input space, (b) structured patterns covering NaN, ±∞, subnormals, signed zeros, and exact-result inputs (integers, powers of two, transcendental landmarks), and (c) regression corners accumulated from previously-found mismatches. Most binary64 functions show zero mismatches at `--pct 1`; a small number still report mismatches with `max_ulp = 0` (i.e., the numeric value is correctly rounded but a NaN sign or signed-zero edge case differs from the C reference). These are tracked and being resolved.
+**binary64.** A 2⁶⁴ exhaustive sweep is not feasible. Verification combines: (a) random sampling across the input space, (b) structured patterns covering NaN, ±∞, subnormals, signed zeros, and exact-result inputs (integers, powers of two, transcendental landmarks), and (c) regression corners accumulated from previously-found mismatches. Most binary64 functions show zero mismatches at `--pct 1`; a small number still report mismatches with `max_ulp = 0` (i.e., the numeric value is correctly rounded but a NaN sign or signed-zero edge case differs from the C reference).
 
 ## References
 
