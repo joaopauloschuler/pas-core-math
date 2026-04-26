@@ -3035,17 +3035,44 @@ begin
   dxh  := dx + dxl;
   dxl  := (dx - dxh) + dxl + dxll;
 
-  // opolydd unrolled (n=7, in/out l in cl_v)
+  // opolydd unrolled (n=7, in/out l in cl_v) — Phase 6.1 Pillar A
   ch_v := cExpAccCh[6, 0].f;  cl_v := cExpAccCh[6, 1].f;
-  for i := 5 downto 0 do
-  begin
-    ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
-    // th_p = ch + c[i][0]; tl_p = (c[i][0] - th_p) + ch
-    fh := ch_v + cExpAccCh[i, 0].f;
-    fl := (cExpAccCh[i, 0].f - fh) + ch_v;
-    ch_v := fh;
-    cl_v := cl_v + fl + cExpAccCh[i, 1].f;
-  end;
+  // i = 5
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh := ch_v + cExpAccCh[5, 0].f;
+  fl := (cExpAccCh[5, 0].f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExpAccCh[5, 1].f;
+  // i = 4
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh := ch_v + cExpAccCh[4, 0].f;
+  fl := (cExpAccCh[4, 0].f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExpAccCh[4, 1].f;
+  // i = 3
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh := ch_v + cExpAccCh[3, 0].f;
+  fl := (cExpAccCh[3, 0].f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExpAccCh[3, 1].f;
+  // i = 2
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh := ch_v + cExpAccCh[2, 0].f;
+  fl := (cExpAccCh[2, 0].f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExpAccCh[2, 1].f;
+  // i = 1
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh := ch_v + cExpAccCh[1, 0].f;
+  fl := (cExpAccCh[1, 0].f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExpAccCh[1, 1].f;
+  // i = 0
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh := ch_v + cExpAccCh[0, 0].f;
+  fl := (cExpAccCh[0, 0].f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExpAccCh[0, 1].f;
   fh := ch_v;  fl := cl_v;
 
   fh := pcr_muldd(dxh, dxl, fh, fl, fl);
@@ -3267,16 +3294,38 @@ begin
   t1h := cExpT1[i1, 1].f;  t1l := cExpT1[i1, 0].f;
   th := pcr_muldd(t0h, t0l, t1h, t1l, tl);
 
-  // polydd(z, 6, cd, &fl): scalar*dd polynomial
+  // polydd(z, 6, cd, &fl): scalar*dd polynomial — Phase 6.1 Pillar A
   ch_v := cExp2Cd[5, 0].f;  cl_v := cExp2Cd[5, 1].f;
-  for i := 4 downto 0 do
-  begin
-    ch_v := pcr_mulddd_pd(ch_v, cl_v, z, cl_v);
-    fh := ch_v + cExp2Cd[i, 0].f;
-    fl := (cExp2Cd[i, 0].f - fh) + ch_v;
-    ch_v := fh;
-    cl_v := cl_v + fl + cExp2Cd[i, 1].f;
-  end;
+  // i = 4
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, z, cl_v);
+  fh := ch_v + cExp2Cd[4, 0].f;
+  fl := (cExp2Cd[4, 0].f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExp2Cd[4, 1].f;
+  // i = 3
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, z, cl_v);
+  fh := ch_v + cExp2Cd[3, 0].f;
+  fl := (cExp2Cd[3, 0].f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExp2Cd[3, 1].f;
+  // i = 2
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, z, cl_v);
+  fh := ch_v + cExp2Cd[2, 0].f;
+  fl := (cExp2Cd[2, 0].f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExp2Cd[2, 1].f;
+  // i = 1
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, z, cl_v);
+  fh := ch_v + cExp2Cd[1, 0].f;
+  fl := (cExp2Cd[1, 0].f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExp2Cd[1, 1].f;
+  // i = 0
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, z, cl_v);
+  fh := ch_v + cExp2Cd[0, 0].f;
+  fl := (cExp2Cd[0, 0].f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExp2Cd[0, 1].f;
   fh := ch_v; fl := cl_v;
   fh := pcr_mulddd_pd(fh, fl, z, fl);
 
@@ -3536,16 +3585,38 @@ begin
   dxh  := dx + dxl;
   dxl  := ((dx - dxh) + dxl) + dxll;
 
-  // opolydd(dxh, dxl, 6, c, &fl)
+  // opolydd(dxh, dxl, 6, c, &fl) — Phase 6.1 Pillar A
   ch_v := cExp10AccC[5, 0].f;  cl_v := cExp10AccC[5, 1].f;
-  for i := 4 downto 0 do
-  begin
-    ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
-    fh := ch_v + cExp10AccC[i, 0].f;
-    fl := (cExp10AccC[i, 0].f - fh) + ch_v;
-    ch_v := fh;
-    cl_v := cl_v + fl + cExp10AccC[i, 1].f;
-  end;
+  // i = 4
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh := ch_v + cExp10AccC[4, 0].f;
+  fl := (cExp10AccC[4, 0].f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExp10AccC[4, 1].f;
+  // i = 3
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh := ch_v + cExp10AccC[3, 0].f;
+  fl := (cExp10AccC[3, 0].f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExp10AccC[3, 1].f;
+  // i = 2
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh := ch_v + cExp10AccC[2, 0].f;
+  fl := (cExp10AccC[2, 0].f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExp10AccC[2, 1].f;
+  // i = 1
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh := ch_v + cExp10AccC[1, 0].f;
+  fl := (cExp10AccC[1, 0].f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExp10AccC[1, 1].f;
+  // i = 0
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh := ch_v + cExp10AccC[0, 0].f;
+  fl := (cExp10AccC[0, 0].f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExp10AccC[0, 1].f;
   fh := ch_v; fl := cl_v;
   fh := pcr_muldd(dxh, dxl, fh, fl, fl);
 
@@ -3846,17 +3917,59 @@ begin
   fl := x*(cExpm1AccCl[0].f + x*(cExpm1AccCl[1].f + x*(cExpm1AccCl[2].f
        + x*(cExpm1AccCl[3].f + x*(cExpm1AccCl[4].f + x*cExpm1AccCl[5].f)))));
 
-  // opolyddd(x, 11, ch, &fl)
+  // opolyddd(x, 11, ch, &fl) — Phase 6.1 Pillar A
   pcr_fasttwosum(ch_v, fl, cExpm1AccCh[10, 0].f, fl);
   cl_v := cExpm1AccCh[10, 1].f + fl;
-  for i := 9 downto 0 do
-  begin
-    ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
-    // fastsum(c[i][0], c[i][1], ch, cl, &cl)
-    pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh[i, 0].f, ch_v);
-    cl_v := (cExpm1AccCh[i, 1].f + cl_v) + fl_t;
-    ch_v := fh_t;
-  end;
+  // i = 9
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh[9, 0].f, ch_v);
+  cl_v := (cExpm1AccCh[9, 1].f + cl_v) + fl_t;
+  ch_v := fh_t;
+  // i = 8
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh[8, 0].f, ch_v);
+  cl_v := (cExpm1AccCh[8, 1].f + cl_v) + fl_t;
+  ch_v := fh_t;
+  // i = 7
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh[7, 0].f, ch_v);
+  cl_v := (cExpm1AccCh[7, 1].f + cl_v) + fl_t;
+  ch_v := fh_t;
+  // i = 6
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh[6, 0].f, ch_v);
+  cl_v := (cExpm1AccCh[6, 1].f + cl_v) + fl_t;
+  ch_v := fh_t;
+  // i = 5
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh[5, 0].f, ch_v);
+  cl_v := (cExpm1AccCh[5, 1].f + cl_v) + fl_t;
+  ch_v := fh_t;
+  // i = 4
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh[4, 0].f, ch_v);
+  cl_v := (cExpm1AccCh[4, 1].f + cl_v) + fl_t;
+  ch_v := fh_t;
+  // i = 3
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh[3, 0].f, ch_v);
+  cl_v := (cExpm1AccCh[3, 1].f + cl_v) + fl_t;
+  ch_v := fh_t;
+  // i = 2
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh[2, 0].f, ch_v);
+  cl_v := (cExpm1AccCh[2, 1].f + cl_v) + fl_t;
+  ch_v := fh_t;
+  // i = 1
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh[1, 0].f, ch_v);
+  cl_v := (cExpm1AccCh[1, 1].f + cl_v) + fl_t;
+  ch_v := fh_t;
+  // i = 0
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh[0, 0].f, ch_v);
+  cl_v := (cExpm1AccCh[0, 1].f + cl_v) + fl_t;
+  ch_v := fh_t;
   fl := cl_v;
   fh := pcr_mulddd_pd(ch_v, fl, x, fl);
   fh := pcr_mulddd_pd(fh, fl, x, fl);
@@ -3917,15 +4030,44 @@ begin
   dxh  := dx + dxl;
   dxl  := (dx - dxh) + dxl + dxll;
 
+  // opolydd unrolled (n=7) — Phase 6.1 Pillar A
   ch_v := cExpAccCh[6, 0].f;  cl_v := cExpAccCh[6, 1].f;
-  for i := 5 downto 0 do
-  begin
-    ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
-    fh_t := ch_v + cExpAccCh[i, 0].f;
-    fl_t := (cExpAccCh[i, 0].f - fh_t) + ch_v;
-    ch_v := fh_t;
-    cl_v := cl_v + fl_t + cExpAccCh[i, 1].f;
-  end;
+  // i = 5
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh_t := ch_v + cExpAccCh[5, 0].f;
+  fl_t := (cExpAccCh[5, 0].f - fh_t) + ch_v;
+  ch_v := fh_t;
+  cl_v := cl_v + fl_t + cExpAccCh[5, 1].f;
+  // i = 4
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh_t := ch_v + cExpAccCh[4, 0].f;
+  fl_t := (cExpAccCh[4, 0].f - fh_t) + ch_v;
+  ch_v := fh_t;
+  cl_v := cl_v + fl_t + cExpAccCh[4, 1].f;
+  // i = 3
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh_t := ch_v + cExpAccCh[3, 0].f;
+  fl_t := (cExpAccCh[3, 0].f - fh_t) + ch_v;
+  ch_v := fh_t;
+  cl_v := cl_v + fl_t + cExpAccCh[3, 1].f;
+  // i = 2
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh_t := ch_v + cExpAccCh[2, 0].f;
+  fl_t := (cExpAccCh[2, 0].f - fh_t) + ch_v;
+  ch_v := fh_t;
+  cl_v := cl_v + fl_t + cExpAccCh[2, 1].f;
+  // i = 1
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh_t := ch_v + cExpAccCh[1, 0].f;
+  fl_t := (cExpAccCh[1, 0].f - fh_t) + ch_v;
+  ch_v := fh_t;
+  cl_v := cl_v + fl_t + cExpAccCh[1, 1].f;
+  // i = 0
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh_t := ch_v + cExpAccCh[0, 0].f;
+  fl_t := (cExpAccCh[0, 0].f - fh_t) + ch_v;
+  ch_v := fh_t;
+  cl_v := cl_v + fl_t + cExpAccCh[0, 1].f;
   fh := ch_v; fl := cl_v;
   fh := pcr_muldd(dxh, dxl, fh, fl, fl);
   fh := pcr_muldd(fh, fl, th, tl, fl);
