@@ -56,19 +56,21 @@ const
   cCoshMainCh2: Tb64u64 = (u: $3FC5555555AAAAAE); //  0x1.5555555aaaaaep-3
   cCoshMainCh3: Tb64u64 = (u: $3FA55555551C98C0); //  0x1.55555551c98cp-5
 
-  // as_cosh_zero ch[4][2]
-  cCoshZeroCh: array[0..3, 0..1] of Tb64u64 = (
-    ((u:$3FE0000000000000),(u:QWord($B90C7E8DB669F624))),
-    ((u:$3FA5555555555555),(u:$3C45555555556135)),
-    ((u:$3F56C16C16C16C17),(u:QWord($BBEF49F4A6E838F2))),
-    ((u:$3EFA01A01A01A01A),(u:$3B3A4FFBE15316AA)));
+  // as_cosh_zero ch[4][2] — Pillar B: named Tb64u64 scalars (Hi = [i,0], Lo = [i,1]).
+  cCoshZeroChH_0: Tb64u64 = (u:$3FE0000000000000);
+  cCoshZeroChL_0: Tb64u64 = (u:QWord($B90C7E8DB669F624));
+  cCoshZeroChH_1: Tb64u64 = (u:$3FA5555555555555);
+  cCoshZeroChL_1: Tb64u64 = (u:$3C45555555556135);
+  cCoshZeroChH_2: Tb64u64 = (u:$3F56C16C16C16C17);
+  cCoshZeroChL_2: Tb64u64 = (u:QWord($BBEF49F4A6E838F2));
+  cCoshZeroChH_3: Tb64u64 = (u:$3EFA01A01A01A01A);
+  cCoshZeroChL_3: Tb64u64 = (u:$3B3A4FFBE15316AA);
 
-  // as_cosh_zero cl[4]
-  cCoshZeroCl: array[0..3] of Tb64u64 = (
-    (u:$3E927E4FB7789F5C),
-    (u:$3E21EED8EFF9089C),
-    (u:$3DA939749CE13DAD),
-    (u:$3D2AE9891EFB6691));
+  // as_cosh_zero cl[4] — Pillar B: named Tb64u64 scalars.
+  cCoshZeroCl_0: Tb64u64 = (u:$3E927E4FB7789F5C);
+  cCoshZeroCl_1: Tb64u64 = (u:$3E21EED8EFF9089C);
+  cCoshZeroCl_2: Tb64u64 = (u:$3DA939749CE13DAD);
+  cCoshZeroCl_3: Tb64u64 = (u:$3D2AE9891EFB6691);
 
   // as_cosh_database 21 × 3 entries
   cCoshDb: array[0..20, 0..2] of Tb64u64 = (
@@ -125,30 +127,30 @@ begin
   x2  := x * x;
   x2l := pcr_fma(x, x, -x2);
 
-  y2 := x2 * (cCoshZeroCl[0].f + x2 * (cCoshZeroCl[1].f
-            + x2 * (cCoshZeroCl[2].f + x2 * cCoshZeroCl[3].f)));
+  y2 := x2 * (cCoshZeroCl_0.f + x2 * (cCoshZeroCl_1.f
+            + x2 * (cCoshZeroCl_2.f + x2 * cCoshZeroCl_3.f)));
 
   // Seeded polydd: start with ch = c[n-1][0] + *l; cl = ... + c[n-1][1]
-  chp := cCoshZeroCh[3, 0].f + y2;
-  clp := ((cCoshZeroCh[3, 0].f - chp) + y2) + cCoshZeroCh[3, 1].f;
+  chp := cCoshZeroChH_3.f + y2;
+  clp := ((cCoshZeroChH_3.f - chp) + y2) + cCoshZeroChL_3.f;
   // Unrolled `for i := 2 downto 0` — Pillar A.
   chp := pcr_muldd(x2, x2l, chp, clp, clp);
-  ch_c := chp + cCoshZeroCh[2, 0].f;
-  e_tmp := (cCoshZeroCh[2, 0].f - ch_c) + chp;
+  ch_c := chp + cCoshZeroChH_2.f;
+  e_tmp := (cCoshZeroChH_2.f - ch_c) + chp;
   chp := ch_c;
-  clp := (clp + cCoshZeroCh[2, 1].f) + e_tmp;
+  clp := (clp + cCoshZeroChL_2.f) + e_tmp;
 
   chp := pcr_muldd(x2, x2l, chp, clp, clp);
-  ch_c := chp + cCoshZeroCh[1, 0].f;
-  e_tmp := (cCoshZeroCh[1, 0].f - ch_c) + chp;
+  ch_c := chp + cCoshZeroChH_1.f;
+  e_tmp := (cCoshZeroChH_1.f - ch_c) + chp;
   chp := ch_c;
-  clp := (clp + cCoshZeroCh[1, 1].f) + e_tmp;
+  clp := (clp + cCoshZeroChL_1.f) + e_tmp;
 
   chp := pcr_muldd(x2, x2l, chp, clp, clp);
-  ch_c := chp + cCoshZeroCh[0, 0].f;
-  e_tmp := (cCoshZeroCh[0, 0].f - ch_c) + chp;
+  ch_c := chp + cCoshZeroChH_0.f;
+  e_tmp := (cCoshZeroChH_0.f - ch_c) + chp;
   chp := ch_c;
-  clp := (clp + cCoshZeroCh[0, 1].f) + e_tmp;
+  clp := (clp + cCoshZeroChL_0.f) + e_tmp;
   y1 := chp; y2 := clp;
 
   y1 := pcr_muldd(y1, y2, x2, x2l, y2);
