@@ -596,15 +596,24 @@ pass doesn't blanket-apply the 64-bit recipe:
   (asinhf) or single-precision `roundeven`/`exp2` paths (tanhf), out
   of Pillar B scope.
 
-- [ ] **7.6** special-functions family — `erff`, `erfcf`, `tgammaf`,
-  `lgammaf`, `lgammaf_as_r7`/`r8` regions. Pillar B candidates:
-  `c_erf_small`, `c_tg`, `stir2` / `stir4` / `stir8`, `rn_sm` / `rd_sm`
-  / `rn_md` / `rd_md` (already inlined per 6.3 — verify whether the
-  underlying arrays still exist post-inline), `CF_P1C` / `CF_P2C` /
-  `CF_Q1C` / `CF_Q2C` / `CF_ERR_E22`. **Cross-cutting catch:** if any
-  of these are referenced from two functions (analogous to 64-bit
-  `cAcoshC` / `cTanhExpCh` sharing — `tasklist64.md:1404–1411`), update
-  every reader in the same commit.
+- [x] **7.6** special-functions family — `erff`, `erfcf`, `tgammaf`,
+  `lgammaf` regions. Pillar B done: lifted `ch_e`/`ct0`/`ct1`/`c_sm`
+  (erfcf → `ch_e_*`/`ct0_*`/`ct1_*`/`c_sm_*`), `c_erf_small`
+  (erff → `c_es_*`), `c_tg` (tgammaf → `c_tg_*`),
+  `rn_sm`/`rd_sm`/`rn_md`/`rd_md`/`stir2`/`stir4`/`stir8`/`c_nz1`/`c_nz2`/`c_nz3`
+  (lgammaf → `*_0..N` named scalars). The 6.3-inlined `lgammaf_as_r7/r8`
+  arrays no longer exist post-inline (verified — only `rn_sm`/`rd_sm`/
+  `rn_md`/`rd_md` survive, all local to `pcr_lgammaf`). `CF_P1C`/`CF_P2C`/
+  `CF_Q1C`/`CF_Q2C`/`CF_ERR_E22` named in the spec do not exist in
+  `pascoremath32.pas` — only `CF_ERR_E22` lives in `pcr_compoundf`
+  (misc family, 7.7). All lifted arrays are local to a single function
+  (no cross-cutting). Audit B count: 230 → 98 (-132 reads).
+  Tests: all 42 pass at `--pct 1`.
+  Bench (taskset -c 1, AVX2): erff 373 (vs C 332, FASTER) /
+  erfcf 371 (vs 374, TIE) / tgammaf 331 (vs 300, FASTER) /
+  lgammaf 130 (vs 148). lgammaf gap is in the rational-approx /
+  reflection path; the lifted arrays are folded but the heavy
+  `lgamma_as_ln` call still dominates.
 
 - [ ] **7.7** miscellaneous — `hypotf`, `cbrtf`, `rsqrtf`, `powf`,
   `compoundf`, plus any helpers (`muldd_f`, `polydd_f`, etc.). Spot-fix
