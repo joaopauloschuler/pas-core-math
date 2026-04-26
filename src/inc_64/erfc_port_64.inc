@@ -302,12 +302,29 @@ var
   thresh: Double;
   deg: Int32;
 begin
-  for i := 0 to 21 do
-    if x = cErfcAsymptEx[i, 0].f then
-    begin
-      Result := cErfcAsymptEx[i, 1].f + cErfcAsymptEx[i, 2].f;
-      Exit;
-    end;
+  // Phase 6.6 Pillar A: unrolled cErfcAsymptEx[0..21] exception scan.
+  if x = cErfcAsymptEx_0_0.f  then begin Result := cErfcAsymptEx_0_1.f  + cErfcAsymptEx_0_2.f;  Exit; end;
+  if x = cErfcAsymptEx_1_0.f  then begin Result := cErfcAsymptEx_1_1.f  + cErfcAsymptEx_1_2.f;  Exit; end;
+  if x = cErfcAsymptEx_2_0.f  then begin Result := cErfcAsymptEx_2_1.f  + cErfcAsymptEx_2_2.f;  Exit; end;
+  if x = cErfcAsymptEx_3_0.f  then begin Result := cErfcAsymptEx_3_1.f  + cErfcAsymptEx_3_2.f;  Exit; end;
+  if x = cErfcAsymptEx_4_0.f  then begin Result := cErfcAsymptEx_4_1.f  + cErfcAsymptEx_4_2.f;  Exit; end;
+  if x = cErfcAsymptEx_5_0.f  then begin Result := cErfcAsymptEx_5_1.f  + cErfcAsymptEx_5_2.f;  Exit; end;
+  if x = cErfcAsymptEx_6_0.f  then begin Result := cErfcAsymptEx_6_1.f  + cErfcAsymptEx_6_2.f;  Exit; end;
+  if x = cErfcAsymptEx_7_0.f  then begin Result := cErfcAsymptEx_7_1.f  + cErfcAsymptEx_7_2.f;  Exit; end;
+  if x = cErfcAsymptEx_8_0.f  then begin Result := cErfcAsymptEx_8_1.f  + cErfcAsymptEx_8_2.f;  Exit; end;
+  if x = cErfcAsymptEx_9_0.f  then begin Result := cErfcAsymptEx_9_1.f  + cErfcAsymptEx_9_2.f;  Exit; end;
+  if x = cErfcAsymptEx_10_0.f then begin Result := cErfcAsymptEx_10_1.f + cErfcAsymptEx_10_2.f; Exit; end;
+  if x = cErfcAsymptEx_11_0.f then begin Result := cErfcAsymptEx_11_1.f + cErfcAsymptEx_11_2.f; Exit; end;
+  if x = cErfcAsymptEx_12_0.f then begin Result := cErfcAsymptEx_12_1.f + cErfcAsymptEx_12_2.f; Exit; end;
+  if x = cErfcAsymptEx_13_0.f then begin Result := cErfcAsymptEx_13_1.f + cErfcAsymptEx_13_2.f; Exit; end;
+  if x = cErfcAsymptEx_14_0.f then begin Result := cErfcAsymptEx_14_1.f + cErfcAsymptEx_14_2.f; Exit; end;
+  if x = cErfcAsymptEx_15_0.f then begin Result := cErfcAsymptEx_15_1.f + cErfcAsymptEx_15_2.f; Exit; end;
+  if x = cErfcAsymptEx_16_0.f then begin Result := cErfcAsymptEx_16_1.f + cErfcAsymptEx_16_2.f; Exit; end;
+  if x = cErfcAsymptEx_17_0.f then begin Result := cErfcAsymptEx_17_1.f + cErfcAsymptEx_17_2.f; Exit; end;
+  if x = cErfcAsymptEx_18_0.f then begin Result := cErfcAsymptEx_18_1.f + cErfcAsymptEx_18_2.f; Exit; end;
+  if x = cErfcAsymptEx_19_0.f then begin Result := cErfcAsymptEx_19_1.f + cErfcAsymptEx_19_2.f; Exit; end;
+  if x = cErfcAsymptEx_20_0.f then begin Result := cErfcAsymptEx_20_1.f + cErfcAsymptEx_20_2.f; Exit; end;
+  if x = cErfcAsymptEx_21_0.f then begin Result := cErfcAsymptEx_21_1.f + cErfcAsymptEx_21_2.f; Exit; end;
 
   if x = cErfcSubExpX.f then
   begin
@@ -398,11 +415,24 @@ var
 begin
   if x < Double(0.0) then
   begin
-    for i := 0 to 16 do
-      if x = cErfcAccNegEx[i, 0].f then
-      begin
-        Result := cErfcAccNegEx[i, 1].f + cErfcAccNegEx[i, 2].f; Exit;
-      end;
+    // Phase 6.6 Pillar A: unrolled cErfcAccNegEx[0..16] exception scan.
+    if x = cErfcAccNegEx_0_0.f  then begin Result := cErfcAccNegEx_0_1.f  + cErfcAccNegEx_0_2.f;  Exit; end;
+    if x = cErfcAccNegEx_1_0.f  then begin Result := cErfcAccNegEx_1_1.f  + cErfcAccNegEx_1_2.f;  Exit; end;
+    if x = cErfcAccNegEx_2_0.f  then begin Result := cErfcAccNegEx_2_1.f  + cErfcAccNegEx_2_2.f;  Exit; end;
+    if x = cErfcAccNegEx_3_0.f  then begin Result := cErfcAccNegEx_3_1.f  + cErfcAccNegEx_3_2.f;  Exit; end;
+    if x = cErfcAccNegEx_4_0.f  then begin Result := cErfcAccNegEx_4_1.f  + cErfcAccNegEx_4_2.f;  Exit; end;
+    if x = cErfcAccNegEx_5_0.f  then begin Result := cErfcAccNegEx_5_1.f  + cErfcAccNegEx_5_2.f;  Exit; end;
+    if x = cErfcAccNegEx_6_0.f  then begin Result := cErfcAccNegEx_6_1.f  + cErfcAccNegEx_6_2.f;  Exit; end;
+    if x = cErfcAccNegEx_7_0.f  then begin Result := cErfcAccNegEx_7_1.f  + cErfcAccNegEx_7_2.f;  Exit; end;
+    if x = cErfcAccNegEx_8_0.f  then begin Result := cErfcAccNegEx_8_1.f  + cErfcAccNegEx_8_2.f;  Exit; end;
+    if x = cErfcAccNegEx_9_0.f  then begin Result := cErfcAccNegEx_9_1.f  + cErfcAccNegEx_9_2.f;  Exit; end;
+    if x = cErfcAccNegEx_10_0.f then begin Result := cErfcAccNegEx_10_1.f + cErfcAccNegEx_10_2.f; Exit; end;
+    if x = cErfcAccNegEx_11_0.f then begin Result := cErfcAccNegEx_11_1.f + cErfcAccNegEx_11_2.f; Exit; end;
+    if x = cErfcAccNegEx_12_0.f then begin Result := cErfcAccNegEx_12_1.f + cErfcAccNegEx_12_2.f; Exit; end;
+    if x = cErfcAccNegEx_13_0.f then begin Result := cErfcAccNegEx_13_1.f + cErfcAccNegEx_13_2.f; Exit; end;
+    if x = cErfcAccNegEx_14_0.f then begin Result := cErfcAccNegEx_14_1.f + cErfcAccNegEx_14_2.f; Exit; end;
+    if x = cErfcAccNegEx_15_0.f then begin Result := cErfcAccNegEx_15_1.f + cErfcAccNegEx_15_2.f; Exit; end;
+    if x = cErfcAccNegEx_16_0.f then begin Result := cErfcAccNegEx_16_1.f + cErfcAccNegEx_16_2.f; Exit; end;
     ErfAccurate(h, l, -x);
     ErfcFastTwoSum(h, t, Double(1.0), h);
     l := t + l;
@@ -411,11 +441,36 @@ begin
   end;
   if x <= cErfcAccUpper.f then
   begin
-    for i := 0 to 28 do
-      if x = cErfcAccPosEx[i, 0].f then
-      begin
-        Result := cErfcAccPosEx[i, 1].f + cErfcAccPosEx[i, 2].f; Exit;
-      end;
+    // Phase 6.6 Pillar A: unrolled cErfcAccPosEx[0..28] exception scan.
+    if x = cErfcAccPosEx_0_0.f  then begin Result := cErfcAccPosEx_0_1.f  + cErfcAccPosEx_0_2.f;  Exit; end;
+    if x = cErfcAccPosEx_1_0.f  then begin Result := cErfcAccPosEx_1_1.f  + cErfcAccPosEx_1_2.f;  Exit; end;
+    if x = cErfcAccPosEx_2_0.f  then begin Result := cErfcAccPosEx_2_1.f  + cErfcAccPosEx_2_2.f;  Exit; end;
+    if x = cErfcAccPosEx_3_0.f  then begin Result := cErfcAccPosEx_3_1.f  + cErfcAccPosEx_3_2.f;  Exit; end;
+    if x = cErfcAccPosEx_4_0.f  then begin Result := cErfcAccPosEx_4_1.f  + cErfcAccPosEx_4_2.f;  Exit; end;
+    if x = cErfcAccPosEx_5_0.f  then begin Result := cErfcAccPosEx_5_1.f  + cErfcAccPosEx_5_2.f;  Exit; end;
+    if x = cErfcAccPosEx_6_0.f  then begin Result := cErfcAccPosEx_6_1.f  + cErfcAccPosEx_6_2.f;  Exit; end;
+    if x = cErfcAccPosEx_7_0.f  then begin Result := cErfcAccPosEx_7_1.f  + cErfcAccPosEx_7_2.f;  Exit; end;
+    if x = cErfcAccPosEx_8_0.f  then begin Result := cErfcAccPosEx_8_1.f  + cErfcAccPosEx_8_2.f;  Exit; end;
+    if x = cErfcAccPosEx_9_0.f  then begin Result := cErfcAccPosEx_9_1.f  + cErfcAccPosEx_9_2.f;  Exit; end;
+    if x = cErfcAccPosEx_10_0.f then begin Result := cErfcAccPosEx_10_1.f + cErfcAccPosEx_10_2.f; Exit; end;
+    if x = cErfcAccPosEx_11_0.f then begin Result := cErfcAccPosEx_11_1.f + cErfcAccPosEx_11_2.f; Exit; end;
+    if x = cErfcAccPosEx_12_0.f then begin Result := cErfcAccPosEx_12_1.f + cErfcAccPosEx_12_2.f; Exit; end;
+    if x = cErfcAccPosEx_13_0.f then begin Result := cErfcAccPosEx_13_1.f + cErfcAccPosEx_13_2.f; Exit; end;
+    if x = cErfcAccPosEx_14_0.f then begin Result := cErfcAccPosEx_14_1.f + cErfcAccPosEx_14_2.f; Exit; end;
+    if x = cErfcAccPosEx_15_0.f then begin Result := cErfcAccPosEx_15_1.f + cErfcAccPosEx_15_2.f; Exit; end;
+    if x = cErfcAccPosEx_16_0.f then begin Result := cErfcAccPosEx_16_1.f + cErfcAccPosEx_16_2.f; Exit; end;
+    if x = cErfcAccPosEx_17_0.f then begin Result := cErfcAccPosEx_17_1.f + cErfcAccPosEx_17_2.f; Exit; end;
+    if x = cErfcAccPosEx_18_0.f then begin Result := cErfcAccPosEx_18_1.f + cErfcAccPosEx_18_2.f; Exit; end;
+    if x = cErfcAccPosEx_19_0.f then begin Result := cErfcAccPosEx_19_1.f + cErfcAccPosEx_19_2.f; Exit; end;
+    if x = cErfcAccPosEx_20_0.f then begin Result := cErfcAccPosEx_20_1.f + cErfcAccPosEx_20_2.f; Exit; end;
+    if x = cErfcAccPosEx_21_0.f then begin Result := cErfcAccPosEx_21_1.f + cErfcAccPosEx_21_2.f; Exit; end;
+    if x = cErfcAccPosEx_22_0.f then begin Result := cErfcAccPosEx_22_1.f + cErfcAccPosEx_22_2.f; Exit; end;
+    if x = cErfcAccPosEx_23_0.f then begin Result := cErfcAccPosEx_23_1.f + cErfcAccPosEx_23_2.f; Exit; end;
+    if x = cErfcAccPosEx_24_0.f then begin Result := cErfcAccPosEx_24_1.f + cErfcAccPosEx_24_2.f; Exit; end;
+    if x = cErfcAccPosEx_25_0.f then begin Result := cErfcAccPosEx_25_1.f + cErfcAccPosEx_25_2.f; Exit; end;
+    if x = cErfcAccPosEx_26_0.f then begin Result := cErfcAccPosEx_26_1.f + cErfcAccPosEx_26_2.f; Exit; end;
+    if x = cErfcAccPosEx_27_0.f then begin Result := cErfcAccPosEx_27_1.f + cErfcAccPosEx_27_2.f; Exit; end;
+    if x = cErfcAccPosEx_28_0.f then begin Result := cErfcAccPosEx_28_1.f + cErfcAccPosEx_28_2.f; Exit; end;
     ErfAccurate(h, l, x);
     ErfcFastTwoSum(h, t, Double(1.0), -h);
     l := t - l;
