@@ -117,7 +117,7 @@ begin
       if x0 < 0 then
         Result := pcr_copysign(cAtan2PiH.f, y0) + pcr_copysign(cAtan2PiL.f, y0)
       else
-        Result := pcr_copysign(0.0, y0);
+        Result := pcr_copysign(Double(0.0), y0);
       Exit;
     end;
     // y = +/-Inf, x finite -> +/-pi/2
@@ -175,7 +175,7 @@ begin
   // Compute t = y/x.  We do *not* track FE flags — see header note.
   t := y / x;
 
-  if t = 0.0 then begin
+  if t = Double(0.0) then begin
     if x > 0 then begin
       Result := t;            // atan(0) = +/-0 with sign(t)
       Exit;
@@ -188,7 +188,7 @@ begin
   end;
 
   corr := pcr_fma(t, x, -y);
-  if (corr = 0.0) and (x > 0) then begin
+  if (corr = Double(0.0)) and (x > 0) then begin
     // t exact
     if Abs(t) <= cAtan2TinyT.f then begin
       ay := Abs(y);
@@ -198,7 +198,7 @@ begin
       end;
       // |y| < 2^-915 — scale to avoid underflow in t*x - y
       corr := pcr_fma(t * cAtan2P105.f, x, -y * cAtan2P105.f);
-      if corr = 0.0 then begin
+      if corr = Double(0.0) then begin
         Result := pcr_fma(t, cAtan2P54Neg.f, t);
         Exit;
       end;
@@ -316,10 +316,10 @@ begin
   kw := (sx shl 2) or (sy shl 1) or GT;
 
   // jj.f = y/x + (2 + 1/128)
-  jj.f := y / x + (2.0 + Double(1.0/128.0));
+  jj.f := y / x + (Double(2.0) + (Double(1.0)/Double(128.0)));
   jt   := Int64((jj.u shr (52 - 7)) and 127);
 
-  signsel := pcr_copysign(1.0, sgn.f);
+  signsel := pcr_copysign(Double(1.0), sgn.f);
   fh := cAtan2F2[2*jt + 1].f * signsel;
   fl := cAtan2F2[2*jt    ].f * signsel;
   fh := fh + cAtan2O[2*kw    ].f;
@@ -357,11 +357,11 @@ begin
     dl := pcr_fma(y, t0, -dh);
     A2FastTwoSum(dh, e, x, dh);
     if Abs(dh) <= cAtan2P1022.f then
-      rdh := 1.0 / dh
+      rdh := Double(1.0) / dh
     else begin
       // matches "fegetexceptflag/fesetexceptflag(FE_UNDERFLOW)" guard in C —
       // we don't track the flag so just compute 1/dh (correct value).
-      rdh := 1.0 / dh;
+      rdh := Double(1.0) / dh;
     end;
     dl := dl + e;
 
