@@ -2102,17 +2102,40 @@ const
   // 1ulp constants
   cCospiP55: Tb64u64 = (u:$3C80000000000000); //  0x1p-55
 
-  // Database for as_sinpi_refine exceptions
-  cSinpiDbIq: array[0..7] of Int32 = (903, 1029, 1078, 1217, 1025, 1026, 1033, 1235);
-  cSinpiDbX:  array[0..7] of Tb64u64 = (
-    (u:QWord($BFDBDD02D1AD6000)),(u:QWord($BFCA4AD070549D00)),(u:$3FCFBDB79CA3DA00),(u:$3FEC0CCEE4ADA200),
-    (u:$3FDB536647B1FE98),(u:QWord($BFDDC93EAAD12A18)),(u:$3FEE78F0E592B360),(u:$3FDF13412A48D800));
-  cSinpiDbR:  array[0..7] of Tb64u64 = (
-    (u:$3FEF72C906962631),(u:$3FEFFFC4D2C6CA51),(u:$3FEFE3C8219054C3),(u:$3FEE99FD53791BCF),
-    (u:$3FEFFFFC5DDD0738),(u:$3FEFFFF84B21C731),(u:$3FEFFF2270422604),(u:$3FEE55A7FA9A24C4));
-  cSinpiDbD:  array[0..7] of Tb64u64 = (
-    (u:$3C80000000000000),(u:$3C80000000000000),(u:$3C80000000000000),(u:QWord($BC80000000000000)),
-    (u:$3C80000000000000),(u:$3C80000000000000),(u:QWord($BC80000000000000)),(u:QWord($BC80000000000000)));
+  // Database for as_sinpi_refine exceptions. Pillar B (Phase 6.3): lifted to
+  // named scalars; the for i := 0 to 7 loop in CospiSinpiRefine is unrolled.
+  cSinpiDbIq_0: Int32 = 903;
+  cSinpiDbIq_1: Int32 = 1029;
+  cSinpiDbIq_2: Int32 = 1078;
+  cSinpiDbIq_3: Int32 = 1217;
+  cSinpiDbIq_4: Int32 = 1025;
+  cSinpiDbIq_5: Int32 = 1026;
+  cSinpiDbIq_6: Int32 = 1033;
+  cSinpiDbIq_7: Int32 = 1235;
+  cSinpiDbX_0: Tb64u64 = (u:QWord($BFDBDD02D1AD6000));
+  cSinpiDbX_1: Tb64u64 = (u:QWord($BFCA4AD070549D00));
+  cSinpiDbX_2: Tb64u64 = (u:$3FCFBDB79CA3DA00);
+  cSinpiDbX_3: Tb64u64 = (u:$3FEC0CCEE4ADA200);
+  cSinpiDbX_4: Tb64u64 = (u:$3FDB536647B1FE98);
+  cSinpiDbX_5: Tb64u64 = (u:QWord($BFDDC93EAAD12A18));
+  cSinpiDbX_6: Tb64u64 = (u:$3FEE78F0E592B360);
+  cSinpiDbX_7: Tb64u64 = (u:$3FDF13412A48D800);
+  cSinpiDbR_0: Tb64u64 = (u:$3FEF72C906962631);
+  cSinpiDbR_1: Tb64u64 = (u:$3FEFFFC4D2C6CA51);
+  cSinpiDbR_2: Tb64u64 = (u:$3FEFE3C8219054C3);
+  cSinpiDbR_3: Tb64u64 = (u:$3FEE99FD53791BCF);
+  cSinpiDbR_4: Tb64u64 = (u:$3FEFFFFC5DDD0738);
+  cSinpiDbR_5: Tb64u64 = (u:$3FEFFFF84B21C731);
+  cSinpiDbR_6: Tb64u64 = (u:$3FEFFF2270422604);
+  cSinpiDbR_7: Tb64u64 = (u:$3FEE55A7FA9A24C4);
+  cSinpiDbD_0: Tb64u64 = (u:$3C80000000000000);
+  cSinpiDbD_1: Tb64u64 = (u:$3C80000000000000);
+  cSinpiDbD_2: Tb64u64 = (u:$3C80000000000000);
+  cSinpiDbD_3: Tb64u64 = (u:QWord($BC80000000000000));
+  cSinpiDbD_4: Tb64u64 = (u:$3C80000000000000);
+  cSinpiDbD_5: Tb64u64 = (u:$3C80000000000000);
+  cSinpiDbD_6: Tb64u64 = (u:QWord($BC80000000000000));
+  cSinpiDbD_7: Tb64u64 = (u:QWord($BC80000000000000));
 
   // sincosn tables (fast-path)
   cSincosN1_Sn: array[0..32, 0..1] of Tb64u64 = (
@@ -2542,15 +2565,54 @@ begin
   begin
     if iq > 2048 then sgn := -Double(1.0) else sgn := Double(1.0);
     iqm := iq and $7FF;
-    for i := 0 to 7 do
+    // Pillar A (Phase 6.3): for i := 0 to 7 unrolled.
+    dbx := cSinpiDbX_0.f;
+    if ((x = dbx) and (iqm = cSinpiDbIq_0))
+       or ((x = -dbx) and (iqm = 2048 - cSinpiDbIq_0)) then
     begin
-      dbx := cSinpiDbX[i].f;
-      if ((x = dbx) and (iqm = cSinpiDbIq[i]))
-         or ((x = -dbx) and (iqm = 2048 - cSinpiDbIq[i])) then
-      begin
-        Result := sgn * cSinpiDbR[i].f + sgn * cSinpiDbD[i].f;
-        Exit;
-      end;
+      Result := sgn * cSinpiDbR_0.f + sgn * cSinpiDbD_0.f; Exit;
+    end;
+    dbx := cSinpiDbX_1.f;
+    if ((x = dbx) and (iqm = cSinpiDbIq_1))
+       or ((x = -dbx) and (iqm = 2048 - cSinpiDbIq_1)) then
+    begin
+      Result := sgn * cSinpiDbR_1.f + sgn * cSinpiDbD_1.f; Exit;
+    end;
+    dbx := cSinpiDbX_2.f;
+    if ((x = dbx) and (iqm = cSinpiDbIq_2))
+       or ((x = -dbx) and (iqm = 2048 - cSinpiDbIq_2)) then
+    begin
+      Result := sgn * cSinpiDbR_2.f + sgn * cSinpiDbD_2.f; Exit;
+    end;
+    dbx := cSinpiDbX_3.f;
+    if ((x = dbx) and (iqm = cSinpiDbIq_3))
+       or ((x = -dbx) and (iqm = 2048 - cSinpiDbIq_3)) then
+    begin
+      Result := sgn * cSinpiDbR_3.f + sgn * cSinpiDbD_3.f; Exit;
+    end;
+    dbx := cSinpiDbX_4.f;
+    if ((x = dbx) and (iqm = cSinpiDbIq_4))
+       or ((x = -dbx) and (iqm = 2048 - cSinpiDbIq_4)) then
+    begin
+      Result := sgn * cSinpiDbR_4.f + sgn * cSinpiDbD_4.f; Exit;
+    end;
+    dbx := cSinpiDbX_5.f;
+    if ((x = dbx) and (iqm = cSinpiDbIq_5))
+       or ((x = -dbx) and (iqm = 2048 - cSinpiDbIq_5)) then
+    begin
+      Result := sgn * cSinpiDbR_5.f + sgn * cSinpiDbD_5.f; Exit;
+    end;
+    dbx := cSinpiDbX_6.f;
+    if ((x = dbx) and (iqm = cSinpiDbIq_6))
+       or ((x = -dbx) and (iqm = 2048 - cSinpiDbIq_6)) then
+    begin
+      Result := sgn * cSinpiDbR_6.f + sgn * cSinpiDbD_6.f; Exit;
+    end;
+    dbx := cSinpiDbX_7.f;
+    if ((x = dbx) and (iqm = cSinpiDbIq_7))
+       or ((x = -dbx) and (iqm = 2048 - cSinpiDbIq_7)) then
+    begin
+      Result := sgn * cSinpiDbR_7.f + sgn * cSinpiDbD_7.f; Exit;
     end;
   end;
   Result := tsh + tsl;
