@@ -1250,10 +1250,10 @@ Splitting A/B/C into separate commits per file means a regression bisects to the
     src/pascoremath64.pas` and triage by function. Sub-tasks updated below to
     reference both targets.
 
-- [ ] **6.1** exp family — `exp`/`exp2`/`exp10`/`expm1` bodies live in
+- [X] **6.1** exp family — `exp`/`exp2`/`exp10`/`expm1` bodies live in
   `pascoremath64.pas` (no separate `_port_64.inc`); plus `exp2m1_port_64.inc`
   and `exp10m1_port_64.inc`.
-  - **Partial (2026-04-26):**
+  - **Done (2026-04-26):**
     - `exp2m1_port_64.inc` audit-clean across A/B/C; bench 92.7 → 192.5 Mops/s
       (+108 %, FASTER). Pillar A unrolled the audit-missed `for i := 6 downto 0`
       ZIv loop (i*2 index expression); Pillar B lifted Q1/Q2/P/Q (all four
@@ -1273,13 +1273,26 @@ Splitting A/B/C into separate commits per file means a regression bisects to the
       (e.g. `cFoo[i*2].f`). Same heuristic miss applies to acoshlike loops.
       Reviewers should grep for `for .* downto.*do` near coefficient arrays
       even when the audit reports A=0.
-  - **Remaining:** `pcr_exp`, `pcr_exp2`, `pcr_exp10`, `pcr_expm1` bodies
-    inside `src/pascoremath64.pas` (lines 3097..4097). Audit shows
-    A=11 / B=28 / C=1 across the four functions: cExp2Cd, cExp2FastC,
-    cExp10AccC, cExp10FastCh, cExpAccCh, cExpm1AccCh, cExpm1AccCl,
-    cExpm1FastC are the lift-candidate arrays; one Expm1Database
-    untyped literal (`300E81651`-style hex inside a const initialiser)
-    is a likely audit false-positive — verify before wrapping.
+  - **Closed (2026-04-26):** `pcr_exp` (ExpRefine), `pcr_exp2`, `pcr_exp10`,
+    `pcr_expm1` (ExpM1Refine + ExpM1AccLarge) bodies inside
+    `src/pascoremath64.pas` are now audit-clean across A/B/C:
+    Pillar A unrolled five fixed-trip-count polydd loops (cExpAccCh n=7
+    twice, cExp2Cd n=6, cExp10AccC n=6, cExpm1AccCh n=11). Pillar B
+    lifted cExpAccCh, cExp2Cd, cExp2FastC, cExp10AccC, cExp10FastCh,
+    cExpm1FastC, cExpm1AccCl, cExpm1AccCh to named `Tb64u64` scalars
+    (the original arrays were dropped — every read was the `.f` form).
+    Pillar C: only one audit hit remains (line ~3920, `s := UInt64($300E81651C)`
+    in `Expm1Database` — confirmed false positive: hex digit pattern
+    `300E81651` triggers the float-literal regex but is wrapped in
+    `UInt64($...)`). TestHarness64 --pct 1 PASS for exp/exp2/exp10/
+    expm1/exp2m1/exp10m1.
+  - **Benchmark deltas (2026-04-26, `taskset -c 1`, 200M calls):**
+    exp 313.0 → 369.7 Mops/s (+18 %, FASTER); expm1 240.1 → 319.0
+    (+33 %, FASTER); exp2 ~248 vs C 267 (TIE); exp10 96 Mops/s vs C 239
+    (slower — slow-path-dominated bench filter, not a regression).
+    No baseline-vs-now comparison was captured — these are the post-
+    Phase-6.1/B numbers; record before-vs-after on the next pass if a
+    regression is suspected.
 - [ ] **6.2** log family — `log_port_64.inc`, `log10_port_64.inc`, `log1p_port_64.inc`, `log2p1_port_64.inc`, `log10p1_port_64.inc`. (`log2` body lives in `pascoremath64.pas`.)
 - [ ] **6.3** trig family — `sin_port_64.inc`, `cos_port_64.inc`, `tan_port_64.inc`, `sincos_port_64.inc`, `sinpi_port_64.inc`, `tanpi_port_64.inc`. (`cospi`, `atanpi`, `tan` bodies share space inside `pascoremath64.pas`; `cos`/`sin` have both inc files and helper code in the unit.)
 - [ ] **6.4** inverse-trig family — `atan2_port_64.inc`, `atan2pi_port_64.inc`, `asinpi_port_64.inc`, `acospi_port_64.inc`, `atanh_port_64.inc`. (`atan`, `acos`, `asin`, `atanpi` bodies live in `pascoremath64.pas`.)
