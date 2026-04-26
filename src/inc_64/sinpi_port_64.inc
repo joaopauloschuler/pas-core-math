@@ -186,7 +186,6 @@ var
   tsh, tsl, tsl2: Double;
   iqm: Int32;
   sgn, dbx: Double;
-  i: Int32;
   t_u: Tb64u64;
 begin
   x   := z * cSinpiRefScale.f;  // z * 2^-63

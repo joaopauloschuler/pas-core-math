@@ -411,7 +411,6 @@ end;
 function ErfcAccurateTop(x: Double): Double;
 var
   h, l, t: Double;
-  i: Int32;
 begin
   if x < Double(0.0) then
   begin

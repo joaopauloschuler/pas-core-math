@@ -2559,7 +2559,6 @@ var
   tsh, tsl, tsl2: Double;
   iqm: Int32;
   sgn, dbx: Double;
-  i: Int32;
   t_u: Tb64u64;
 begin
   x   := z * cSinpiRefScale.f;              // x = z * 2^-63
@@ -3152,7 +3151,6 @@ var
   th, tl, t0h, t0l, t1h, t1l: Double;
   jt, i0, i1, ie: Int64;
   ch_v, cl_v: Double;
-  i: Int32;
   v: Tb64u64;
 begin
   ix.f := x;
@@ -3429,7 +3427,6 @@ var
   ix, ixs, v: Tb64u64;
  sx, fx, z, th, tl, t0h, t0l, t1h, t1l, fh, fl, e, ch_v, cl_v: Double;
   k, i0, i1, ie: Int64;
-  i: Int32;
 begin
   ix.f := x;
   sx := Double(4096.0) * x;
@@ -3721,7 +3718,6 @@ var
   ix, v, l: Tb64u64;
   t, dx, dxl, dxll, dxh, th, tl, t0h, t0l, t1h, t1l, fh, fl, ch_v, cl_v: Double;
   jt, i0, i1, ie: Int64;
-  i: Int32;
   sfh_differ: Boolean;
   delta: UInt64;
 begin
@@ -4081,7 +4077,6 @@ function Expm1RefineSmall(x: Double): Double;
 var
   fl, fh, hx, x2h, x2l, v0, v1, v2: Double;
   ch_v, cl_v, fh_t, fl_t: Double;
-  i: Int32;
   v_u, v2_u: Tb64u64;
   delta: UInt64;
 begin
@@ -4185,7 +4180,6 @@ var
   t, dx, dxl, dxll, dxh, fh, fl, e, th, tl, t0h, t0l, t1h, t1l: Double;
   ch_v, cl_v, fh_t, fl_t: Double;
   jt, i0, i1, ie: Int64;
-  i: Int32;
 begin
   t  := pcr_roundeven(x * cExpS.f);
   jt := Trunc(t);
