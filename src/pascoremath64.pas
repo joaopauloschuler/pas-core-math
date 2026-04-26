@@ -2915,14 +2915,22 @@ const
   cExpTinyMul:    Tb64u64 = (u:$0010000000000000); // 0x1p-1022
 
   // Accurate-path polynomial ch[7][2] (hi, lo)
-  cExpAccCh: array[0..6, 0..1] of Tb64u64 = (
-    ((u:$3FF0000000000000),(u:$0000000000000000)),
-    ((u:$3FE0000000000000),(u:$39C712F72ECEC2CF)),
-    ((u:$3FC5555555555555),(u:$3C65555555554D07)),
-    ((u:$3FA5555555555555),(u:$3C455194D28275DA)),
-    ((u:$3F81111111111111),(u:$3C012FAA0E1C0F7B)),
-    ((u:$3F56C16C16DA6973),(u:QWord($BBF4BA45AB25D2A3))),
-    ((u:$3F2A01A019EB7F31),(u:QWord($BBC9091D845ECD36))));
+  // cExpAccCh ch[7][2] — Phase 6.1 Pillar B: lifted to named scalars.
+  // Used in ExpRefine and ExpM1AccLarge.
+  cExpAccCh_0_0: Tb64u64 = (u:$3FF0000000000000);             //  0x1p0
+  cExpAccCh_0_1: Tb64u64 = (u:$0000000000000000);             //  0x0p0
+  cExpAccCh_1_0: Tb64u64 = (u:$3FE0000000000000);             //  0x1p-1
+  cExpAccCh_1_1: Tb64u64 = (u:$39C712F72ECEC2CF);             //  0x1.712f72ecec2cfp-99
+  cExpAccCh_2_0: Tb64u64 = (u:$3FC5555555555555);             //  0x1.5555555555555p-3
+  cExpAccCh_2_1: Tb64u64 = (u:$3C65555555554D07);             //  0x1.5555555554d07p-57
+  cExpAccCh_3_0: Tb64u64 = (u:$3FA5555555555555);             //  0x1.5555555555555p-5
+  cExpAccCh_3_1: Tb64u64 = (u:$3C455194D28275DA);             //  0x1.55194d28275dap-59
+  cExpAccCh_4_0: Tb64u64 = (u:$3F81111111111111);             //  0x1.1111111111111p-7
+  cExpAccCh_4_1: Tb64u64 = (u:$3C012FAA0E1C0F7B);             //  0x1.12faa0e1c0f7bp-63
+  cExpAccCh_5_0: Tb64u64 = (u:$3F56C16C16DA6973);             //  0x1.6c16c16da6973p-10
+  cExpAccCh_5_1: Tb64u64 = (u:QWord($BBF4BA45AB25D2A3));      // -0x1.4ba45ab25d2a3p-64
+  cExpAccCh_6_0: Tb64u64 = (u:$3F2A01A019EB7F31);             //  0x1.a01a019eb7f31p-13
+  cExpAccCh_6_1: Tb64u64 = (u:QWord($BBC9091D845ECD36));      // -0x1.9091d845ecd36p-67
 
   // 51-entry exception database (sorted by ix.u of x).
   cExpDb: array[0..50] of UInt64 = (
@@ -3036,43 +3044,43 @@ begin
   dxl  := (dx - dxh) + dxl + dxll;
 
   // opolydd unrolled (n=7, in/out l in cl_v) — Phase 6.1 Pillar A
-  ch_v := cExpAccCh[6, 0].f;  cl_v := cExpAccCh[6, 1].f;
+  ch_v := cExpAccCh_6_0.f;  cl_v := cExpAccCh_6_1.f;
   // i = 5
   ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
-  fh := ch_v + cExpAccCh[5, 0].f;
-  fl := (cExpAccCh[5, 0].f - fh) + ch_v;
+  fh := ch_v + cExpAccCh_5_0.f;
+  fl := (cExpAccCh_5_0.f - fh) + ch_v;
   ch_v := fh;
-  cl_v := cl_v + fl + cExpAccCh[5, 1].f;
+  cl_v := cl_v + fl + cExpAccCh_5_1.f;
   // i = 4
   ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
-  fh := ch_v + cExpAccCh[4, 0].f;
-  fl := (cExpAccCh[4, 0].f - fh) + ch_v;
+  fh := ch_v + cExpAccCh_4_0.f;
+  fl := (cExpAccCh_4_0.f - fh) + ch_v;
   ch_v := fh;
-  cl_v := cl_v + fl + cExpAccCh[4, 1].f;
+  cl_v := cl_v + fl + cExpAccCh_4_1.f;
   // i = 3
   ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
-  fh := ch_v + cExpAccCh[3, 0].f;
-  fl := (cExpAccCh[3, 0].f - fh) + ch_v;
+  fh := ch_v + cExpAccCh_3_0.f;
+  fl := (cExpAccCh_3_0.f - fh) + ch_v;
   ch_v := fh;
-  cl_v := cl_v + fl + cExpAccCh[3, 1].f;
+  cl_v := cl_v + fl + cExpAccCh_3_1.f;
   // i = 2
   ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
-  fh := ch_v + cExpAccCh[2, 0].f;
-  fl := (cExpAccCh[2, 0].f - fh) + ch_v;
+  fh := ch_v + cExpAccCh_2_0.f;
+  fl := (cExpAccCh_2_0.f - fh) + ch_v;
   ch_v := fh;
-  cl_v := cl_v + fl + cExpAccCh[2, 1].f;
+  cl_v := cl_v + fl + cExpAccCh_2_1.f;
   // i = 1
   ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
-  fh := ch_v + cExpAccCh[1, 0].f;
-  fl := (cExpAccCh[1, 0].f - fh) + ch_v;
+  fh := ch_v + cExpAccCh_1_0.f;
+  fl := (cExpAccCh_1_0.f - fh) + ch_v;
   ch_v := fh;
-  cl_v := cl_v + fl + cExpAccCh[1, 1].f;
+  cl_v := cl_v + fl + cExpAccCh_1_1.f;
   // i = 0
   ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
-  fh := ch_v + cExpAccCh[0, 0].f;
-  fl := (cExpAccCh[0, 0].f - fh) + ch_v;
+  fh := ch_v + cExpAccCh_0_0.f;
+  fl := (cExpAccCh_0_0.f - fh) + ch_v;
   ch_v := fh;
-  cl_v := cl_v + fl + cExpAccCh[0, 1].f;
+  cl_v := cl_v + fl + cExpAccCh_0_1.f;
   fh := ch_v;  fl := cl_v;
 
   fh := pcr_muldd(dxh, dxl, fh, fl, fl);
@@ -3199,17 +3207,25 @@ end;
 // ---------------------------------------------------------------------------
 
 const
-  cExp2Cd: array[0..5, 0..1] of Tb64u64 = (
-    ((u:$3F262E42FEFA39EF),(u:$3BBABC9E3B39873E)),
-    ((u:$3E4EBFBDFF82C58F),(u:QWord($BAE5E43A53E44950))),
-    ((u:$3D6C6B08D704A0C0),(u:QWord($BA0D3A15710D3D83))),
-    ((u:$3C83B2AB6FBA4E77),(u:$3914DD5D2A5E025A)),
-    ((u:$3B95D87FE7A66459),(u:QWord($B83DC47E47BEB9DD))),
-    ((u:$3AA430912F9FB79D),(u:QWord($B744FCD51FCB7640))));
+  // cExp2Cd cd[6][2] — Phase 6.1 Pillar B
+  cExp2Cd_0_0: Tb64u64 = (u:$3F262E42FEFA39EF);
+  cExp2Cd_0_1: Tb64u64 = (u:$3BBABC9E3B39873E);
+  cExp2Cd_1_0: Tb64u64 = (u:$3E4EBFBDFF82C58F);
+  cExp2Cd_1_1: Tb64u64 = (u:QWord($BAE5E43A53E44950));
+  cExp2Cd_2_0: Tb64u64 = (u:$3D6C6B08D704A0C0);
+  cExp2Cd_2_1: Tb64u64 = (u:QWord($BA0D3A15710D3D83));
+  cExp2Cd_3_0: Tb64u64 = (u:$3C83B2AB6FBA4E77);
+  cExp2Cd_3_1: Tb64u64 = (u:$3914DD5D2A5E025A);
+  cExp2Cd_4_0: Tb64u64 = (u:$3B95D87FE7A66459);
+  cExp2Cd_4_1: Tb64u64 = (u:QWord($B83DC47E47BEB9DD));
+  cExp2Cd_5_0: Tb64u64 = (u:$3AA430912F9FB79D);
+  cExp2Cd_5_1: Tb64u64 = (u:QWord($B744FCD51FCB7640));
 
-  cExp2FastC: array[0..3] of Tb64u64 = (
-    (u:$3F262E42FEFA39EF),(u:$3E4EBFBDFF82C58F),
-    (u:$3D6C6B08D73B3E01),(u:$3C83B2AB6FDDA001));
+  // cExp2FastC c[4] — Phase 6.1 Pillar B
+  cExp2FastC_0: Tb64u64 = (u:$3F262E42FEFA39EF);
+  cExp2FastC_1: Tb64u64 = (u:$3E4EBFBDFF82C58F);
+  cExp2FastC_2: Tb64u64 = (u:$3D6C6B08D73B3E01);
+  cExp2FastC_3: Tb64u64 = (u:$3C83B2AB6FDDA001);
 
   cExp2Db: array[0..42] of UInt64 = (
     UInt64($3F5E4596526BF94D), UInt64($3F5E76049073067F), UInt64($3F6755AA6FA428CD),
@@ -3295,37 +3311,37 @@ begin
   th := pcr_muldd(t0h, t0l, t1h, t1l, tl);
 
   // polydd(z, 6, cd, &fl): scalar*dd polynomial — Phase 6.1 Pillar A
-  ch_v := cExp2Cd[5, 0].f;  cl_v := cExp2Cd[5, 1].f;
+  ch_v := cExp2Cd_5_0.f;  cl_v := cExp2Cd_5_1.f;
   // i = 4
   ch_v := pcr_mulddd_pd(ch_v, cl_v, z, cl_v);
-  fh := ch_v + cExp2Cd[4, 0].f;
-  fl := (cExp2Cd[4, 0].f - fh) + ch_v;
+  fh := ch_v + cExp2Cd_4_0.f;
+  fl := (cExp2Cd_4_0.f - fh) + ch_v;
   ch_v := fh;
-  cl_v := cl_v + fl + cExp2Cd[4, 1].f;
+  cl_v := cl_v + fl + cExp2Cd_4_1.f;
   // i = 3
   ch_v := pcr_mulddd_pd(ch_v, cl_v, z, cl_v);
-  fh := ch_v + cExp2Cd[3, 0].f;
-  fl := (cExp2Cd[3, 0].f - fh) + ch_v;
+  fh := ch_v + cExp2Cd_3_0.f;
+  fl := (cExp2Cd_3_0.f - fh) + ch_v;
   ch_v := fh;
-  cl_v := cl_v + fl + cExp2Cd[3, 1].f;
+  cl_v := cl_v + fl + cExp2Cd_3_1.f;
   // i = 2
   ch_v := pcr_mulddd_pd(ch_v, cl_v, z, cl_v);
-  fh := ch_v + cExp2Cd[2, 0].f;
-  fl := (cExp2Cd[2, 0].f - fh) + ch_v;
+  fh := ch_v + cExp2Cd_2_0.f;
+  fl := (cExp2Cd_2_0.f - fh) + ch_v;
   ch_v := fh;
-  cl_v := cl_v + fl + cExp2Cd[2, 1].f;
+  cl_v := cl_v + fl + cExp2Cd_2_1.f;
   // i = 1
   ch_v := pcr_mulddd_pd(ch_v, cl_v, z, cl_v);
-  fh := ch_v + cExp2Cd[1, 0].f;
-  fl := (cExp2Cd[1, 0].f - fh) + ch_v;
+  fh := ch_v + cExp2Cd_1_0.f;
+  fl := (cExp2Cd_1_0.f - fh) + ch_v;
   ch_v := fh;
-  cl_v := cl_v + fl + cExp2Cd[1, 1].f;
+  cl_v := cl_v + fl + cExp2Cd_1_1.f;
   // i = 0
   ch_v := pcr_mulddd_pd(ch_v, cl_v, z, cl_v);
-  fh := ch_v + cExp2Cd[0, 0].f;
-  fl := (cExp2Cd[0, 0].f - fh) + ch_v;
+  fh := ch_v + cExp2Cd_0_0.f;
+  fl := (cExp2Cd_0_0.f - fh) + ch_v;
   ch_v := fh;
-  cl_v := cl_v + fl + cExp2Cd[0, 1].f;
+  cl_v := cl_v + fl + cExp2Cd_0_1.f;
   fh := ch_v; fl := cl_v;
   fh := pcr_mulddd_pd(fh, fl, z, fl);
 
@@ -3436,8 +3452,8 @@ begin
 
   tz := th * z;
   fh := th;
-  fl := tz * ((cExp2FastC[0].f + z * cExp2FastC[1].f)
-              + z2 * (cExp2FastC[2].f + z * cExp2FastC[3].f)) + tl;
+  fl := tz * ((cExp2FastC_0.f + z * cExp2FastC_1.f)
+              + z2 * (cExp2FastC_2.f + z * cExp2FastC_3.f)) + tl;
   eps := cExpEpsFast;
 
   if ix.u <= cExp2SubIxU then
@@ -3471,17 +3487,25 @@ end;
 // ---------------------------------------------------------------------------
 
 const
-  cExp10AccC: array[0..5, 0..1] of Tb64u64 = (
-    ((u:$40026BB1BBB55516),(u:QWord($BCAF48AD494EA102))),
-    ((u:$40053524C73CEA69),(u:QWord($BCAE2BFAB318D399))),
-    ((u:$4000470591DE2CA4),(u:$3CA81F50779E162B)),
-    ((u:$3FF2BD7609FD98C4),(u:$3C931A5CC5D3D313)),
-    ((u:$3FE1429FFD336AA3),(u:$3C8910DE8C68A0C2)),
-    ((u:$3FCA7ED7086882B4),(u:QWord($BC605E703D496537))));
+  // cExp10AccC c[6][2] — Phase 6.1 Pillar B
+  cExp10AccC_0_0: Tb64u64 = (u:$40026BB1BBB55516);
+  cExp10AccC_0_1: Tb64u64 = (u:QWord($BCAF48AD494EA102));
+  cExp10AccC_1_0: Tb64u64 = (u:$40053524C73CEA69);
+  cExp10AccC_1_1: Tb64u64 = (u:QWord($BCAE2BFAB318D399));
+  cExp10AccC_2_0: Tb64u64 = (u:$4000470591DE2CA4);
+  cExp10AccC_2_1: Tb64u64 = (u:$3CA81F50779E162B);
+  cExp10AccC_3_0: Tb64u64 = (u:$3FF2BD7609FD98C4);
+  cExp10AccC_3_1: Tb64u64 = (u:$3C931A5CC5D3D313);
+  cExp10AccC_4_0: Tb64u64 = (u:$3FE1429FFD336AA3);
+  cExp10AccC_4_1: Tb64u64 = (u:$3C8910DE8C68A0C2);
+  cExp10AccC_5_0: Tb64u64 = (u:$3FCA7ED7086882B4);
+  cExp10AccC_5_1: Tb64u64 = (u:QWord($BC605E703D496537));
 
-  cExp10FastCh: array[0..3] of Tb64u64 = (
-    (u:$40026BB1BBB55516),(u:$40053524C73CEA69),
-    (u:$4000470591FD74E1),(u:$3FF2BD760A1F32A5));
+  // cExp10FastCh ch[4] — Phase 6.1 Pillar B
+  cExp10FastCh_0: Tb64u64 = (u:$40026BB1BBB55516);
+  cExp10FastCh_1: Tb64u64 = (u:$40053524C73CEA69);
+  cExp10FastCh_2: Tb64u64 = (u:$4000470591FD74E1);
+  cExp10FastCh_3: Tb64u64 = (u:$3FF2BD760A1F32A5);
 
   cExp10Scale: Tb64u64 = (u:$40CA934F0979A371); // 0x1.a934f0979a371p+13
   cExp10L0:    Tb64u64 = (u:$3F13441350800000); // 0x1.34413508p-14
@@ -3586,37 +3610,37 @@ begin
   dxl  := ((dx - dxh) + dxl) + dxll;
 
   // opolydd(dxh, dxl, 6, c, &fl) — Phase 6.1 Pillar A
-  ch_v := cExp10AccC[5, 0].f;  cl_v := cExp10AccC[5, 1].f;
+  ch_v := cExp10AccC_5_0.f;  cl_v := cExp10AccC_5_1.f;
   // i = 4
   ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
-  fh := ch_v + cExp10AccC[4, 0].f;
-  fl := (cExp10AccC[4, 0].f - fh) + ch_v;
+  fh := ch_v + cExp10AccC_4_0.f;
+  fl := (cExp10AccC_4_0.f - fh) + ch_v;
   ch_v := fh;
-  cl_v := cl_v + fl + cExp10AccC[4, 1].f;
+  cl_v := cl_v + fl + cExp10AccC_4_1.f;
   // i = 3
   ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
-  fh := ch_v + cExp10AccC[3, 0].f;
-  fl := (cExp10AccC[3, 0].f - fh) + ch_v;
+  fh := ch_v + cExp10AccC_3_0.f;
+  fl := (cExp10AccC_3_0.f - fh) + ch_v;
   ch_v := fh;
-  cl_v := cl_v + fl + cExp10AccC[3, 1].f;
+  cl_v := cl_v + fl + cExp10AccC_3_1.f;
   // i = 2
   ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
-  fh := ch_v + cExp10AccC[2, 0].f;
-  fl := (cExp10AccC[2, 0].f - fh) + ch_v;
+  fh := ch_v + cExp10AccC_2_0.f;
+  fl := (cExp10AccC_2_0.f - fh) + ch_v;
   ch_v := fh;
-  cl_v := cl_v + fl + cExp10AccC[2, 1].f;
+  cl_v := cl_v + fl + cExp10AccC_2_1.f;
   // i = 1
   ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
-  fh := ch_v + cExp10AccC[1, 0].f;
-  fl := (cExp10AccC[1, 0].f - fh) + ch_v;
+  fh := ch_v + cExp10AccC_1_0.f;
+  fl := (cExp10AccC_1_0.f - fh) + ch_v;
   ch_v := fh;
-  cl_v := cl_v + fl + cExp10AccC[1, 1].f;
+  cl_v := cl_v + fl + cExp10AccC_1_1.f;
   // i = 0
   ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
-  fh := ch_v + cExp10AccC[0, 0].f;
-  fl := (cExp10AccC[0, 0].f - fh) + ch_v;
+  fh := ch_v + cExp10AccC_0_0.f;
+  fl := (cExp10AccC_0_0.f - fh) + ch_v;
   ch_v := fh;
-  cl_v := cl_v + fl + cExp10AccC[0, 1].f;
+  cl_v := cl_v + fl + cExp10AccC_0_1.f;
   fh := ch_v; fl := cl_v;
   fh := pcr_muldd(dxh, dxl, fh, fl, fl);
 
@@ -3707,8 +3731,8 @@ begin
 
   dx  := (x - cExp10L0.f * t) - cExp10L1.f * t;
   dx2 := dx * dx;
-  p   := (cExp10FastCh[0].f + dx * cExp10FastCh[1].f)
-       + dx2 * (cExp10FastCh[2].f + dx * cExp10FastCh[3].f);
+  p   := (cExp10FastCh_0.f + dx * cExp10FastCh_1.f)
+       + dx2 * (cExp10FastCh_2.f + dx * cExp10FastCh_3.f);
   fh := th;
   fx_poly := th * dx;
   fl := tl + fx_poly * p;
@@ -3811,30 +3835,45 @@ const
     ((u:QWord($BC789843C4964554)),(u:$3FD22D78F0FA061A)));
 
   // Fast path small-x c[6]
-  cExpm1FastC: array[0..5] of Tb64u64 = (
-    (u:$3F80000000000000),(u:$3F00000000000000),
-    (u:$3E755555555551AD),(u:$3DE555555555599C),
-    (u:$3D511111AD1AD69D),(u:$3CB6C16C168B1FB5));
+  // cExpm1FastC c[6] — Phase 6.1 Pillar B
+  cExpm1FastC_0: Tb64u64 = (u:$3F80000000000000);
+  cExpm1FastC_1: Tb64u64 = (u:$3F00000000000000);
+  cExpm1FastC_2: Tb64u64 = (u:$3E755555555551AD);
+  cExpm1FastC_3: Tb64u64 = (u:$3DE555555555599C);
+  cExpm1FastC_4: Tb64u64 = (u:$3D511111AD1AD69D);
+  cExpm1FastC_5: Tb64u64 = (u:$3CB6C16C168B1FB5);
 
-  // Accurate small-x cl[6]
-  cExpm1AccCl: array[0..5] of Tb64u64 = (
-    (u:$3DA93974A8CA5354),(u:$3D6AE7F3E71E4908),
-    (u:$3D2AE7F357341648),(u:$3CE952C7F96664CB),
-    (u:$3CA686F8CE633AAE),(u:$3C62F49B2FBFB5B6));
+  // cExpm1AccCl cl[6] — Phase 6.1 Pillar B
+  cExpm1AccCl_0: Tb64u64 = (u:$3DA93974A8CA5354);
+  cExpm1AccCl_1: Tb64u64 = (u:$3D6AE7F3E71E4908);
+  cExpm1AccCl_2: Tb64u64 = (u:$3D2AE7F357341648);
+  cExpm1AccCl_3: Tb64u64 = (u:$3CE952C7F96664CB);
+  cExpm1AccCl_4: Tb64u64 = (u:$3CA686F8CE633AAE);
+  cExpm1AccCl_5: Tb64u64 = (u:$3C62F49B2FBFB5B6);
 
-  // Accurate small-x ch[11][2]
-  cExpm1AccCh: array[0..10, 0..1] of Tb64u64 = (
-    ((u:$3FC5555555555555),(u:$3C65555555555554)),
-    ((u:$3FA5555555555555),(u:$3C45555555555123)),
-    ((u:$3F81111111111111),(u:$3C01111111118167)),
-    ((u:$3F56C16C16C16C17),(u:QWord($BBEF49F49E220CEA))),
-    ((u:$3F2A01A01A01A01A),(u:$3B6A019EFF6F919C)),
-    ((u:$3EFA01A01A01A01A),(u:$3B39FCFF48A75B41)),
-    ((u:$3EC71DE3A556C734),(u:QWord($BB6C14F73758CD7F))),
-    ((u:$3E927E4FB7789F5C),(u:$3B3DFCE97931018F)),
-    ((u:$3E5AE64567F544E3),(u:$3AFC513DA9E4C9C5)),
-    ((u:$3E21EED8EFF8D831),(u:$3ACCA00AF84F2B60)),
-    ((u:$3DE6124613A86E8F),(u:$3A8F27AC6000898F)));
+  // cExpm1AccCh ch[11][2] — Phase 6.1 Pillar B
+  cExpm1AccCh_0_0:  Tb64u64 = (u:$3FC5555555555555);
+  cExpm1AccCh_0_1:  Tb64u64 = (u:$3C65555555555554);
+  cExpm1AccCh_1_0:  Tb64u64 = (u:$3FA5555555555555);
+  cExpm1AccCh_1_1:  Tb64u64 = (u:$3C45555555555123);
+  cExpm1AccCh_2_0:  Tb64u64 = (u:$3F81111111111111);
+  cExpm1AccCh_2_1:  Tb64u64 = (u:$3C01111111118167);
+  cExpm1AccCh_3_0:  Tb64u64 = (u:$3F56C16C16C16C17);
+  cExpm1AccCh_3_1:  Tb64u64 = (u:QWord($BBEF49F49E220CEA));
+  cExpm1AccCh_4_0:  Tb64u64 = (u:$3F2A01A01A01A01A);
+  cExpm1AccCh_4_1:  Tb64u64 = (u:$3B6A019EFF6F919C);
+  cExpm1AccCh_5_0:  Tb64u64 = (u:$3EFA01A01A01A01A);
+  cExpm1AccCh_5_1:  Tb64u64 = (u:$3B39FCFF48A75B41);
+  cExpm1AccCh_6_0:  Tb64u64 = (u:$3EC71DE3A556C734);
+  cExpm1AccCh_6_1:  Tb64u64 = (u:QWord($BB6C14F73758CD7F));
+  cExpm1AccCh_7_0:  Tb64u64 = (u:$3E927E4FB7789F5C);
+  cExpm1AccCh_7_1:  Tb64u64 = (u:$3B3DFCE97931018F);
+  cExpm1AccCh_8_0:  Tb64u64 = (u:$3E5AE64567F544E3);
+  cExpm1AccCh_8_1:  Tb64u64 = (u:$3AFC513DA9E4C9C5);
+  cExpm1AccCh_9_0:  Tb64u64 = (u:$3E21EED8EFF8D831);
+  cExpm1AccCh_9_1:  Tb64u64 = (u:$3ACCA00AF84F2B60);
+  cExpm1AccCh_10_0: Tb64u64 = (u:$3DE6124613A86E8F);
+  cExpm1AccCh_10_1: Tb64u64 = (u:$3A8F27AC6000898F);
 
   cExpm1Db: array[0..37] of UInt64 = (
     UInt64($3FBE923C188EA79B), UInt64($3FD1A0408712E00A), UInt64($3FD1C38132777B26),
@@ -3914,61 +3953,61 @@ var
   delta: UInt64;
 begin
   // fl seed = polynomial in cl[6]
-  fl := x*(cExpm1AccCl[0].f + x*(cExpm1AccCl[1].f + x*(cExpm1AccCl[2].f
-       + x*(cExpm1AccCl[3].f + x*(cExpm1AccCl[4].f + x*cExpm1AccCl[5].f)))));
+  fl := x*(cExpm1AccCl_0.f + x*(cExpm1AccCl_1.f + x*(cExpm1AccCl_2.f
+       + x*(cExpm1AccCl_3.f + x*(cExpm1AccCl_4.f + x*cExpm1AccCl_5.f)))));
 
   // opolyddd(x, 11, ch, &fl) — Phase 6.1 Pillar A
-  pcr_fasttwosum(ch_v, fl, cExpm1AccCh[10, 0].f, fl);
-  cl_v := cExpm1AccCh[10, 1].f + fl;
+  pcr_fasttwosum(ch_v, fl, cExpm1AccCh_10_0.f, fl);
+  cl_v := cExpm1AccCh_10_1.f + fl;
   // i = 9
   ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
-  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh[9, 0].f, ch_v);
-  cl_v := (cExpm1AccCh[9, 1].f + cl_v) + fl_t;
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh_9_0.f, ch_v);
+  cl_v := (cExpm1AccCh_9_1.f + cl_v) + fl_t;
   ch_v := fh_t;
   // i = 8
   ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
-  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh[8, 0].f, ch_v);
-  cl_v := (cExpm1AccCh[8, 1].f + cl_v) + fl_t;
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh_8_0.f, ch_v);
+  cl_v := (cExpm1AccCh_8_1.f + cl_v) + fl_t;
   ch_v := fh_t;
   // i = 7
   ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
-  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh[7, 0].f, ch_v);
-  cl_v := (cExpm1AccCh[7, 1].f + cl_v) + fl_t;
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh_7_0.f, ch_v);
+  cl_v := (cExpm1AccCh_7_1.f + cl_v) + fl_t;
   ch_v := fh_t;
   // i = 6
   ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
-  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh[6, 0].f, ch_v);
-  cl_v := (cExpm1AccCh[6, 1].f + cl_v) + fl_t;
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh_6_0.f, ch_v);
+  cl_v := (cExpm1AccCh_6_1.f + cl_v) + fl_t;
   ch_v := fh_t;
   // i = 5
   ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
-  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh[5, 0].f, ch_v);
-  cl_v := (cExpm1AccCh[5, 1].f + cl_v) + fl_t;
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh_5_0.f, ch_v);
+  cl_v := (cExpm1AccCh_5_1.f + cl_v) + fl_t;
   ch_v := fh_t;
   // i = 4
   ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
-  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh[4, 0].f, ch_v);
-  cl_v := (cExpm1AccCh[4, 1].f + cl_v) + fl_t;
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh_4_0.f, ch_v);
+  cl_v := (cExpm1AccCh_4_1.f + cl_v) + fl_t;
   ch_v := fh_t;
   // i = 3
   ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
-  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh[3, 0].f, ch_v);
-  cl_v := (cExpm1AccCh[3, 1].f + cl_v) + fl_t;
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh_3_0.f, ch_v);
+  cl_v := (cExpm1AccCh_3_1.f + cl_v) + fl_t;
   ch_v := fh_t;
   // i = 2
   ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
-  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh[2, 0].f, ch_v);
-  cl_v := (cExpm1AccCh[2, 1].f + cl_v) + fl_t;
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh_2_0.f, ch_v);
+  cl_v := (cExpm1AccCh_2_1.f + cl_v) + fl_t;
   ch_v := fh_t;
   // i = 1
   ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
-  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh[1, 0].f, ch_v);
-  cl_v := (cExpm1AccCh[1, 1].f + cl_v) + fl_t;
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh_1_0.f, ch_v);
+  cl_v := (cExpm1AccCh_1_1.f + cl_v) + fl_t;
   ch_v := fh_t;
   // i = 0
   ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
-  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh[0, 0].f, ch_v);
-  cl_v := (cExpm1AccCh[0, 1].f + cl_v) + fl_t;
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh_0_0.f, ch_v);
+  cl_v := (cExpm1AccCh_0_1.f + cl_v) + fl_t;
   ch_v := fh_t;
   fl := cl_v;
   fh := pcr_mulddd_pd(ch_v, fl, x, fl);
@@ -4031,43 +4070,43 @@ begin
   dxl  := (dx - dxh) + dxl + dxll;
 
   // opolydd unrolled (n=7) — Phase 6.1 Pillar A
-  ch_v := cExpAccCh[6, 0].f;  cl_v := cExpAccCh[6, 1].f;
+  ch_v := cExpAccCh_6_0.f;  cl_v := cExpAccCh_6_1.f;
   // i = 5
   ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
-  fh_t := ch_v + cExpAccCh[5, 0].f;
-  fl_t := (cExpAccCh[5, 0].f - fh_t) + ch_v;
+  fh_t := ch_v + cExpAccCh_5_0.f;
+  fl_t := (cExpAccCh_5_0.f - fh_t) + ch_v;
   ch_v := fh_t;
-  cl_v := cl_v + fl_t + cExpAccCh[5, 1].f;
+  cl_v := cl_v + fl_t + cExpAccCh_5_1.f;
   // i = 4
   ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
-  fh_t := ch_v + cExpAccCh[4, 0].f;
-  fl_t := (cExpAccCh[4, 0].f - fh_t) + ch_v;
+  fh_t := ch_v + cExpAccCh_4_0.f;
+  fl_t := (cExpAccCh_4_0.f - fh_t) + ch_v;
   ch_v := fh_t;
-  cl_v := cl_v + fl_t + cExpAccCh[4, 1].f;
+  cl_v := cl_v + fl_t + cExpAccCh_4_1.f;
   // i = 3
   ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
-  fh_t := ch_v + cExpAccCh[3, 0].f;
-  fl_t := (cExpAccCh[3, 0].f - fh_t) + ch_v;
+  fh_t := ch_v + cExpAccCh_3_0.f;
+  fl_t := (cExpAccCh_3_0.f - fh_t) + ch_v;
   ch_v := fh_t;
-  cl_v := cl_v + fl_t + cExpAccCh[3, 1].f;
+  cl_v := cl_v + fl_t + cExpAccCh_3_1.f;
   // i = 2
   ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
-  fh_t := ch_v + cExpAccCh[2, 0].f;
-  fl_t := (cExpAccCh[2, 0].f - fh_t) + ch_v;
+  fh_t := ch_v + cExpAccCh_2_0.f;
+  fl_t := (cExpAccCh_2_0.f - fh_t) + ch_v;
   ch_v := fh_t;
-  cl_v := cl_v + fl_t + cExpAccCh[2, 1].f;
+  cl_v := cl_v + fl_t + cExpAccCh_2_1.f;
   // i = 1
   ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
-  fh_t := ch_v + cExpAccCh[1, 0].f;
-  fl_t := (cExpAccCh[1, 0].f - fh_t) + ch_v;
+  fh_t := ch_v + cExpAccCh_1_0.f;
+  fl_t := (cExpAccCh_1_0.f - fh_t) + ch_v;
   ch_v := fh_t;
-  cl_v := cl_v + fl_t + cExpAccCh[1, 1].f;
+  cl_v := cl_v + fl_t + cExpAccCh_1_1.f;
   // i = 0
   ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
-  fh_t := ch_v + cExpAccCh[0, 0].f;
-  fl_t := (cExpAccCh[0, 0].f - fh_t) + ch_v;
+  fh_t := ch_v + cExpAccCh_0_0.f;
+  fl_t := (cExpAccCh_0_0.f - fh_t) + ch_v;
   ch_v := fh_t;
-  cl_v := cl_v + fl_t + cExpAccCh[0, 1].f;
+  cl_v := cl_v + fl_t + cExpAccCh_0_1.f;
   fh := ch_v; fl := cl_v;
   fh := pcr_muldd(dxh, dxl, fh, fl, fl);
   fh := pcr_muldd(fh, fl, th, tl, fl);
@@ -4132,9 +4171,9 @@ begin
     i_idx := Trunc(fx);
     th := cExpm1Tz[i_idx + 32, 1].f;
     tl := cExpm1Tz[i_idx + 32, 0].f;
-    fh := z * cExpm1FastC[0].f;
-    fl := z2 * ((cExpm1FastC[1].f + z * cExpm1FastC[2].f)
-              + z2 * (cExpm1FastC[3].f + z * (cExpm1FastC[4].f + z * cExpm1FastC[5].f)));
+    fh := z * cExpm1FastC_0.f;
+    fl := z2 * ((cExpm1FastC_1.f + z * cExpm1FastC_2.f)
+              + z2 * (cExpm1FastC_3.f + z * (cExpm1FastC_4.f + z * cExpm1FastC_5.f)));
     e0 := cExpm1Eps0.f;
     eps := z2 * e0 + cExpm1EpsAdd.f;
     pcr_fasttwosum(rh, rl, th, fh);
