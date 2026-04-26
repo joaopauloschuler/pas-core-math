@@ -52,10 +52,10 @@ var
   z2h, z2l, p56, p34, ph: Double;
 begin
   pcr_a_mul(z2h, z2l, z, z);
-  p56 := pcr_fma(cLog2p1P[6].f, z, cLog2p1P[5].f);
-  p34 := pcr_fma(cLog2p1P[4].f, z, cLog2p1P[3].f);
+  p56 := pcr_fma(cLog2p1P_6.f, z, cLog2p1P_5.f);
+  p34 := pcr_fma(cLog2p1P_4.f, z, cLog2p1P_3.f);
   ph  := pcr_fma(p56, z2h, p34);
-  ph  := pcr_fma(ph, z, cLog2p1P[2].f);
+  ph  := pcr_fma(ph, z, cLog2p1P_2.f);
   ph  := ph * z2h;
   pcr_fasttwosum(h, l, Double(-0.5) * z2h, ph * z);
   l := l + Double(-0.5) * z2l;
@@ -73,14 +73,14 @@ begin
     z2h := 0; z2l := 0;
   end;
   z4h := z2h * z2h;
-  p910 := pcr_fma(cLog2p1Pa[10].f, z, cLog2p1Pa[9].f);
-  p78  := pcr_fma(cLog2p1Pa[8].f,  z, cLog2p1Pa[7].f);
-  p56  := pcr_fma(cLog2p1Pa[6].f,  z, cLog2p1Pa[5].f);
-  p34  := pcr_fma(cLog2p1Pa[4].f,  z, cLog2p1Pa[3].f);
+  p910 := pcr_fma(cLog2p1Pa_10.f, z, cLog2p1Pa_9.f);
+  p78  := pcr_fma(cLog2p1Pa_8.f,  z, cLog2p1Pa_7.f);
+  p56  := pcr_fma(cLog2p1Pa_6.f,  z, cLog2p1Pa_5.f);
+  p34  := pcr_fma(cLog2p1Pa_4.f,  z, cLog2p1Pa_3.f);
   p710 := pcr_fma(p910, z2h, p78);
   p36  := pcr_fma(p56,  z2h, p34);
   ph   := pcr_fma(p710, z4h, p36);
-  ph   := pcr_fma(ph,   z,   cLog2p1Pa[2].f);
+  ph   := pcr_fma(ph,   z,   cLog2p1Pa_2.f);
   ph   := ph * z2h;
   pcr_fasttwosum(h, l, Double(-0.5) * z2h, ph * z);
   l := l + Double(-0.5) * z2l;
@@ -162,7 +162,6 @@ var
   a, b, c: Int32;
   h, l, t: Double;
   del: ShortInt;
-  i: Int32;
 begin
   // Binary search by exceptions[a][0] <= x < exceptions[b][0]
   a := 0; b := 247;
@@ -183,22 +182,46 @@ begin
   // Pacc[i+6] for degree i in 8..17 (so degrees 8..17 ↦ idx 14..23).
   //
   // Single-double Horner over degrees 16..11
-  h := pcr_fma(cLog2p1Pacc[23].f, x, cLog2p1Pacc[22].f);  // degree 16 (idx 22+x*23)
-  for i := 15 downto 11 do
-    h := pcr_fma(h, x, cLog2p1Pacc[i+6].f);
+  // Pillar A: unrolled `for i := 15 downto 11 do` over Pacc[i+6] (idx 21..17).
+  h := pcr_fma(cLog2p1Pacc_23.f, x, cLog2p1Pacc_22.f);  // degree 16 (idx 22+x*23)
+  h := pcr_fma(h, x, cLog2p1Pacc_21.f);
+  h := pcr_fma(h, x, cLog2p1Pacc_20.f);
+  h := pcr_fma(h, x, cLog2p1Pacc_19.f);
+  h := pcr_fma(h, x, cLog2p1Pacc_18.f);
+  h := pcr_fma(h, x, cLog2p1Pacc_17.f);
   l := 0;
-  // degrees 10..8 single-double accumulated as dd
-  for i := 10 downto 8 do begin
-    Log2p1SMul(h, l, x, h, l);
-    pcr_fasttwosum(h, t, cLog2p1Pacc[i+6].f, h);
-    l := l + t;
-  end;
-  // degrees 7..1 dd polynomial
-  for i := 7 downto 1 do begin
-    Log2p1SMul(h, l, x, h, l);
-    pcr_fasttwosum(h, t, cLog2p1Pacc[2*i-2].f, h);
-    l := l + t + cLog2p1Pacc[2*i-1].f;
-  end;
+  // degrees 10..8 single-double accumulated as dd — Pillar A unrolled (Pacc[16..14]).
+  Log2p1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cLog2p1Pacc_16.f, h);
+  l := l + t;
+  Log2p1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cLog2p1Pacc_15.f, h);
+  l := l + t;
+  Log2p1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cLog2p1Pacc_14.f, h);
+  l := l + t;
+  // degrees 7..1 dd polynomial — Pillar A unrolled.
+  Log2p1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cLog2p1Pacc_12.f, h);
+  l := l + t + cLog2p1Pacc_13.f;
+  Log2p1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cLog2p1Pacc_10.f, h);
+  l := l + t + cLog2p1Pacc_11.f;
+  Log2p1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cLog2p1Pacc_8.f, h);
+  l := l + t + cLog2p1Pacc_9.f;
+  Log2p1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cLog2p1Pacc_6.f, h);
+  l := l + t + cLog2p1Pacc_7.f;
+  Log2p1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cLog2p1Pacc_4.f, h);
+  l := l + t + cLog2p1Pacc_5.f;
+  Log2p1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cLog2p1Pacc_2.f, h);
+  l := l + t + cLog2p1Pacc_3.f;
+  Log2p1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cLog2p1Pacc_0.f, h);
+  l := l + t + cLog2p1Pacc_1.f;
   // final * x
   Log2p1SMul(h, l, x, h, l);
   Result := h + l;

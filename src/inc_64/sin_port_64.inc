@@ -21,18 +21,14 @@ const
   cSinTinyBits: UInt64 = $3E57137449123EF6;
 
   // sin_accurate exceptions (ported from sin.c:2009). Only 2 entries.
-  cSinExceptionsX: array[0..1] of Tb64u64 = (
-    (u:$3EBE0000000001C2), // 0x1.e0000000001c2p-20
-    (u:$7506AC5B262CA1FF)  // 0x1.6ac5b262ca1ffp+849
-  );
-  cSinExceptionsH: array[0..1] of Tb64u64 = (
-    (u:$3EBDFFFFFFFF02E0), // 0x1.dfffffffff02ep-20
-    (u:$3FF0000000000000)  // 0x1p+0
-  );
-  cSinExceptionsL: array[0..1] of Tb64u64 = (
-    (u:$36DDCBA692492527), // 0x1.dcba692492527p-146
-    (u:QWord($B842B089EA1E692B))  // -0x1.2b089ea1e692bp-123
-  );
+  // Pillar B (Phase 6.3): array form replaced with named Tb64u64 scalars;
+  // the original `for k := 0 to 1` loop is unrolled at the call site.
+  cSinExceptionsX_0: Tb64u64 = (u:$3EBE0000000001C2);             // 0x1.e0000000001c2p-20
+  cSinExceptionsX_1: Tb64u64 = (u:$7506AC5B262CA1FF);             // 0x1.6ac5b262ca1ffp+849
+  cSinExceptionsH_0: Tb64u64 = (u:$3EBDFFFFFFFF02E0);             // 0x1.dfffffffff02ep-20
+  cSinExceptionsH_1: Tb64u64 = (u:$3FF0000000000000);             // 0x1p+0
+  cSinExceptionsL_0: Tb64u64 = (u:$36DDCBA692492527);             // 0x1.dcba692492527p-146
+  cSinExceptionsL_1: Tb64u64 = (u:QWord($B842B089EA1E692B));      // -0x1.2b089ea1e692bp-123
 
 // ---------------------------------------------------------------------------
 // sin_fast — fast-path (double-double) evaluator for sin(x).
@@ -106,7 +102,6 @@ var
   i: Int32;
   neg, is_sin: Boolean;
   err, hi0, hi1, lo0, lo1: UInt64;
-  k: Int32;
   ax, absx, hi, lo: Double;
 begin
   neg := x < 0;
@@ -155,14 +150,21 @@ begin
   hi1 := U.hi + UInt64(Ord(lo1 < U.lo));
   if (hi0 shr 10) <> (hi1 shr 10) then begin
     ax := Abs(x);
-    for k := 0 to 1 do
-      if ax = cSinExceptionsX[k].f then begin
-        hi := cSinExceptionsH[k].f;
-        lo := cSinExceptionsL[k].f;
-        if x > 0 then Result := hi + lo
-        else Result := -hi - lo;
-        Exit;
-      end;
+    // Pillar A (Phase 6.3): for k := 0 to 1 unrolled.
+    if ax = cSinExceptionsX_0.f then begin
+      hi := cSinExceptionsH_0.f;
+      lo := cSinExceptionsL_0.f;
+      if x > 0 then Result := hi + lo
+      else Result := -hi - lo;
+      Exit;
+    end;
+    if ax = cSinExceptionsX_1.f then begin
+      hi := cSinExceptionsH_1.f;
+      lo := cSinExceptionsL_1.f;
+      if x > 0 then Result := hi + lo
+      else Result := -hi - lo;
+      Exit;
+    end;
     // Hard-to-round cases otherwise pass; fall through.
   end;
 
@@ -185,7 +187,7 @@ begin
 
   if e = $7FF then begin
     if (t.u shl 1) = (UInt64($7FF) shl 53) then begin
-      Result := 0.0 / 0.0; // Inf -> qNaN, raises invalid
+      Result := Double(0.0) / Double(0.0); // Inf -> qNaN, raises invalid
       Exit;
     end;
     Result := x + x; // quiet NaN

@@ -44,27 +44,25 @@ const
   cCosErrReduce2: Tb64u64 = (u: $3B30100000000000); // 0x1.01p-76
 
   // cos_accurate exceptions table (ported from cos.c:1999).
-  cCosExceptionsX: array[0..4] of Tb64u64 = (
-    (u:$3E88000000000009), // 0x1.8000000000009p-23
-    (u:$3E98000000000024), // 0x1.8000000000024p-22
-    (u:$3EA8000000000090), // 0x1.800000000009p-21
-    (u:$3EB20000000000F3), // 0x1.20000000000f3p-20
-    (u:$3EB8000000000024)  // 0x1.800000000024p-20
-  );
-  cCosExceptionsH: array[0..4] of Tb64u64 = (
-    (u:$3FEFFFFFFFFFFF70), // 0x1.fffffffffff7p-1
-    (u:$3FEFFFFFFFFFFDC0), // 0x1.ffffffffffdcp-1
-    (u:$3FEFFFFFFFFFF700), // 0x1.ffffffffff7p-1
-    (u:$3FEFFFFFFFFFEBC0), // 0x1.fffffffffebcp-1
-    (u:$3FEFFFFFFFFFDC00)  // 0x1.fffffffffdcp-1
-  );
-  cCosExceptionsL: array[0..4] of Tb64u64 = (
-    (u:$36AB56666666666C), // 0x1.b56666666666cp-143
-    (u:$3761B5666666667E), // 0x1.b56666666667ep-137
-    (u:$37CB5666666666C4), // 0x1.b5666666666c4p-131
-    (u:$3803764266666FD0), // 0x1.37642666666fdp-127 — note trailing 0 per literal
-    (u:$3833B56666666BDD)  // 0x1.b5666666667ddp-125
-  );
+  // Pillar B (Phase 6.3): array form replaced with named Tb64u64 scalars; the
+  // original `for k := 0 to 4` loop is unrolled at the call site (Pillar A).
+  cCosExceptionsX_0: Tb64u64 = (u:$3E88000000000009); // 0x1.8000000000009p-23
+  cCosExceptionsX_1: Tb64u64 = (u:$3E98000000000024); // 0x1.8000000000024p-22
+  cCosExceptionsX_2: Tb64u64 = (u:$3EA8000000000090); // 0x1.800000000009p-21
+  cCosExceptionsX_3: Tb64u64 = (u:$3EB20000000000F3); // 0x1.20000000000f3p-20
+  cCosExceptionsX_4: Tb64u64 = (u:$3EB8000000000024); // 0x1.800000000024p-20
+
+  cCosExceptionsH_0: Tb64u64 = (u:$3FEFFFFFFFFFFF70); // 0x1.fffffffffff7p-1
+  cCosExceptionsH_1: Tb64u64 = (u:$3FEFFFFFFFFFFDC0); // 0x1.ffffffffffdcp-1
+  cCosExceptionsH_2: Tb64u64 = (u:$3FEFFFFFFFFFF700); // 0x1.ffffffffff7p-1
+  cCosExceptionsH_3: Tb64u64 = (u:$3FEFFFFFFFFFEBC0); // 0x1.fffffffffebcp-1
+  cCosExceptionsH_4: Tb64u64 = (u:$3FEFFFFFFFFFDC00); // 0x1.fffffffffdcp-1
+
+  cCosExceptionsL_0: Tb64u64 = (u:$36AB56666666666C); // 0x1.b56666666666cp-143
+  cCosExceptionsL_1: Tb64u64 = (u:$3761B5666666667E); // 0x1.b56666666667ep-137
+  cCosExceptionsL_2: Tb64u64 = (u:$37CB5666666666C4); // 0x1.b5666666666c4p-131
+  cCosExceptionsL_3: Tb64u64 = (u:$3803764266666FD0); // 0x1.37642666666fdp-127
+  cCosExceptionsL_4: Tb64u64 = (u:$3833B56666666BDD); // 0x1.b5666666667ddp-125
 
 // ---------------------------------------------------------------------------
 // set_dd: convert 128-bit fractional value (c1/2^64 + c0/2^128) to double-double.
@@ -276,12 +274,12 @@ procedure CosEvalPSfast(out h, l: Double; xh, xl, uh, ul: Double);
 var
   t: Double;
 begin
-  h := cCosPSfast[4].f;                      // degree 7
-  h := pcr_fma(h, uh, cCosPSfast[3].f);      // degree 5
-  h := pcr_fma(h, uh, cCosPSfast[2].f);      // degree 3
+  h := cCosPSfast_4.f;                      // degree 7
+  h := pcr_fma(h, uh, cCosPSfast_3.f);      // degree 5
+  h := pcr_fma(h, uh, cCosPSfast_2.f);      // degree 3
   pcr_s_mul(h, l, h, uh, ul);
-  pcr_fasttwosum(h, t, cCosPSfast[0].f, h);
-  l := l + cCosPSfast[1].f + t;
+  pcr_fasttwosum(h, t, cCosPSfast_0.f, h);
+  l := l + cCosPSfast_1.f + t;
   pcr_d_mul(h, l, h, l, xh, xl);
 end;
 
@@ -289,12 +287,12 @@ procedure CosEvalPCfast(out h, l: Double; uh, ul: Double);
 var
   t: Double;
 begin
-  h := cCosPCfast[4].f;                      // degree 6
-  h := pcr_fma(h, uh, cCosPCfast[3].f);      // degree 4
-  h := pcr_fma(h, uh, cCosPCfast[2].f);      // degree 2
+  h := cCosPCfast_4.f;                      // degree 6
+  h := pcr_fma(h, uh, cCosPCfast_3.f);      // degree 4
+  h := pcr_fma(h, uh, cCosPCfast_2.f);      // degree 2
   pcr_s_mul(h, l, h, uh, ul);
-  pcr_fasttwosum(h, t, cCosPCfast[0].f, h);
-  l := l + cCosPCfast[1].f + t;
+  pcr_fasttwosum(h, t, cCosPCfast_0.f, h);
+  l := l + cCosPCfast_1.f + t;
 end;
 
 // ---------------------------------------------------------------------------
@@ -407,7 +405,6 @@ var
   i: Int32;
   neg, is_cos: Boolean;
   err, hi0, hi1, lo0, lo1: UInt64;
-  k: Int32;
   ax: Double;
 begin
   DIntFromD(Xd, x);
@@ -457,11 +454,22 @@ begin
   hi1 := U.hi + UInt64(Ord(lo1 < U.lo));
   if (hi0 shr 10) <> (hi1 shr 10) then begin
     ax := Abs(x);
-    for k := 0 to 4 do
-      if ax = cCosExceptionsX[k].f then begin
-        Result := cCosExceptionsH[k].f + cCosExceptionsL[k].f;
-        Exit;
-      end;
+    // Pillar A (Phase 6.3): for k := 0 to 4 unrolled.
+    if ax = cCosExceptionsX_0.f then begin
+      Result := cCosExceptionsH_0.f + cCosExceptionsL_0.f; Exit;
+    end;
+    if ax = cCosExceptionsX_1.f then begin
+      Result := cCosExceptionsH_1.f + cCosExceptionsL_1.f; Exit;
+    end;
+    if ax = cCosExceptionsX_2.f then begin
+      Result := cCosExceptionsH_2.f + cCosExceptionsL_2.f; Exit;
+    end;
+    if ax = cCosExceptionsX_3.f then begin
+      Result := cCosExceptionsH_3.f + cCosExceptionsL_3.f; Exit;
+    end;
+    if ax = cCosExceptionsX_4.f then begin
+      Result := cCosExceptionsH_4.f + cCosExceptionsL_4.f; Exit;
+    end;
     // Hard-to-round cases otherwise pass; fall through.
   end;
 
@@ -485,7 +493,7 @@ begin
   if e = $7FF then begin
     // NaN or +/-Inf
     if (t.u shl 1) = (UInt64($7FF) shl 53) then begin
-      Result := 0.0 / 0.0; // Inf -> qNaN, raises invalid
+      Result := Double(0.0) / Double(0.0); // Inf -> qNaN, raises invalid
       Exit;
     end;
     Result := x + x; // quiet NaN
@@ -496,7 +504,7 @@ begin
   t.u := t.u and $7FFFFFFFFFFFFFFF;
   if t.u <= cCosTinyBits then begin
     // |x| <= 0x1.6a09e667f3bccp-27: cos(x) rounds to fma(|x|, -2^-28, 1)
-    Result := pcr_fma(t.f, cCosNeg1pm28.f, 1.0);
+    Result := pcr_fma(t.f, cCosNeg1pm28.f, Double(1.0));
     Exit;
   end;
 

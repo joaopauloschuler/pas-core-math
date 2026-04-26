@@ -14,14 +14,17 @@ import re, struct, os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, '..', 'core-math', 'src', 'binary64', 'log10p1', 'log10p1.c')
-OUT = os.path.join(ROOT, 'src', 'log10p1_const.inc')
+OUT = os.path.join(ROOT, 'src', 'inc_64', 'log10p1_const_64.inc')
 
 def b64(s):
     f = float.fromhex(s)
     return struct.unpack('<Q', struct.pack('<d', f))[0]
 
 def fu(u):
-    return f"$%016X" % u
+    s = f"$%016X" % u
+    if u >= (1 << 63):
+        return f"QWord({s})"
+    return s
 
 def slurp(p):
     with open(p) as f:
@@ -152,9 +155,16 @@ def emit_arr(name, vals, group=4, comment=None):
     lines.append('  );')
     lines.append('')
 
-emit_arr('cLog10p1P', P, 4)
-emit_arr('cLog10p1Pa', Pa, 4)
-emit_arr('cLog10p1Pacc', Pacc, 4)
+# Phase 6.2 Pillar B: lift fixed-trip polynomial coefficients to named scalars.
+def emit_named(name, vals):
+    lines.append(f'  // {name} — Pillar B: lifted to named Tb64u64 scalars.')
+    for i, u in enumerate(vals):
+        lines.append(f'  {name}_{i}: Tb64u64 = (u:{fu(u)});')
+    lines.append('')
+
+emit_named('cLog10p1P', P)
+emit_named('cLog10p1Pa', Pa)
+emit_named('cLog10p1Pacc', Pacc)
 
 # exceptions[222][2] flattened as 444 entries: [k][0],[k][1] interleaved is the
 # C layout, but for binary search by [k][0] we want two parallel arrays.

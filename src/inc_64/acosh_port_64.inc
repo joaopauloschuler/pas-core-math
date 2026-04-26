@@ -122,44 +122,57 @@ const
     ((u:$3CE2F32B5D18EEFB),(u:$3F957CD011870000)),
     ((u:QWord($BD1269E2038315B3)),(u:$3F962E4EACD40000)));
 
-  cAcoshC: array[0..4] of Tb64u64 = (
-    (u:QWord($BFE0000000000000)), (u:$3FD5555555555530), (u:QWord($BFCFFFFFFFFFFFA0)),
-    (u:$3FC99999E33A6366), (u:QWord($BFC555559EF9525F)));
+  // Pillar B: named scalars (was: cAcoshC: array[0..4]).
+  cAcoshC_0: Tb64u64 = (u:QWord($BFE0000000000000));
+  cAcoshC_1: Tb64u64 = (u:$3FD5555555555530);
+  cAcoshC_2: Tb64u64 = (u:QWord($BFCFFFFFFFFFFFA0));
+  cAcoshC_3: Tb64u64 = (u:$3FC99999E33A6366);
+  cAcoshC_4: Tb64u64 = (u:QWord($BFC555559EF9525F));
 
   // log(2) split (matches cLog values elsewhere)
   cAcoshL2h: Tb64u64 = (u:$3FE62E42FEFA3800); // 0x1.62e42fefa38p-1
   cAcoshL2l: Tb64u64 = (u:$3D2EF35793C76730); // 0x1.ef35793c7673p-45
 
-  // Fast-path (|x-1| small) inline cl[9]
-  cAcoshOneFastCl: array[0..8] of Tb64u64 = (
-    (u:QWord($BFB5555555555555)), (u:$3F93333333332F95), (u:QWord($BF76DB6DB6D5534C)),
-    (u:$3F5F1C71C1E04356), (u:QWord($BF46E8B8E3E40D58)), (u:$3F31C4BA825AC4FE),
-    (u:QWord($BF1C9045534E6D9E)), (u:$3F071FEDAE26A76B), (u:QWord($BEEF1F4F8CC65342)));
+  // Fast-path (|x-1| small) inline cl[9] — Pillar B: named scalars.
+  cAcoshOneFastCl_0: Tb64u64 = (u:QWord($BFB5555555555555));
+  cAcoshOneFastCl_1: Tb64u64 = (u:$3F93333333332F95);
+  cAcoshOneFastCl_2: Tb64u64 = (u:QWord($BF76DB6DB6D5534C));
+  cAcoshOneFastCl_3: Tb64u64 = (u:$3F5F1C71C1E04356);
+  cAcoshOneFastCl_4: Tb64u64 = (u:QWord($BF46E8B8E3E40D58));
+  cAcoshOneFastCl_5: Tb64u64 = (u:$3F31C4BA825AC4FE);
+  cAcoshOneFastCl_6: Tb64u64 = (u:QWord($BF1C9045534E6D9E));
+  cAcoshOneFastCl_7: Tb64u64 = (u:$3F071FEDAE26A76B);
+  cAcoshOneFastCl_8: Tb64u64 = (u:QWord($BEEF1F4F8CC65342));
 
-  // Medium-range polynomials for g
-  cAcoshMed4: array[0..3] of Tb64u64 = (
-    (u:$3BD5C4B6148816E2), (u:QWord($BFD000000000005C)), (u:QWord($BFB7FFFFFEBF3E6C)),
-    (u:QWord($BFAAAB6691F2BAE7)));
-  cAcoshMed3: array[0..2] of Tb64u64 = (
-    (u:QWord($BBC7F77C8429C6C6)), (u:QWord($BFCFFFFFFFFFF214)), (u:QWord($BFB8000268641BFE)));
-  cAcoshMed2: array[0..1] of Tb64u64 = (
-    (u:$3BC7A0ED2EFFDD10), (u:QWord($BFD000000017D048)));
+  // Medium-range polynomials for g — Pillar B: named scalars.
+  cAcoshMed4_0: Tb64u64 = (u:$3BD5C4B6148816E2);
+  cAcoshMed4_1: Tb64u64 = (u:QWord($BFD000000000005C));
+  cAcoshMed4_2: Tb64u64 = (u:QWord($BFB7FFFFFEBF3E6C));
+  cAcoshMed4_3: Tb64u64 = (u:QWord($BFAAAB6691F2BAE7));
+  cAcoshMed3_0: Tb64u64 = (u:QWord($BBC7F77C8429C6C6));
+  cAcoshMed3_1: Tb64u64 = (u:QWord($BFCFFFFFFFFFF214));
+  cAcoshMed3_2: Tb64u64 = (u:QWord($BFB8000268641BFE));
+  cAcoshMed2_0: Tb64u64 = (u:$3BC7A0ED2EFFDD10);
+  cAcoshMed2_1: Tb64u64 = (u:QWord($BFD000000017D048));
 
-  // as_acosh_one ch[10][2], cl[6]
-  cAcoshOneCh: array[0..9, 0..1] of Tb64u64 = (
-    ((u:QWord($BFB5555555555555)),(u:QWord($BC55555555554AF1))),
-    ((u:$3F93333333333333),(u:$3C29999998933F0E)),
-    ((u:QWord($BF76DB6DB6DB6DB7)),(u:$3C024929B16EC6B7)),
-    ((u:$3F5F1C71C71C71C7),(u:$3BDC56D45E265E2C)),
-    ((u:QWord($BF46E8BA2E8BA2E9)),(u:$3BE6D50CE7188D3D)),
-    ((u:$3F31C4EC4EC4EC43),(u:$3BDC6791D1CF399A)),
-    ((u:QWord($BF1C99999999914F)),(u:$3BBEE0D9408A2E2A)),
-    ((u:$3F07A878787648E2),(u:QWord($BBA1CEA281E08012))),
-    ((u:QWord($BEF3FDE50D0CB4B9)),(u:$3B70335101403D9D)),
-    ((u:$3EE12EF3BF8A0A74),(u:$3AFF9C6B51787043)));
-  cAcoshOneCl: array[0..5] of Tb64u64 = (
-    (u:QWord($BECDF3B9D1296EA9)), (u:$3EBA681D7D2298EB), (u:QWord($BEA77EAD7B1CA449)),
-    (u:$3E94EDD2DDB3721F), (u:QWord($BE81BF173531EE23)), (u:$3E6613229230E255));
+  // as_acosh_one ch[10][2], cl[6] — Pillar B: named scalars.
+  cAcoshOneChH_0: Tb64u64 = (u:QWord($BFB5555555555555));  cAcoshOneChL_0: Tb64u64 = (u:QWord($BC55555555554AF1));
+  cAcoshOneChH_1: Tb64u64 = (u:$3F93333333333333);         cAcoshOneChL_1: Tb64u64 = (u:$3C29999998933F0E);
+  cAcoshOneChH_2: Tb64u64 = (u:QWord($BF76DB6DB6DB6DB7));  cAcoshOneChL_2: Tb64u64 = (u:$3C024929B16EC6B7);
+  cAcoshOneChH_3: Tb64u64 = (u:$3F5F1C71C71C71C7);         cAcoshOneChL_3: Tb64u64 = (u:$3BDC56D45E265E2C);
+  cAcoshOneChH_4: Tb64u64 = (u:QWord($BF46E8BA2E8BA2E9));  cAcoshOneChL_4: Tb64u64 = (u:$3BE6D50CE7188D3D);
+  cAcoshOneChH_5: Tb64u64 = (u:$3F31C4EC4EC4EC43);         cAcoshOneChL_5: Tb64u64 = (u:$3BDC6791D1CF399A);
+  cAcoshOneChH_6: Tb64u64 = (u:QWord($BF1C99999999914F));  cAcoshOneChL_6: Tb64u64 = (u:$3BBEE0D9408A2E2A);
+  cAcoshOneChH_7: Tb64u64 = (u:$3F07A878787648E2);         cAcoshOneChL_7: Tb64u64 = (u:QWord($BBA1CEA281E08012));
+  cAcoshOneChH_8: Tb64u64 = (u:QWord($BEF3FDE50D0CB4B9));  cAcoshOneChL_8: Tb64u64 = (u:$3B70335101403D9D);
+  cAcoshOneChH_9: Tb64u64 = (u:$3EE12EF3BF8A0A74);         cAcoshOneChL_9: Tb64u64 = (u:$3AFF9C6B51787043);
+
+  cAcoshOneCl_0: Tb64u64 = (u:QWord($BECDF3B9D1296EA9));
+  cAcoshOneCl_1: Tb64u64 = (u:$3EBA681D7D2298EB);
+  cAcoshOneCl_2: Tb64u64 = (u:QWord($BEA77EAD7B1CA449));
+  cAcoshOneCl_3: Tb64u64 = (u:$3E94EDD2DDB3721F);
+  cAcoshOneCl_4: Tb64u64 = (u:QWord($BE81BF173531EE23));
+  cAcoshOneCl_5: Tb64u64 = (u:$3E6613229230E255);
 
   // Refine path: t1 (17), t2/t3/t4 (16 each)
   cAcoshT1: array[0..16] of Tb64u64 = (
@@ -262,12 +275,13 @@ const
       ((u:$3F14CB6C18000000),(u:$3D52B7CFCEA9E0D8),(u:QWord($BA25095048A6B824))),
       ((u:$3F162E7B00000000),(u:QWord($BD3868625640A680)),(u:QWord($BA234BF0DB910F65))) ));
 
-  cAcoshRefineCh: array[0..2, 0..1] of Tb64u64 = (
-    ((u:$3FE0000000000000),(u:$39024B67EE516E3B)),
-    ((u:QWord($BFD0000000000000)),(u:QWord($B91932CE43199A8D))),
-    ((u:$3FC5555555555555),(u:$3C655540C15CF91F)));
-  cAcoshRefineCl: array[0..2] of Tb64u64 = (
-    (u:QWord($BFC0000000000000)), (u:$3FB9999999A0754F), (u:QWord($BFB55555555C3157)));
+  // Pillar B: named scalars (used by AcoshRefine and AtanhRefine).
+  cAcoshRefineChH_0: Tb64u64 = (u:$3FE0000000000000);         cAcoshRefineChL_0: Tb64u64 = (u:$39024B67EE516E3B);
+  cAcoshRefineChH_1: Tb64u64 = (u:QWord($BFD0000000000000));  cAcoshRefineChL_1: Tb64u64 = (u:QWord($B91932CE43199A8D));
+  cAcoshRefineChH_2: Tb64u64 = (u:$3FC5555555555555);         cAcoshRefineChL_2: Tb64u64 = (u:$3C655540C15CF91F);
+  cAcoshRefineCl_0:  Tb64u64 = (u:QWord($BFC0000000000000));
+  cAcoshRefineCl_1:  Tb64u64 = (u:$3FB9999999A0754F);
+  cAcoshRefineCl_2:  Tb64u64 = (u:QWord($BFB55555555C3157));
 
   // log(2) triple split for refine path
   cAcoshL20: Tb64u64 = (u:$3FD62E42FEFA3800); // 0x1.62e42fefa38p-2
@@ -333,22 +347,49 @@ function AcoshOne(x, sh, sl: Double): Double;
 var
   y0, y1, y2: Double;
   ch, cl, th, tl, xl0: Double;
-  i: Int32;
 begin
-  y2 := x * (cAcoshOneCl[0].f + x * (cAcoshOneCl[1].f + x * (cAcoshOneCl[2].f
-      + x * (cAcoshOneCl[3].f + x * (cAcoshOneCl[4].f + x * cAcoshOneCl[5].f)))));
-  // Inlined seeded polydd: n=10, xh=x, xl=0, seed *l = y2
+  y2 := x * (cAcoshOneCl_0.f + x * (cAcoshOneCl_1.f + x * (cAcoshOneCl_2.f
+      + x * (cAcoshOneCl_3.f + x * (cAcoshOneCl_4.f + x * cAcoshOneCl_5.f)))));
+  // Inlined seeded polydd: n=10 — Pillar A unroll of `for i := 8 downto 0`.
   xl0 := Double(0.0);
-  ch := cAcoshOneCh[9, 0].f + y2;
-  cl := ((cAcoshOneCh[9, 0].f - ch) + y2) + cAcoshOneCh[9, 1].f;
-  for i := 8 downto 0 do
-  begin
-    ch := pcr_muldd(x, xl0, ch, cl, cl);
-    th := ch + cAcoshOneCh[i, 0].f;
-    tl := (cAcoshOneCh[i, 0].f - th) + ch;
-    ch := th;
-    cl := cl + tl + cAcoshOneCh[i, 1].f;
-  end;
+  ch := cAcoshOneChH_9.f + y2;
+  cl := ((cAcoshOneChH_9.f - ch) + y2) + cAcoshOneChL_9.f;
+
+  ch := pcr_muldd(x, xl0, ch, cl, cl);
+  th := ch + cAcoshOneChH_8.f; tl := (cAcoshOneChH_8.f - th) + ch;
+  ch := th; cl := cl + tl + cAcoshOneChL_8.f;
+
+  ch := pcr_muldd(x, xl0, ch, cl, cl);
+  th := ch + cAcoshOneChH_7.f; tl := (cAcoshOneChH_7.f - th) + ch;
+  ch := th; cl := cl + tl + cAcoshOneChL_7.f;
+
+  ch := pcr_muldd(x, xl0, ch, cl, cl);
+  th := ch + cAcoshOneChH_6.f; tl := (cAcoshOneChH_6.f - th) + ch;
+  ch := th; cl := cl + tl + cAcoshOneChL_6.f;
+
+  ch := pcr_muldd(x, xl0, ch, cl, cl);
+  th := ch + cAcoshOneChH_5.f; tl := (cAcoshOneChH_5.f - th) + ch;
+  ch := th; cl := cl + tl + cAcoshOneChL_5.f;
+
+  ch := pcr_muldd(x, xl0, ch, cl, cl);
+  th := ch + cAcoshOneChH_4.f; tl := (cAcoshOneChH_4.f - th) + ch;
+  ch := th; cl := cl + tl + cAcoshOneChL_4.f;
+
+  ch := pcr_muldd(x, xl0, ch, cl, cl);
+  th := ch + cAcoshOneChH_3.f; tl := (cAcoshOneChH_3.f - th) + ch;
+  ch := th; cl := cl + tl + cAcoshOneChL_3.f;
+
+  ch := pcr_muldd(x, xl0, ch, cl, cl);
+  th := ch + cAcoshOneChH_2.f; tl := (cAcoshOneChH_2.f - th) + ch;
+  ch := th; cl := cl + tl + cAcoshOneChL_2.f;
+
+  ch := pcr_muldd(x, xl0, ch, cl, cl);
+  th := ch + cAcoshOneChH_1.f; tl := (cAcoshOneChH_1.f - th) + ch;
+  ch := th; cl := cl + tl + cAcoshOneChL_1.f;
+
+  ch := pcr_muldd(x, xl0, ch, cl, cl);
+  th := ch + cAcoshOneChH_0.f; tl := (cAcoshOneChH_0.f - th) + ch;
+  ch := th; cl := cl + tl + cAcoshOneChL_0.f;
   y2 := cl;
   y1 := ch;
   y1 := pcr_mulddd_pd(y1, y2, x, y2);
@@ -447,18 +488,22 @@ begin
   xh := AcoshAddDD(xh, xl, shm, slm, xl);
 
   // sl = xh*(cl[0] + xh*(cl[1] + xh*cl[2])); sh = polydd(xh, xl, 3, ch, &sl);
-  sl2 := xh * (cAcoshRefineCl[0].f + xh * (cAcoshRefineCl[1].f + xh * cAcoshRefineCl[2].f));
-  // Inlined seeded polydd: n=3, seed *l = sl2
-  xh2 := cAcoshRefineCh[2, 0].f + sl2;
-  sh2 := ((cAcoshRefineCh[2, 0].f - xh2) + sl2) + cAcoshRefineCh[2, 1].f;
-  for i1 := 1 downto 0 do   // reuse i1 var; safe
-  begin
-    xh2 := pcr_muldd(xh, xl, xh2, sh2, sh2);
-    th  := xh2 + cAcoshRefineCh[i1, 0].f;
-    tl  := (cAcoshRefineCh[i1, 0].f - th) + xh2;
-    xh2 := th;
-    sh2 := sh2 + tl + cAcoshRefineCh[i1, 1].f;
-  end;
+  sl2 := xh * (cAcoshRefineCl_0.f + xh * (cAcoshRefineCl_1.f + xh * cAcoshRefineCl_2.f));
+  // Inlined seeded polydd: n=3 — Pillar A unroll of `for i1 := 1 downto 0`.
+  xh2 := cAcoshRefineChH_2.f + sl2;
+  sh2 := ((cAcoshRefineChH_2.f - xh2) + sl2) + cAcoshRefineChL_2.f;
+
+  xh2 := pcr_muldd(xh, xl, xh2, sh2, sh2);
+  th  := xh2 + cAcoshRefineChH_1.f;
+  tl  := (cAcoshRefineChH_1.f - th) + xh2;
+  xh2 := th;
+  sh2 := sh2 + tl + cAcoshRefineChL_1.f;
+
+  xh2 := pcr_muldd(xh, xl, xh2, sh2, sh2);
+  th  := xh2 + cAcoshRefineChH_0.f;
+  tl  := (cAcoshRefineChH_0.f - th) + xh2;
+  xh2 := th;
+  sh2 := sh2 + tl + cAcoshRefineChL_0.f;
   sh_ := pcr_muldd(xh, xl, xh2, sh2, sl2);
   sh_ := AcoshAddDD(sh_, sl2, el1, el2, sl2);
   sh_ := AcoshAddDD(sh_, sl2, L1, L2, sl2);
@@ -537,10 +582,10 @@ begin
     z2 := z * z;
     z4 := z2 * z2;
     ds := pcr_fma(sh * z,
-           (cAcoshOneFastCl[0].f + z * (((cAcoshOneFastCl[1].f + z * cAcoshOneFastCl[2].f)
-             + z2 * (cAcoshOneFastCl[3].f + z * cAcoshOneFastCl[4].f))
-             + z4 * ((cAcoshOneFastCl[5].f + z * cAcoshOneFastCl[6].f)
-                    + z2 * (cAcoshOneFastCl[7].f + z * cAcoshOneFastCl[8].f)))),
+           (cAcoshOneFastCl_0.f + z * (((cAcoshOneFastCl_1.f + z * cAcoshOneFastCl_2.f)
+             + z2 * (cAcoshOneFastCl_3.f + z * cAcoshOneFastCl_4.f))
+             + z4 * ((cAcoshOneFastCl_5.f + z * cAcoshOneFastCl_6.f)
+                    + z2 * (cAcoshOneFastCl_7.f + z * cAcoshOneFastCl_8.f)))),
            sl);
     eps := ds * cAcoshFastEps1.f - cAcoshFastEps2.f * sh;
     lb := sh + (ds - eps);
@@ -566,17 +611,17 @@ begin
   else if ix.u < cAcoshBr2 then
   begin
     z := Double(1.0) / (x * x);
-    g := cAcoshMed4[0].f + z * (cAcoshMed4[1].f + z * (cAcoshMed4[2].f + z * cAcoshMed4[3].f));
+    g := cAcoshMed4_0.f + z * (cAcoshMed4_1.f + z * (cAcoshMed4_2.f + z * cAcoshMed4_3.f));
   end
   else if ix.u < cAcoshBr3 then
   begin
     z := Double(1.0) / (x * x);
-    g := cAcoshMed3[0].f + z * (cAcoshMed3[1].f + z * cAcoshMed3[2].f);
+    g := cAcoshMed3_0.f + z * (cAcoshMed3_1.f + z * cAcoshMed3_2.f);
   end
   else if ix.u < cAcoshBr4 then
   begin
     z := Double(1.0) / (x * x);
-    g := cAcoshMed2[0].f + z * cAcoshMed2[1].f;
+    g := cAcoshMed2_0.f + z * cAcoshMed2_1.f;
   end
   else
   begin
@@ -600,8 +645,8 @@ begin
   r := cAcoshR1[i1].f * cAcoshR2[i2].f;
   dx := pcr_fma(r, t.f, -Double(1.0));
   dx2 := dx * dx;
-  f := dx2 * ((cAcoshC[0].f + dx * cAcoshC[1].f)
-            + dx2 * ((cAcoshC[2].f + dx * cAcoshC[3].f) + dx2 * cAcoshC[4].f));
+  f := dx2 * ((cAcoshC_0.f + dx * cAcoshC_1.f)
+            + dx2 * ((cAcoshC_2.f + dx * cAcoshC_3.f) + dx2 * cAcoshC_4.f));
   lh := (cAcoshL1[i1, 1].f + cAcoshL2[i2, 1].f) + cAcoshL2h.f * ed;
   ll := dx + cAcoshL2l.f * ed;
   ll := ll + g;

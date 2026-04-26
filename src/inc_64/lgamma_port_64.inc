@@ -146,7 +146,7 @@ function LgFloor(x: Double): Double; inline;
 var ix: Double;
 begin
   ix := System.Int(x);
-  if (x < 0.0) and (ix <> x) then ix := ix - 1.0;
+  if (x < Double(0.0)) and (ix <> x) then ix := ix - Double(1.0);
   Result := ix;
 end;
 
@@ -155,7 +155,7 @@ function LgCopySignSign(x: Double): Double; inline;
 var t: Tb64u64;
 begin
   t.f := x;
-  if (t.u shr 63) <> 0 then Result := -1.0 else Result := 1.0;
+  if (t.u shr 63) <> 0 then Result := -Double(1.0) else Result := Double(1.0);
 end;
 
 type TLgFlatArr = array of Tb64u64;
@@ -210,11 +210,11 @@ begin
   r  := cLgammaLogR1[i1].f * cLgammaLogR2[i2].f;
   o  := r * t.f;
   dxl := pcr_fma(r, t.f, -o);
-  dxh := o - 1.0;
-  dx  := pcr_fma(r, t.f, -1.0);
+  dxh := o - Double(1.0);
+  dx  := pcr_fma(r, t.f, -Double(1.0));
   dx2 := dx * dx;
-  f := dx2 * ((cLgammaLogC[0].f + dx*cLgammaLogC[1].f)
-              + dx2*(cLgammaLogC[2].f + dx*cLgammaLogC[3].f));
+  f := dx2 * ((cLgammaLogC_0.f + dx*cLgammaLogC_1.f)
+              + dx2*(cLgammaLogC_2.f + dx*cLgammaLogC_3.f));
   lt := (cLgammaLogL1[i1, 1].f + cLgammaLogL2[i2, 1].f) + ed * cLgammaLn2Hi.f;
   lh := lt + dxh;
   ll := (lt - lh) + dxh;
@@ -259,11 +259,11 @@ begin
   r  := cLgammaLogR1[i1].f * cLgammaLogR2[i2].f;
   o  := r * t.f;
   dxl := pcr_fma(r, t.f, -o);
-  dxh := o - 1.0;
+  dxh := o - Double(1.0);
 
   LgFastTwoSum(dxh, dxl, dxh, dxl);
-  fl := dxh * (cLgammaLogAC[6, 0].f
-        + dxh * (cLgammaLogAC[7, 0].f + dxh * cLgammaLogAC[8, 0].f));
+  fl := dxh * (cLgammaLogAC_6_0.f
+        + dxh * (cLgammaLogAC_7_0.f + dxh * cLgammaLogAC_8_0.f));
   cArr := LgPairsFlat(cLgammaLogAC, 9);
   fh := LgPolyDD(dxh, dxl, 6, cArr, fl);
   fh := LgMul(dxh, dxl, fh, fl, fl);
@@ -293,21 +293,21 @@ var
   ky, kx: Int32;
   shv, slv, chv, cl, qh, ql, th, tl, ph, pl, fll: Double;
 begin
-  x := x - 0.5;
+  x := x - Double(0.5);
   ax := Abs(x);
-  sx := ax * 128.0;
+  sx := ax * Double(128.0);
   ix := pcr_roundeven(sx);
   ky := Int32(Trunc(ix));
   kx := 64 - ky;
   if kx < 2 then
   begin
-    z  := 0.5 - ax;
+    z  := Double(0.5) - ax;
     z2 := z * z;
     z2l := pcr_fma(z, z, -z2);
-    fl := z2 * (cLgammaSinKx2Cl[0].f
-                + z2 * (cLgammaSinKx2Cl[1].f + z2 * cLgammaSinKx2Cl[2].f));
-    LgFastTwoSum(fh, fl, cLgammaSinKx2C[0].f, fl);
-    fl := fl + cLgammaSinKx2C[1].f;
+    fl := z2 * (cLgammaSinKx2Cl_0.f
+                + z2 * (cLgammaSinKx2Cl_1.f + z2 * cLgammaSinKx2Cl_2.f));
+    LgFastTwoSum(fh, fl, cLgammaSinKx2C_0.f, fl);
+    fl := fl + cLgammaSinKx2C_1.f;
     fh := LgMul(z2, z2l, fh, fl, fl);
     fh := LgMulD(z, fh, fl, fl);
     LgFastTwoSum(fh, e, z, fh);
@@ -321,15 +321,15 @@ begin
   shv := cLgammaStpi[kx, 1].f; slv := cLgammaStpi[kx, 0].f;
   chv := cLgammaStpi[ky, 1].f; cl  := cLgammaStpi[ky, 0].f;
 
-  P := d2 * (cLgammaSinC[1].f + d2 * (cLgammaSinC[2].f + d2 * cLgammaSinC[3].f));
-  Q := d2 * (cLgammaSinS[1].f + d2 * (cLgammaSinS[2].f + d2 * cLgammaSinS[3].f));
+  P := d2 * (cLgammaSinC_1.f + d2 * (cLgammaSinC_2.f + d2 * cLgammaSinC_3.f));
+  Q := d2 * (cLgammaSinS_1.f + d2 * (cLgammaSinS_2.f + d2 * cLgammaSinS_3.f));
 
-  LgFastTwoSum(qh, ql, cLgammaSinS[0].f, Q);
-  ql := ql + cLgammaSinS0[0].f;
+  LgFastTwoSum(qh, ql, cLgammaSinS_0.f, Q);
+  ql := ql + cLgammaSinS0_0.f;
   chv := LgMul(qh, ql, chv, cl, cl);
 
-  LgFastTwoSum(th, tl, cLgammaSinC[0].f, P);
-  tl := tl + cLgammaSinC0[0].f;
+  LgFastTwoSum(th, tl, cLgammaSinC_0.f, P);
+  tl := tl + cLgammaSinC0_0.f;
   th := LgMulD(d, th, tl, tl);
 
   ph := LgMul(th, tl, shv, slv, pl);
@@ -350,9 +350,9 @@ var
   shv, slv, chv, cl, Pl, Ph, Ql, Qh, outl: Double;
   cArr, sArr: TLgFlatArr;
 begin
-  x := x - 0.5;
+  x := x - Double(0.5);
   x := Abs(x);
-  x := x * 128.0;
+  x := x * Double(128.0);
   ix := pcr_roundeven(x);
   d := ix - x;
   ky := Int32(Trunc(ix));
@@ -364,9 +364,9 @@ begin
   d2l := pcr_fma(d, d, -d2h);
   cArr := LgPairsFlat(cLgammaSinAccC, 5);
   sArr := LgPairsFlat(cLgammaSinAccS, 6);
-  Pl := 0.0;
+  Pl := Double(0.0);
   Ph := LgPolyDD(d2h, d2l, 5, cArr, Pl);
-  Ql := 0.0;
+  Ql := Double(0.0);
   Qh := LgPolyDD(d2h, d2l, 6, sArr, Ql);
 
   Ph := LgMulD(d, Ph, Pl, Pl);
@@ -397,35 +397,35 @@ begin
   l0 := LgLogdAcc(xh, l1, l2);
   if xh < cLgammaP120.f then
   begin
-    zh := 1.0 / xh;
+    zh := Double(1.0) / xh;
     dz := ux * zh;
-    zl := (pcr_fma(zh, -xh, 1.0) - dz) * zh;
-    if ux <> 0.0 then
+    zl := (pcr_fma(zh, -xh, Double(1.0)) - dz) * zh;
+    if ux <> Double(0.0) then
     begin
-      dl1 := LgMulD(ux, zh, pcr_fma(zh, -xh, 1.0) * zh, dl2);
-      dl2 := dl2 - dl1 * dl1 / 2.0;
+      dl1 := LgMulD(ux, zh, pcr_fma(zh, -xh, Double(1.0)) * zh, dl2);
+      dl2 := dl2 - dl1 * dl1 / Double(2.0);
       LgSumDD(l1, l2, l1, l2, dl1, dl2);
     end;
     t.f := xh;
     if (t.u shr 52) > UInt64($3FF + 51) then
     begin
-      wh := xh; wl := ux - 0.5;
+      wh := xh; wl := ux - Double(0.5);
     end
     else
     begin
-      wh := xh - 0.5; wl := ux;
+      wh := xh - Double(0.5); wl := ux;
     end;
-    l0 := l0 - 1.0;
+    l0 := l0 - Double(1.0);
     l0x := l0 * wh; l0xl := pcr_fma(l0, wh, -l0x);
     l1x := l1 * wh; l1xl := pcr_fma(l1, wh, -l1x);
     l2x := l2 * wh;
     LgSumDD(l1x, l2x, l1x, l2x, l0xl, l1xl);
     LgSumDD(l1x, l2x, l1x, l2x, l0 * wl, l1 * wl);
     z2h := LgMul(zh, zl, zh, zl, z2l);
-    if xh >= 48.0 then
+    if xh >= Double(48.0) then
     begin
-      LgSumDD(l1x, l2x, l1x, l2x, cLgammaAsy48C[0, 0].f, cLgammaAsy48C[0, 1].f);
-      fl := 0.0;
+      LgSumDD(l1x, l2x, l1x, l2x, cLgammaAsy48C_0_0.f, cLgammaAsy48C_0_1.f);
+      fl := Double(0.0);
       SetLength(cArr, 7 * 2);
       for k := 0 to 6 do
       begin
@@ -434,10 +434,10 @@ begin
       end;
       fh := LgPolyDD(z2h, z2l, 7, cArr, fl);
     end
-    else if xh >= 14.5 then
+    else if xh >= Double(14.5) then
     begin
-      LgSumDD(l1x, l2x, l1x, l2x, cLgammaAsy14C[0, 0].f, cLgammaAsy14C[0, 1].f);
-      fl := 0.0;
+      LgSumDD(l1x, l2x, l1x, l2x, cLgammaAsy14C_0_0.f, cLgammaAsy14C_0_1.f);
+      fl := Double(0.0);
       SetLength(cArr, 11 * 2);
       for k := 0 to 10 do
       begin
@@ -448,8 +448,8 @@ begin
     end
     else
     begin
-      LgSumDD(l1x, l2x, l1x, l2x, cLgammaAsy4C[0, 0].f, cLgammaAsy4C[0, 1].f);
-      fl := 0.0;
+      LgSumDD(l1x, l2x, l1x, l2x, cLgammaAsy4C_0_0.f, cLgammaAsy4C_0_1.f);
+      fl := Double(0.0);
       SetLength(cArr, 27 * 2);
       for k := 0 to 26 do
       begin
@@ -465,8 +465,8 @@ begin
   end
   else
   begin
-    wl := ux - 0.5;
-    l0 := l0 - 1.0;
+    wl := ux - Double(0.5);
+    l0 := l0 - Double(1.0);
     l0x := l0 * xh; l0xl := pcr_fma(l0, xh, -l0x);
     l1x := l1 * xh; l1xl := pcr_fma(l1, xh, -l1x);
     l2x := l2 * xh;
@@ -538,7 +538,7 @@ var
 begin
   sx := x;
   ax := Abs(x);
-  fl := 0.0; fll := 0.0; fh := 0.0;
+  fl := Double(0.0); fll := Double(0.0); fh := Double(0.0);
 
   cArrAccC0 := LgPairsFlat(cLgammaAccC0, 34);
   cArrAccB  := LgPairsFlat(cLgammaAccB, 30);
@@ -549,11 +549,11 @@ begin
     fh := -lh; fl := -ll; fll := -lll;
     LgFastTwoSum(fh, fl, fh, fl);
     LgFastTwoSum(fl, fll, fl, fll);
-    LgFastTwoSum(tmp, e, fh, 2.0 * fl);
-    if e = 0.0 then
-      fl := fl * (1.0 + LgCopySignSign(fl) * cLgammaP52.f * LgCopySignSign(fll));
+    LgFastTwoSum(tmp, e, fh, Double(2.0) * fl);
+    if e = Double(0.0) then
+      fl := fl * (Double(1.0) + LgCopySignSign(fl) * cLgammaP52.f * LgCopySignSign(fll));
   end
-  else if ax < 0.25 then
+  else if ax < Double(0.25) then
   begin
     fh := LgPolyDDD(sx, 34, cArrAccC0, fl);
     fh := LgMulD(sx, fh, fl, fl);
@@ -561,144 +561,144 @@ begin
     LgSumDD(fh, fl, fh, fl, -ll, -lll);
     LgTwoSum(fh, fll, -lh, fh);
     LgTwoSum(fl, fll, fll, fl);
-    LgFastTwoSum(tmp, e, fh, 2.0 * fl);
-    if e = 0.0 then
-      fl := fl * (1.0 + LgCopySignSign(fl) * cLgammaP52.f * LgCopySignSign(fll));
+    LgFastTwoSum(tmp, e, fh, Double(2.0) * fl);
+    if e = Double(0.0) then
+      fl := fl * (Double(1.0) + LgCopySignSign(fl) * cLgammaP52.f * LgCopySignSign(fll));
   end
   else
   begin
-    if Abs(ax - 0.5) < 0.25 then
+    if Abs(ax - Double(0.5)) < Double(0.25) then
     begin
-      fh := LgPolyDDD(ax - 0.5, 30, cArrAccB, fl);
-      if sx > 0.0 then
+      fh := LgPolyDDD(ax - Double(0.5), 30, cArrAccB, fl);
+      if sx > Double(0.0) then
       begin
         lh := LgLogdAcc(ax, ll, lll);
-        LgSumDD(fl, fll, fl, 0.0, -ll, -lll);
+        LgSumDD(fl, fll, fl, Double(0.0), -ll, -lll);
         LgTwoSum(fh, lh, fh, -lh);
-        LgSumDD(fl, fll, fl, fll, lh, 0.0);
+        LgSumDD(fl, fll, fl, fll, lh, Double(0.0));
       end;
     end
-    else if Abs(ax - 2.5) < 0.25 then
+    else if Abs(ax - Double(2.5)) < Double(0.25) then
     begin
-      fh := LgPolyDDD(ax - 2.5, 30, cArrAccB, fl);
-      lh := LgLogdAcc(ax - 1.0, ll, lll);
-      LgSumDD(fl, fll, fl, 0.0, ll, lll);
+      fh := LgPolyDDD(ax - Double(2.5), 30, cArrAccB, fl);
+      lh := LgLogdAcc(ax - Double(1.0), ll, lll);
+      LgSumDD(fl, fll, fl, Double(0.0), ll, lll);
       LgTwoSum(fh, lh, fh, lh);
-      LgSumDD(fl, fll, fl, fll, lh, 0.0);
-      if sx < 0.0 then
+      LgSumDD(fl, fll, fl, fll, lh, Double(0.0));
+      if sx < Double(0.0) then
       begin
         lh := LgLogdAcc(ax, ll, lll);
         LgSumDD(fl, fll, fl, fll, ll, lll);
         LgTwoSum(fh, lh, fh, lh);
-        LgSumDD(fl, fll, fl, fll, lh, 0.0);
+        LgSumDD(fl, fll, fl, fll, lh, Double(0.0));
       end;
     end
-    else if Abs(ax - 3.5) < 0.25 then
+    else if Abs(ax - Double(3.5)) < Double(0.25) then
     begin
-      l2h := LgLogdAcc(ax - 2.0, l2l, l2ll);
-      l1h := LgLogdAcc(ax - 1.0, l1l, l1ll);
+      l2h := LgLogdAcc(ax - Double(2.0), l2l, l2ll);
+      l1h := LgLogdAcc(ax - Double(1.0), l1l, l1ll);
       LgSumDD(l1l, l1ll, l1l, l1ll, l2l, l2ll);
       LgFastTwoSum(l1h, l2h, l1h, l2h);
-      LgSumDD(l1l, l1ll, l1l, l1ll, l2h, 0.0);
-      fh := LgPolyDDD(ax - 3.5, 30, cArrAccB, fl);
-      LgSumDD(fl, fll, fl, 0.0, l1l, l1ll);
+      LgSumDD(l1l, l1ll, l1l, l1ll, l2h, Double(0.0));
+      fh := LgPolyDDD(ax - Double(3.5), 30, cArrAccB, fl);
+      LgSumDD(fl, fll, fl, Double(0.0), l1l, l1ll);
       LgTwoSum(fh, l1h, fh, l1h);
-      LgSumDD(fl, fll, fl, fll, l1h, 0.0);
-      if sx < 0.0 then
+      LgSumDD(fl, fll, fl, fll, l1h, Double(0.0));
+      if sx < Double(0.0) then
       begin
         lh := LgLogdAcc(ax, ll, lll);
         LgSumDD(fl, fll, fl, fll, ll, lll);
         LgTwoSum(fh, lh, fh, lh);
-        LgSumDD(fl, fll, fl, fll, lh, 0.0);
+        LgSumDD(fl, fll, fl, fll, lh, Double(0.0));
       end;
     end
-    else if Abs(ax - 1.0) < 0.25 then
+    else if Abs(ax - Double(1.0)) < Double(0.25) then
     begin
-      fh := LgPolyDDD(ax - 1.0, 34, cArrAccC0, fl);
-      fh := LgMulD(ax - 1.0, fh, fl, fl);
-      if sx < 0.0 then
+      fh := LgPolyDDD(ax - Double(1.0), 34, cArrAccC0, fl);
+      fh := LgMulD(ax - Double(1.0), fh, fl, fl);
+      if sx < Double(0.0) then
       begin
         lh := LgLogdAcc(ax, ll, lll);
-        LgSumDD(fl, fll, fl, 0.0, ll, lll);
+        LgSumDD(fl, fll, fl, Double(0.0), ll, lll);
         LgTwoSum(fh, lh, fh, lh);
-        LgSumDD(fl, fll, fl, fll, lh, 0.0);
+        LgSumDD(fl, fll, fl, fll, lh, Double(0.0));
       end;
     end
-    else if Abs(ax - 1.5) < 0.25 then
+    else if Abs(ax - Double(1.5)) < Double(0.25) then
     begin
-      fh := LgPolyDDD(ax - 1.5, 30, cArrAccB, fl);
-      if sx < 0.0 then
+      fh := LgPolyDDD(ax - Double(1.5), 30, cArrAccB, fl);
+      if sx < Double(0.0) then
       begin
         lh := LgLogdAcc(ax, ll, lll);
-        LgSumDD(fl, fll, fl, 0.0, ll, lll);
+        LgSumDD(fl, fll, fl, Double(0.0), ll, lll);
         LgTwoSum(fh, lh, fh, lh);
-        LgSumDD(fl, fll, fl, fll, lh, 0.0);
+        LgSumDD(fl, fll, fl, fll, lh, Double(0.0));
       end;
     end
-    else if Abs(ax - 2.0) < 0.25 then
+    else if Abs(ax - Double(2.0)) < Double(0.25) then
     begin
-      lh := LgLogdAcc(ax - 1.0, ll, lll);
-      fh := LgPolyDDD(ax - 2.0, 34, cArrAccC0, fl);
-      fh := LgMulD(ax - 2.0, fh, fl, fl);
-      LgSumDD(fl, fll, fl, 0.0, ll, lll);
+      lh := LgLogdAcc(ax - Double(1.0), ll, lll);
+      fh := LgPolyDDD(ax - Double(2.0), 34, cArrAccC0, fl);
+      fh := LgMulD(ax - Double(2.0), fh, fl, fl);
+      LgSumDD(fl, fll, fl, Double(0.0), ll, lll);
       LgTwoSum(fh, lh, fh, lh);
-      LgSumDD(fl, fll, fl, fll, lh, 0.0);
-      if sx < 0.0 then
+      LgSumDD(fl, fll, fl, fll, lh, Double(0.0));
+      if sx < Double(0.0) then
       begin
         lh := LgLogdAcc(ax, ll, lll);
         LgSumDD(fl, fll, fl, fll, ll, lll);
         LgTwoSum(fh, lh, fh, lh);
-        LgSumDD(fl, fll, fl, fll, lh, 0.0);
+        LgSumDD(fl, fll, fl, fll, lh, Double(0.0));
       end;
     end
-    else if Abs(ax - 3.0) < 0.25 then
+    else if Abs(ax - Double(3.0)) < Double(0.25) then
     begin
-      l2h := LgLogdAcc(ax - 2.0, l2l, l2ll);
-      l1h := LgLogdAcc(ax - 1.0, l1l, l1ll);
+      l2h := LgLogdAcc(ax - Double(2.0), l2l, l2ll);
+      l1h := LgLogdAcc(ax - Double(1.0), l1l, l1ll);
       LgSumDD(l1l, l1ll, l1l, l1ll, l2l, l2ll);
       LgFastTwoSum(l1h, l2h, l1h, l2h);
-      LgSumDD(l1l, l1ll, l1l, l1ll, l2h, 0.0);
-      fh := LgPolyDDD(ax - 3.0, 34, cArrAccC0, fl);
-      fh := LgMulD(ax - 3.0, fh, fl, fl);
-      LgSumDD(fl, fll, fl, 0.0, l1l, l1ll);
+      LgSumDD(l1l, l1ll, l1l, l1ll, l2h, Double(0.0));
+      fh := LgPolyDDD(ax - Double(3.0), 34, cArrAccC0, fl);
+      fh := LgMulD(ax - Double(3.0), fh, fl, fl);
+      LgSumDD(fl, fll, fl, Double(0.0), l1l, l1ll);
       LgTwoSum(fh, l1h, fh, l1h);
-      LgSumDD(fl, fll, fl, fll, l1h, 0.0);
-      if sx < 0.0 then
+      LgSumDD(fl, fll, fl, fll, l1h, Double(0.0));
+      if sx < Double(0.0) then
       begin
         lh := LgLogdAcc(ax, ll, lll);
         LgSumDD(fl, fll, fl, fll, ll, lll);
         LgTwoSum(fh, lh, fh, lh);
-        LgSumDD(fl, fll, fl, fll, lh, 0.0);
+        LgSumDD(fl, fll, fl, fll, lh, Double(0.0));
       end;
     end
     else // x>3.75
     begin
-      if sx < 0.0 then
+      if sx < Double(0.0) then
       begin
-        LgFastTwoSum(axTmp, flTmp, ax, 1.0);
+        LgFastTwoSum(axTmp, flTmp, ax, Double(1.0));
         ax := axTmp; fl := flTmp;
       end;
       fh := LgAsymAcc(ax, fl, fll);
     end;
-    if sx < 0.0 then
+    if sx < Double(0.0) then
     begin
-      if sx < -0.5 then phi := sx - LgFloor(sx) else phi := -sx;
+      if sx < -Double(0.5) then phi := sx - LgFloor(sx) else phi := -sx;
       sh := LgSinpipidAcc(phi, sl);
       lh := LgLogdAcc(sh, ll, lll);
       ll := ll + sl / sh + lll;
-      LgSumDD(fl, fll, fl, fll, ll, 0.0);
+      LgSumDD(fl, fll, fl, fll, ll, Double(0.0));
       LgTwoSum(fh, lh, fh, lh);
-      LgSumDD(fl, fll, fl, fll, lh, 0.0);
+      LgSumDD(fl, fll, fl, fll, lh, Double(0.0));
       fh := -fh; fl := -fl; fll := -fll;
     end;
     LgFastTwoSum(fh, fl, fh, fl);
     LgFastTwoSum(fl, fll, fl, fll);
     LgFastTwoSum(fh, fl, fh, fl);
     LgFastTwoSum(fl, fll, fl, fll);
-    LgFastTwoSum(tmp, e, fh, 2.0 * fl);
-    if e = 0.0 then
+    LgFastTwoSum(tmp, e, fh, Double(2.0) * fl);
+    if e = Double(0.0) then
     begin
-      dfl := 1.0
+      dfl := Double(1.0)
         + LgCopySignSign(fl) * cLgammaP26.f
         * LgCopySignSign(fll) * cLgammaP26.f;
       fl := fl * dfl;
@@ -708,87 +708,87 @@ begin
   // Accurate-path branch dispatch (17 branches), only when |fh|<0.375
   if Abs(fh) < cLgammaThrFh1.f then
   begin
-    if      (Abs(fh) < cLgammaThrBr0.f) and (sx > cLgammaSXBnd.f) and (sx < -2.0) then
+    if      (Abs(fh) < cLgammaThrBr0.f) and (sx > cLgammaSXBnd.f) and (sx < -Double(2.0)) then
     begin
       cFlatBr := LgPairsFlat(cLgammaAccBr0C, 26);
       LgAccBranch(sx, cLgammaAccBr0X0, cFlatBr, cLgammaAccBr0N, cLgammaAccBr0K, cLgammaAccBr0Sc.f, fh, fl);
     end
-    else if (Abs(fh) < cLgammaThrBr1.f) and (sx > -3.0) and (sx < cLgammaSXBnd.f) then
+    else if (Abs(fh) < cLgammaThrBr1.f) and (sx > -Double(3.0)) and (sx < cLgammaSXBnd.f) then
     begin
       cFlatBr := LgPairsFlat(cLgammaAccBr1C, 27);
       LgAccBranch(sx, cLgammaAccBr1X0, cFlatBr, cLgammaAccBr1N, cLgammaAccBr1K, cLgammaAccBr1Sc.f, fh, fl);
     end
-    else if (Abs(fh) < cLgammaThrBr2.f) and (sx > -3.5) and (sx < -3.0) then
+    else if (Abs(fh) < cLgammaThrBr2.f) and (sx > -Double(3.5)) and (sx < -Double(3.0)) then
     begin
       cFlatBr := LgPairsFlat(cLgammaAccBr2C, 20);
       LgAccBranch(sx, cLgammaAccBr2X0, cFlatBr, cLgammaAccBr2N, cLgammaAccBr2K, cLgammaAccBr2Sc.f, fh, fl);
     end
-    else if (Abs(fh) < cLgammaThrBr3.f) and (sx > -4.0) and (sx < -3.5) then
+    else if (Abs(fh) < cLgammaThrBr3.f) and (sx > -Double(4.0)) and (sx < -Double(3.5)) then
     begin
       cFlatBr := LgPairsFlat(cLgammaAccBr3C, 20);
       LgAccBranch(sx, cLgammaAccBr3X0, cFlatBr, cLgammaAccBr3N, cLgammaAccBr3K, cLgammaAccBr3Sc.f, fh, fl);
     end
-    else if (Abs(fh) < cLgammaThrBr4.f) and (sx > -4.5) and (sx < -4.0) then
+    else if (Abs(fh) < cLgammaThrBr4.f) and (sx > -Double(4.5)) and (sx < -Double(4.0)) then
     begin
       cFlatBr := LgPairsFlat(cLgammaAccBr4C, 24);
       LgAccBranch(sx, cLgammaAccBr4X0, cFlatBr, cLgammaAccBr4N, cLgammaAccBr4K, cLgammaAccBr4Sc.f, fh, fl);
     end
-    else if (Abs(fh) < cLgammaThrBr5.f) and (sx > -5.0) and (sx < -4.5) then
+    else if (Abs(fh) < cLgammaThrBr5.f) and (sx > -Double(5.0)) and (sx < -Double(4.5)) then
     begin
       cFlatBr := LgPairsFlat(cLgammaAccBr5C, 19);
       LgAccBranch(sx, cLgammaAccBr5X0, cFlatBr, cLgammaAccBr5N, cLgammaAccBr5K, cLgammaAccBr5Sc.f, fh, fl);
     end
-    else if (Abs(fh) < cLgammaThrBr6.f) and (sx > -5.5) and (sx < -5.0) then
+    else if (Abs(fh) < cLgammaThrBr6.f) and (sx > -Double(5.5)) and (sx < -Double(5.0)) then
     begin
       cFlatBr := LgPairsFlat(cLgammaAccBr6C, 19);
       LgAccBranch(sx, cLgammaAccBr6X0, cFlatBr, cLgammaAccBr6N, cLgammaAccBr6K, cLgammaAccBr6Sc.f, fh, fl);
     end
-    else if (Abs(fh) < cLgammaThrBr7.f) and (sx > -6.0) and (sx < -5.5) then
+    else if (Abs(fh) < cLgammaThrBr7.f) and (sx > -Double(6.0)) and (sx < -Double(5.5)) then
     begin
       cFlatBr := LgPairsFlat(cLgammaAccBr7C, 24);
       LgAccBranch(sx, cLgammaAccBr7X0, cFlatBr, cLgammaAccBr7N, cLgammaAccBr7K, cLgammaAccBr7Sc.f, fh, fl);
     end
-    else if (Abs(fh) < cLgammaThrBr8.f) and (sx > -6.5) and (sx < -6.0) then
+    else if (Abs(fh) < cLgammaThrBr8.f) and (sx > -Double(6.5)) and (sx < -Double(6.0)) then
     begin
       cFlatBr := LgPairsFlat(cLgammaAccBr8C, 24);
       LgAccBranch(sx, cLgammaAccBr8X0, cFlatBr, cLgammaAccBr8N, cLgammaAccBr8K, cLgammaAccBr8Sc.f, fh, fl);
     end
-    else if (Abs(fh) < cLgammaThrBr9.f) and (sx > -7.0) and (sx < -6.5) then
+    else if (Abs(fh) < cLgammaThrBr9.f) and (sx > -Double(7.0)) and (sx < -Double(6.5)) then
     begin
       cFlatBr := LgPairsFlat(cLgammaAccBr9C, 25);
       LgAccBranch(sx, cLgammaAccBr9X0, cFlatBr, cLgammaAccBr9N, cLgammaAccBr9K, cLgammaAccBr9Sc.f, fh, fl);
     end
-    else if (Abs(fh) < cLgammaThrBr10.f) and (sx > -7.5) and (sx < -7.0) then
+    else if (Abs(fh) < cLgammaThrBr10.f) and (sx > -Double(7.5)) and (sx < -Double(7.0)) then
     begin
       cFlatBr := LgPairsFlat(cLgammaAccBr10C, 24);
       LgAccBranch(sx, cLgammaAccBr10X0, cFlatBr, cLgammaAccBr10N, cLgammaAccBr10K, cLgammaAccBr10Sc.f, fh, fl);
     end
-    else if (Abs(fh) < cLgammaThrBr11.f) and (sx > -8.0) and (sx < -7.5) then
+    else if (Abs(fh) < cLgammaThrBr11.f) and (sx > -Double(8.0)) and (sx < -Double(7.5)) then
     begin
       cFlatBr := LgPairsFlat(cLgammaAccBr11C, 27);
       LgAccBranch(sx, cLgammaAccBr11X0, cFlatBr, cLgammaAccBr11N, cLgammaAccBr11K, cLgammaAccBr11Sc.f, fh, fl);
     end
-    else if (Abs(fh) < cLgammaThrBr12.f) and (sx > -8.5) and (sx < -8.0) then
+    else if (Abs(fh) < cLgammaThrBr12.f) and (sx > -Double(8.5)) and (sx < -Double(8.0)) then
     begin
       cFlatBr := LgPairsFlat(cLgammaAccBr12C, 27);
       LgAccBranch(sx, cLgammaAccBr12X0, cFlatBr, cLgammaAccBr12N, cLgammaAccBr12K, cLgammaAccBr12Sc.f, fh, fl);
     end
-    else if (Abs(fh) < cLgammaThrBr13.f) and (sx > -9.0) and (sx < -8.5) then
+    else if (Abs(fh) < cLgammaThrBr13.f) and (sx > -Double(9.0)) and (sx < -Double(8.5)) then
     begin
       cFlatBr := LgPairsFlat(cLgammaAccBr13C, 28);
       LgAccBranch(sx, cLgammaAccBr13X0, cFlatBr, cLgammaAccBr13N, cLgammaAccBr13K, cLgammaAccBr13Sc.f, fh, fl);
     end
-    else if (Abs(fh) < cLgammaThrBr13.f) and (sx > -9.5) and (sx < -9.0) then
+    else if (Abs(fh) < cLgammaThrBr13.f) and (sx > -Double(9.5)) and (sx < -Double(9.0)) then
     begin
       cFlatBr := LgPairsFlat(cLgammaAccBr14C, 28);
       LgAccBranch(sx, cLgammaAccBr14X0, cFlatBr, cLgammaAccBr14N, cLgammaAccBr14K, cLgammaAccBr14Sc.f, fh, fl);
     end
-    else if (Abs(fh) < cLgammaThrBr11.f) and (sx > -10.0) and (sx < -9.5) then
+    else if (Abs(fh) < cLgammaThrBr11.f) and (sx > -Double(10.0)) and (sx < -Double(9.5)) then
     begin
       cFlatBr := LgPairsFlat(cLgammaAccBr15C, 27);
       LgAccBranch(sx, cLgammaAccBr15X0, cFlatBr, cLgammaAccBr15N, cLgammaAccBr15K, cLgammaAccBr15Sc.f, fh, fl);
     end
-    else if (Abs(fh) < cLgammaThrBr11.f) and (sx > -10.5) and (sx < -10.0) then
+    else if (Abs(fh) < cLgammaThrBr11.f) and (sx > -Double(10.5)) and (sx < -Double(10.0)) then
     begin
       cFlatBr := LgPairsFlat(cLgammaAccBr16C, 27);
       LgAccBranch(sx, cLgammaAccBr16X0, cFlatBr, cLgammaAccBr16N, cLgammaAccBr16K, cLgammaAccBr16Sc.f, fh, fl);
@@ -820,7 +820,6 @@ var
   j, i: Int32;
   xl, hlh, zh, zl, z2h, z4h, sl, sh, fhSign, flSign: Double;
   cArrTinyC0, cArrCH: TLgFlatArr;
-  cArrTinyQ: array[0..7] of Double;
   jj: UInt64;
   tmpFh, tmpFl, tmpTf: Double;
 begin
@@ -841,18 +840,18 @@ begin
       if nx = (UInt64($7FF) shl 53) then begin Result := Abs(x); Exit; end;
       Result := x + x; Exit;
     end;
-    if (t.u shr 63) <> 0 then begin Result := 1.0 / 0.0; Exit; end;
+    if (t.u shr 63) <> 0 then begin Result := Double(1.0) / Double(0.0); Exit; end;
     Result := cLgammaOvflPos.f * cLgammaOvflPos.f; Exit;
   end;
   fx := LgFloor(x);
   if fx = x then
   begin
-    if x <= 0.0 then begin Result := 1.0 / 0.0; Exit; end;
-    if (x = 1.0) or (x = 2.0) then begin Result := 0.0; Exit; end;
+    if x <= Double(0.0) then begin Result := Double(1.0) / Double(0.0); Exit; end;
+    if (x = Double(1.0)) or (x = Double(2.0)) then begin Result := Double(0.0); Exit; end;
   end;
 
   au := UInt32(nx shr 38);
-  fh := 0.0; fl := 0.0; eps := 0.0;
+  fh := Double(0.0); fl := Double(0.0); eps := Double(0.0);
   ax := Abs(x);
 
   if au < cLgammaUbrd[0] then
@@ -863,27 +862,26 @@ begin
     begin
       fh := -lh;
       fl := -ll;
-      eps := 1.5e-22;
+      eps := Double(1.5e-22);
     end
     else if au < UInt32($1fd0000) then
     begin
       cArrTinyC0 := LgPairsFlat(cLgammaTinyC0, 4);
-      for i := 0 to 7 do cArrTinyQ[i] := cLgammaTinyQ[i].f;
       z := x; z2 := z*z; z4 := z2*z2;
-      q0 := cArrTinyQ[0] + z*cArrTinyQ[1];
-      q2 := cArrTinyQ[2] + z*cArrTinyQ[3];
-      q4 := cArrTinyQ[4] + z*cArrTinyQ[5];
-      q6 := cArrTinyQ[6] + z*cArrTinyQ[7];
+      q0 := cLgammaTinyQ_0.f + z*cLgammaTinyQ_1.f;
+      q2 := cLgammaTinyQ_2.f + z*cLgammaTinyQ_3.f;
+      q4 := cLgammaTinyQ_4.f + z*cLgammaTinyQ_5.f;
+      q6 := cLgammaTinyQ_6.f + z*cLgammaTinyQ_7.f;
       fl := z*((q0 + z2*q2) + z4*(q4 + z2*q6));
       fh := LgPolyDDD(z, 4, cArrTinyC0, fl);
       fh := LgMulD(x, fh, fl, fl);
       LgSumDD(fh, fl, -lh, -ll, fh, fl);
-      eps := 1.5e-22;
+      eps := Double(1.5e-22);
     end
     else
     begin
       // 0.03125<=|x|<0.5; reduce via x+1
-      LgFastTwoSum(tmpTf, xl, 1.0, t.f);
+      LgFastTwoSum(tmpTf, xl, Double(1.0), t.f);
       t.f := tmpTf;
       au := UInt32(t.u shr 37);
       ou := au - cLgammaUbrd[0];
@@ -909,9 +907,9 @@ begin
         z := -x;
         fh := LgMulD(z, fh, fl, fl);
       end;
-      eps := Abs(fh) * 8.3e-20;
+      eps := Abs(fh) * Double(8.3e-20);
       LgSumDD(fh, fl, -lh, -ll, fh, fl);
-      eps := eps + Abs(lh) * 5e-22;
+      eps := eps + Abs(lh) * Double(5e-22);
     end;
   end
   else
@@ -921,39 +919,39 @@ begin
     begin
       // Stirling
       lh := LgLogd(ax, ll);
-      lh := lh - 1.0;
+      lh := lh - Double(1.0);
       if au >= UInt32($2198000) then
       begin
         if au >= UInt32($3fabaa6) then
           LgFastTwoSum(lh, ll, lh, ll);
-        hlh := lh * 0.5;
+        hlh := lh * Double(0.5);
         lh := LgMulD(ax, lh, ll, ll);
         ll := ll - hlh;
       end
       else
       begin
-        lh := LgMulD(ax - 0.5, lh, ll, ll);
+        lh := LgMulD(ax - Double(0.5), lh, ll, ll);
       end;
-      LgFastSum(lh, ll, lh, ll, cLgammaAsymC[0, 0].f, cLgammaAsymC[0, 1].f);
+      LgFastSum(lh, ll, lh, ll, cLgammaAsymC_0_0.f, cLgammaAsymC_0_1.f);
       if ax < cLgammaP100Pos.f then
       begin
-        zh := 1.0 / ax;
-        zl := pcr_fma(zh, -ax, 1.0) * zh;
+        zh := Double(1.0) / ax;
+        zl := pcr_fma(zh, -ax, Double(1.0)) * zh;
         z2h := zh*zh; z4h := z2h*z2h;
-        q0 := cLgammaAsymQ[0].f + z2h*cLgammaAsymQ[1].f;
-        q2 := cLgammaAsymQ[2].f + z2h*cLgammaAsymQ[3].f;
-        q4 := cLgammaAsymQ[4].f;
+        q0 := cLgammaAsymQ_0.f + z2h*cLgammaAsymQ_1.f;
+        q2 := cLgammaAsymQ_2.f + z2h*cLgammaAsymQ_3.f;
+        q4 := cLgammaAsymQ_4.f;
         fl := z2h * (q0 + z4h * (q2 + z4h * q4));
-        LgFastTwoSum(fh, fl, cLgammaAsymC[1, 0].f, fl);
-        fl := fl + cLgammaAsymC[1, 1].f;
+        LgFastTwoSum(fh, fl, cLgammaAsymC_1_0.f, fl);
+        fl := fl + cLgammaAsymC_1_1.f;
         fh := LgMul(fh, fl, zh, zl, fl);
       end
       else
       begin
-        fh := 0.0; fl := 0.0;
+        fh := Double(0.0); fl := Double(0.0);
       end;
       LgFastSum(fh, fl, lh, ll, fh, fl);
-      eps := Abs(fh) * 4.5e-20;
+      eps := Abs(fh) * Double(4.5e-20);
     end
     else
     begin
@@ -978,15 +976,15 @@ begin
       fh := LgPolyDDD(z, 5, cArrCH, fl);
       if j = 4 then
       begin
-        z := 1.0 - ax;
+        z := Double(1.0) - ax;
         fh := LgMulD(z, fh, fl, fl);
       end;
       if j = 10 then
       begin
-        z := ax - 2.0;
+        z := ax - Double(2.0);
         fh := LgMulD(z, fh, fl, fl);
       end;
-      eps := Abs(fh) * 8.3e-20 + 1e-24;
+      eps := Abs(fh) * Double(8.3e-20) + Double(1e-24);
     end;
     if (t.u shr 63) <> 0 then
     begin
@@ -996,12 +994,12 @@ begin
       ll := ll + sl / sh;
       LgSumDD(tmpFh, tmpFl, fh, fl, lh, ll);
       fh := -tmpFh; fl := -tmpFl;
-      eps := eps + Abs(lh) * 4e-22;
+      eps := eps + Abs(lh) * Double(4e-22);
     end;
   end;
 
   // Suppress unused warnings on locals.
-  fhSign := 0.0; flSign := 0.0;
+  fhSign := Double(0.0); flSign := Double(0.0);
   if fhSign = flSign then ;
 
   ub := fh + (fl + eps);

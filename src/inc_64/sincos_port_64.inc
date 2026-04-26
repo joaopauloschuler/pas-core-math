@@ -111,7 +111,7 @@ begin
   if e = $7FF then begin
     if (t.u shl 1) <> (UInt64($7FF8) shl 49) then begin
       // Inf or signaling NaN — produce qNaN
-      s := 0.0 / 0.0;
+      s := Double(0.0) / Double(0.0);
       c := s;
       Exit;
     end;
@@ -126,7 +126,7 @@ begin
     // |x| <= 0x1.6a09e667f3bccp-27: sin rounds to x, cos rounds to 1.0.
     // (C computes 1.0 - 2^-54 for nonzero tiny, but that ties-to-even to 1.0.)
     s := x;
-    c := 1.0;
+    c := Double(1.0);
     Exit;
   end;
 

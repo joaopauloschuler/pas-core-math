@@ -555,14 +555,14 @@ begin
   if m = 1 then begin
     // x is a power of 2
     if PowIsInt(Double(E) * y) then begin
-      if z.sgn = 1 then r := -1.0 else r := 1.0;
+      if z.sgn = 1 then r := Double(-1.0) else r := Double(1.0);
       PowPow2(r, Trunc(Double(E) * y));
       PowExactPow := True;
     end;
     exit;
   end;
 
-  if (y < 0.0) or (y > 34.0) then exit;
+  if (y < Double(0.0)) or (y > Double(34.0)) then exit;
 
   PowExtract(F, n, y);
   if (n > 34) or (F < -5) then exit;
@@ -654,7 +654,7 @@ begin
     t := pcr_ctzll(m);
     m := m shr t;
     e := e + t;
-    if (y = 0.0) or (y = 1.0) then begin PowIsExact := 1; exit; end;
+    if (y = Double(0.0)) or (y = Double(1.0)) then begin PowIsExact := 1; exit; end;
     if m = 1 then begin
       if (-1074 <= y * e) and (y * e < 1024) then PowIsExact := 1;
       exit;
@@ -734,7 +734,7 @@ var t: Integer;
 begin
   PowFastExtract(a.ex, a.r0, b);
   t := pcr_clzll(a.r0);
-  a.sgn := Byte(b < 0.0);
+  a.sgn := Byte(b < Double(0.0));
   if t > 11 then a.ex := a.ex - (t - 12);
   a.r0 := a.r0 shl t;
   a.r1 := 0; a.r2 := 0; a.r3 := 0;
@@ -778,7 +778,7 @@ var
 begin
   PowSubnormalizeQInt(a);
   r.u := (a.r0 shr 11) or (UInt64($3FF) shl 52);
-  rd := 0.0;
+  rd := Double(0.0);
   if (a.r0 and $400) <> 0 then rd := rd + c2pm53.f;
   if ((a.r0 and $3FF) <> 0) or (a.r1 <> 0) or (a.r2 <> 0) or (a.r3 <> 0) then
     rd := rd + c2pm54.f;
@@ -849,7 +849,7 @@ begin
   err_arr[0].u := $3BF2700000000000;  // 0x1.27p-64 (~ 2^-63.797)
   err_arr[1].u := $3C55700000000000;  // 0x1.57p-58 (~ 2^-57.579)
 
-  s := 1.0;
+  s := Double(1.0);
   x0 := x;
   xu.f := x; yu.f := y;
 
@@ -857,70 +857,70 @@ begin
   if (xu.u >= UInt64($7FF0000000000000)) or (yu.u >= UInt64($7FF0000000000000)) then
   begin
     if x <> x then begin   // x is NaN
-      if (y = 0.0) and not PowIsSignaling(x) then begin pcr_pow := 1.0; exit; end;
+      if (y = Double(0.0)) and not PowIsSignaling(x) then begin pcr_pow := Double(1.0); exit; end;
       pcr_pow := x + x; exit;
     end;
     if y <> y then begin   // y is NaN
-      if (x = 1.0) and not PowIsSignaling(y) then begin pcr_pow := 1.0; exit; end;
+      if (x = Double(1.0)) and not PowIsSignaling(y) then begin pcr_pow := Double(1.0); exit; end;
       pcr_pow := y + y; exit;
     end;
 
     // x = +Inf
     if xu.u = cInfPos.u then begin
-      if y = 0.0 then begin pcr_pow := 1.0; exit; end;
-      if y < 0.0 then begin pcr_pow := 0.0; exit; end;
-      if y > 0.0 then begin pcr_pow := cInfPos.f; exit; end;
+      if y = Double(0.0) then begin pcr_pow := Double(1.0); exit; end;
+      if y < Double(0.0) then begin pcr_pow := Double(0.0); exit; end;
+      if y > Double(0.0) then begin pcr_pow := cInfPos.f; exit; end;
     end;
     // x = -Inf
     if xu.u = cInfNeg.u then begin
-      if PowIsInt(y) and not PowIsInt(y * 0.5) then begin
-        if y < 0.0 then begin pcr_pow := -0.0; exit; end;
+      if PowIsInt(y) and not PowIsInt(y * Double(0.5)) then begin
+        if y < Double(0.0) then begin pcr_pow := Double(-0.0); exit; end;
         pcr_pow := -cInfPos.f; exit;
       end;
-      if y < 0.0 then begin pcr_pow := 0.0; exit; end;
-      if y > 0.0 then begin pcr_pow := cInfPos.f; exit; end;
+      if y < Double(0.0) then begin pcr_pow := Double(0.0); exit; end;
+      if y > Double(0.0) then begin pcr_pow := cInfPos.f; exit; end;
     end;
 
     // y = +Inf
     if yu.u = cInfPos.u then begin
-      if x = 0.0 then begin pcr_pow := 0.0; exit; end;
-      if (x = -1.0) or (x = 1.0) then begin pcr_pow := 1.0; exit; end;
-      if (-1.0 < x) and (x < 1.0) then begin pcr_pow := 0.0; exit; end;
-      if (x < -1.0) or (1.0 < x) then begin pcr_pow := cInfPos.f; exit; end;
+      if x = Double(0.0) then begin pcr_pow := Double(0.0); exit; end;
+      if (x = Double(-1.0)) or (x = Double(1.0)) then begin pcr_pow := Double(1.0); exit; end;
+      if (Double(-1.0) < x) and (x < Double(1.0)) then begin pcr_pow := Double(0.0); exit; end;
+      if (x < Double(-1.0)) or (Double(1.0) < x) then begin pcr_pow := cInfPos.f; exit; end;
     end;
     // y = -Inf
     if yu.u = cInfNeg.u then begin
-      if x = 0.0 then begin pcr_pow := cInfPos.f; exit; end;
-      if (x = -1.0) or (x = 1.0) then begin pcr_pow := 1.0; exit; end;
-      if (-1.0 < x) and (x < 1.0) then begin pcr_pow := cInfPos.f; exit; end;
-      if (x < -1.0) or (1.0 < x) then begin pcr_pow := 0.0; exit; end;
+      if x = Double(0.0) then begin pcr_pow := cInfPos.f; exit; end;
+      if (x = Double(-1.0)) or (x = Double(1.0)) then begin pcr_pow := Double(1.0); exit; end;
+      if (Double(-1.0) < x) and (x < Double(1.0)) then begin pcr_pow := cInfPos.f; exit; end;
+      if (x < Double(-1.0)) or (Double(1.0) < x) then begin pcr_pow := Double(0.0); exit; end;
     end;
   end;
 
   // === x <= 0 cascade ===
-  if x <= 0.0 then begin
-    if y = 0.0 then begin pcr_pow := 1.0; exit; end;
+  if x <= Double(0.0) then begin
+    if y = Double(0.0) then begin pcr_pow := Double(1.0); exit; end;
 
     if xu.u = 0 then begin   // x = +0.0
-      if PowIsInt(y) and not PowIsInt(y * 0.5) then begin
-        if y < 0.0 then begin pcr_pow := cInfPos.f; exit; end;
-        pcr_pow := 0.0; exit;
+      if PowIsInt(y) and not PowIsInt(y * Double(0.5)) then begin
+        if y < Double(0.0) then begin pcr_pow := cInfPos.f; exit; end;
+        pcr_pow := Double(0.0); exit;
       end;
-      if y > 0.0 then begin pcr_pow := 0.0; exit; end;
+      if y > Double(0.0) then begin pcr_pow := Double(0.0); exit; end;
       pcr_pow := cInfPos.f; exit;
     end;
     if xu.u = UInt64($8000000000000000) then begin   // x = -0.0
-      if PowIsInt(y) and not PowIsInt(y * 0.5) then begin
-        if y < 0.0 then begin pcr_pow := -cInfPos.f; exit; end;
-        pcr_pow := -0.0; exit;
+      if PowIsInt(y) and not PowIsInt(y * Double(0.5)) then begin
+        if y < Double(0.0) then begin pcr_pow := -cInfPos.f; exit; end;
+        pcr_pow := Double(-0.0); exit;
       end;
-      if y > 0.0 then begin pcr_pow := 0.0; exit; end;
+      if y > Double(0.0) then begin pcr_pow := Double(0.0); exit; end;
       pcr_pow := cInfPos.f; exit;
     end;
 
     if not PowIsInt(y) then begin pcr_pow := cNaNDoublePos.f; exit; end;
 
-    cs0 := 1.0; cs1 := -1.0;
+    cs0 := Double(1.0); cs1 := Double(-1.0);
     ay := y; if ay < 0 then ay := -ay;
     if ay >= Double(9007199254740992.0) then y_parity := 0  // 2^53
     else y_parity := Integer(Trunc(y) and 1);
@@ -952,10 +952,10 @@ begin
   end;
 
   // Easy cases short-circuit
-  if y = 1.0 then begin pcr_pow := s * x; exit; end;
-  if y = 2.0 then begin pcr_pow := x * x; exit; end;
-  if y = 0.5 then begin pcr_pow := Sqrt(x); exit; end;
-  if y = 0.0 then begin pcr_pow := 1.0; exit; end;
+  if y = Double(1.0) then begin pcr_pow := s * x; exit; end;
+  if y = Double(2.0) then begin pcr_pow := x * x; exit; end;
+  if y = Double(0.5) then begin pcr_pow := Sqrt(x); exit; end;
+  if y = Double(0.0) then begin pcr_pow := Double(1.0); exit; end;
 
   // === Phase 2: dint slow path ===
   DIntFromD(Xd, x);
@@ -969,7 +969,7 @@ begin
   // Rounding test (Pascal +1 ex convention: subtract 1 from C thresholds).
   // C R.ex < -1075 ; underflow -> -1074 in Pascal
   if Rd_dint.ex < -1074 then begin
-    pcr_pow := 0.5 * (s * cPowMinSub.f); exit;
+    pcr_pow := Double(0.5) * (s * cPowMinSub.f); exit;
   end;
 
   if Rd_dint.ex < -1021 then begin   // C: < -1022
@@ -983,7 +983,7 @@ begin
     if m54 + 28 > 56 then rd := 1 else rd := 0;
   end;
 
-  Rd_dint.sgn := Byte(s = -1.0);
+  Rd_dint.sgn := Byte(s = Double(-1.0));
 
   if rd <> 0 then begin
     pcr_pow := DToD(Rd_dint); exit;
@@ -1014,15 +1014,15 @@ begin
     rd := 1;
 
   if rd <> 0 then begin
-    qZ.sgn := Byte(s = -1.0);
+    qZ.sgn := Byte(s = Double(-1.0));
     qZ.r3 := qZ.r3 and (UInt64($FFFFFFFFFFFFFFFF) shl 10);
     pcr_pow := PowQIntToD(qZ); exit;
   end;
 
   // qR very small: x^y near 1
   if qR.ex < -56 then begin
-    if qR.sgn = 0 then pcr_pow := 1.0 + cPow1pm100.f
-    else pcr_pow := 1.0 - cPow1pm100.f;
+    if qR.sgn = 0 then pcr_pow := Double(1.0) + cPow1pm100.f
+    else pcr_pow := Double(1.0) - cPow1pm100.f;
     exit;
   end;
 

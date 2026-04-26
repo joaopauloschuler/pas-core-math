@@ -13,7 +13,7 @@ import re, struct, os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, '..', 'core-math', 'src', 'binary64', 'log2p1', 'log2p1.c')
-OUT = os.path.join(ROOT, 'src', 'log2p1_const.inc')
+OUT = os.path.join(ROOT, 'src', 'inc_64', 'log2p1_const_64.inc')
 
 
 def b64(s):
@@ -22,7 +22,10 @@ def b64(s):
 
 
 def fu(u):
-    return f"$%016X" % u
+    s = f"$%016X" % u
+    if u >= (1 << 63):
+        return f"QWord({s})"
+    return s
 
 
 def slurp(p):
@@ -118,9 +121,16 @@ def emit_arr(name, vals, group=4):
     lines.append('')
 
 
-emit_arr('cLog2p1P', P, 4)
-emit_arr('cLog2p1Pa', Pa, 4)
-emit_arr('cLog2p1Pacc', Pacc, 4)
+# Phase 6.2 Pillar B: lift fixed-trip polynomial coefficients to named scalars.
+def emit_named(name, vals):
+    lines.append(f'  // {name} — Pillar B: lifted to named Tb64u64 scalars.')
+    for i, u in enumerate(vals):
+        lines.append(f'  {name}_{i}: Tb64u64 = (u:{fu(u)});')
+    lines.append('')
+
+emit_named('cLog2p1P', P)
+emit_named('cLog2p1Pa', Pa)
+emit_named('cLog2p1Pacc', Pacc)
 
 EXC_X = [e[0] for e in EXC]
 EXC_H = [e[1] for e in EXC]
@@ -151,7 +161,7 @@ lines.append(f'  cLog2p1ErrMain:  Tb64u64 = (u:{fu(b64("0x1.23p-68"))}); // 0x1.
 
 # LOG2_INV dint: C ex=12, pascoremath +1 → ex=13
 # C: hi=0xb8aa3b295c17f0bb, lo=0xbe87fed0691d3e89, ex=12, sgn=0
-lines.append(f'  cLog2p1Log2InvDint: TDInt64 = (hi:$B8AA3B295C17F0BB; lo:$BE87FED0691D3E89; ex:13; sgn:0);')
+lines.append(f'  cLog2p1Log2InvDint: TDInt64 = (hi:{fu(0xB8AA3B295C17F0BB)}; lo:{fu(0xBE87FED0691D3E89)}; ex:13; sgn:0);')
 
 # Exception value used in cr_log2p1_accurate_tiny: 0x0.2c316a14459d8p-1022 (subnormal)
 exc_tiny = b64('0x0.2c316a14459d8p-1022')

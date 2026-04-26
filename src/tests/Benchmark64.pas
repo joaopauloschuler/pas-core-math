@@ -91,7 +91,8 @@ begin
        IfThen(mopsC <= mopsP * (1.0 + TIE_THRESHOLD), '  TIE', ''))]));
 end;
 
-procedure BenchBivar(const name: string; pfC: TBivarFuncC; pfP: TBivarFuncP);
+procedure BenchBivar(const name: string; pfC: TBivarFuncC; pfP: TBivarFuncP;
+                     iters: Int32 = BENCH_N);
 var
   i: Int32;
   ux, uy: UInt64;
@@ -108,7 +109,7 @@ begin
   ux := 0;
   uy := $5555555555555555;
   t0 := Now;
-  for i := 1 to BENCH_N do
+  for i := 1 to iters do
   begin
     vx.u := ux;
     vy.u := uy;
@@ -126,7 +127,7 @@ begin
   ux := 0;
   uy := $5555555555555555;
   t0 := Now;
-  for i := 1 to BENCH_N do
+  for i := 1 to iters do
   begin
     vx.u := ux;
     vy.u := uy;
@@ -139,8 +140,8 @@ begin
   msP := MillisecondsBetween(t1, t0);
   pSink := sink;
 
-  if msC > 0 then mopsC := BENCH_N / msC / 1000.0 else mopsC := 999.9;
-  if msP > 0 then mopsP := BENCH_N / msP / 1000.0 else mopsP := 999.9;
+  if msC > 0 then mopsC := iters / msC / 1000.0 else mopsC := 999.9;
+  if msP > 0 then mopsP := iters / msP / 1000.0 else mopsP := 999.9;
 
   GlobalSink := GlobalSink xor cSink xor pSink;
 
@@ -289,8 +290,8 @@ begin
   BenchUni('tanpi',   @cr_tanpi,   @pcr_tanpi);
   BenchUni('tgamma',  @cr_tgamma,  @pcr_tgamma);
 
-  BenchBivar('atan2',   @wrap_atan2_c,   @wrap_atan2_p);
-  BenchBivar('atan2pi', @wrap_atan2pi_c, @wrap_atan2pi_p);
+  BenchBivar('atan2',   @wrap_atan2_c,   @wrap_atan2_p,   BENCH_N div 100);
+  BenchBivar('atan2pi', @wrap_atan2pi_c, @wrap_atan2pi_p, BENCH_N div 10);
   BenchBivar('hypot',   @wrap_hypot_c,   @wrap_hypot_p);
   BenchBivar('pow',     @wrap_pow_c,     @wrap_pow_p);
 

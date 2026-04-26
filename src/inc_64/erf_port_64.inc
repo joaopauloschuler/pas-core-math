@@ -49,18 +49,18 @@ begin
     z2h := z * z;
     z2l := pcr_fma(z, z, -z2h);
     z4  := z2h * z2h;
-    c9  := pcr_fma(cErfC0[7].f, z2h, cErfC0[6].f);
-    c5  := pcr_fma(cErfC0[5].f, z2h, cErfC0[4].f);
+    c9  := pcr_fma(cErfC0_7.f, z2h, cErfC0_6.f);
+    c5  := pcr_fma(cErfC0_5.f, z2h, cErfC0_4.f);
     c5  := pcr_fma(c9, z4, c5);
     th  := z2h * c5;
     tl  := pcr_fma(z2h, c5, -th);
-    pcr_fasttwosum(h, l, cErfC0[2].f, th);
-    l := l + (tl + cErfC0[3].f);
+    pcr_fasttwosum(h, l, cErfC0_2.f, th);
+    l := l + (tl + cErfC0_3.f);
     hcopy := h;
     th := z2h * h;
     tl := pcr_fma(z2h, h, -th);
-    tl := tl + pcr_fma(z2h, l, cErfC0[1].f);
-    pcr_fasttwosum(h, l, cErfC0[0].f, th);
+    tl := tl + pcr_fma(z2h, l, cErfC0_1.f);
+    pcr_fasttwosum(h, l, cErfC0_0.f, th);
     l := l + pcr_fma(z2l, hcopy, tl);
     th := h * z;
     tl := pcr_fma(h, z, -th);
@@ -111,9 +111,7 @@ end;
 procedure ErfAccurateTiny(out h, l: Double; z: Double);
 var
   i, j, k: Int32;
-  p: array[0..14] of Double;
   z2, th, tl: Double;
-  a: Int32;
 begin
   i := 0;
   j := 171;
@@ -129,38 +127,61 @@ begin
     Exit;
   end;
 
-  for a := 0 to 14 do p[a] := cErfP[a].f;
   z2 := z * z;
-  h  := p[14]; // degree 21
-  // for a = 19 down to 13 step -2 -> indices 13,12,11,10
-  h := pcr_fma(h, z2, p[13]);
-  h := pcr_fma(h, z2, p[12]);
-  h := pcr_fma(h, z2, p[11]);
-  h := pcr_fma(h, z2, p[10]);
+  h  := cErfP_14.f; // degree 21
+  // for a = 19 downto 13 step -2 -> indices 13,12,11,10
+  h := pcr_fma(h, z2, cErfP_13.f);
+  h := pcr_fma(h, z2, cErfP_12.f);
+  h := pcr_fma(h, z2, cErfP_11.f);
+  h := pcr_fma(h, z2, cErfP_10.f);
   l := Double(0.0);
-  // Loop a = 11 step -2 down to 9 (single-double coefficients d11, d9).
-  for a := 11 downto 9 do
-  begin
-    if (a and 1) = 0 then continue;
-    // multiply (h, l) by z^2: a_mul(th,tl,h,z); tl=fma(l,z,tl); a_mul(h,l,th,z); l=fma(tl,z,l)
-    th := h * z;  tl := pcr_fma(h, z, -th);
-    tl := pcr_fma(l, z, tl);
-    h  := th * z; l  := pcr_fma(th, z, -h);
-    l  := pcr_fma(tl, z, l);
-    pcr_fasttwosum(h, tl, p[(a div 2) + 4], h);
-    l := l + tl;
-  end;
-  // Loop a = 7 step -2 down to 1 (dd coefficients): pairs (p[a-1], p[a]).
-  for a := 7 downto 1 do
-  begin
-    if (a and 1) = 0 then continue;
-    th := h * z;  tl := pcr_fma(h, z, -th);
-    tl := pcr_fma(l, z, tl);
-    h  := th * z; l  := pcr_fma(th, z, -h);
-    l  := pcr_fma(tl, z, l);
-    pcr_fasttwosum(h, tl, p[a-1], h);
-    l := l + (p[a] + tl);
-  end;
+
+  // Phase 6.6 Pillar A: unrolled a = 11, 9 (single-double coefficients).
+  // a = 11 -> p[(11 div 2) + 4] = p[9]
+  th := h * z;  tl := pcr_fma(h, z, -th);
+  tl := pcr_fma(l, z, tl);
+  h  := th * z; l  := pcr_fma(th, z, -h);
+  l  := pcr_fma(tl, z, l);
+  pcr_fasttwosum(h, tl, cErfP_9.f, h);
+  l := l + tl;
+  // a = 9 -> p[(9 div 2) + 4] = p[8]
+  th := h * z;  tl := pcr_fma(h, z, -th);
+  tl := pcr_fma(l, z, tl);
+  h  := th * z; l  := pcr_fma(th, z, -h);
+  l  := pcr_fma(tl, z, l);
+  pcr_fasttwosum(h, tl, cErfP_8.f, h);
+  l := l + tl;
+
+  // Phase 6.6 Pillar A: unrolled a = 7, 5, 3, 1 (dd-pair coefficients).
+  // a = 7 -> (p[6], p[7])
+  th := h * z;  tl := pcr_fma(h, z, -th);
+  tl := pcr_fma(l, z, tl);
+  h  := th * z; l  := pcr_fma(th, z, -h);
+  l  := pcr_fma(tl, z, l);
+  pcr_fasttwosum(h, tl, cErfP_6.f, h);
+  l := l + (cErfP_7.f + tl);
+  // a = 5 -> (p[4], p[5])
+  th := h * z;  tl := pcr_fma(h, z, -th);
+  tl := pcr_fma(l, z, tl);
+  h  := th * z; l  := pcr_fma(th, z, -h);
+  l  := pcr_fma(tl, z, l);
+  pcr_fasttwosum(h, tl, cErfP_4.f, h);
+  l := l + (cErfP_5.f + tl);
+  // a = 3 -> (p[2], p[3])
+  th := h * z;  tl := pcr_fma(h, z, -th);
+  tl := pcr_fma(l, z, tl);
+  h  := th * z; l  := pcr_fma(th, z, -h);
+  l  := pcr_fma(tl, z, l);
+  pcr_fasttwosum(h, tl, cErfP_2.f, h);
+  l := l + (cErfP_3.f + tl);
+  // a = 1 -> (p[0], p[1])
+  th := h * z;  tl := pcr_fma(h, z, -th);
+  tl := pcr_fma(l, z, tl);
+  h  := th * z; l  := pcr_fma(th, z, -h);
+  l  := pcr_fma(tl, z, l);
+  pcr_fasttwosum(h, tl, cErfP_0.f, h);
+  l := l + (cErfP_1.f + tl);
+
   // Multiply by z.
   th := h * z; tl := pcr_fma(h, z, -th);
   h := th;
@@ -171,20 +192,18 @@ end;
 // Accurate path: 0 <= z, z >= 2^-61, z <= 0x1.7afb48dc96626p+2.
 procedure ErfAccurate(out h, l: Double; z: Double);
 var
-  i: Int32;
   iv: Int32;
   zr: Double;
   th, tl: Double;
   j: Int32;
   v: Double;
 begin
-  for i := 0 to 4 do
-    if z = cErfExAcc[i, 0].f then
-    begin
-      h := cErfExAcc[i, 1].f;
-      l := cErfExAcc[i, 2].f;
-      Exit;
-    end;
+  // Phase 6.6 Pillar A: unrolled cErfExAcc[0..4] exception scan.
+  if z = cErfExAcc_0_0.f then begin h := cErfExAcc_0_1.f; l := cErfExAcc_0_2.f; Exit; end;
+  if z = cErfExAcc_1_0.f then begin h := cErfExAcc_1_1.f; l := cErfExAcc_1_2.f; Exit; end;
+  if z = cErfExAcc_2_0.f then begin h := cErfExAcc_2_1.f; l := cErfExAcc_2_2.f; Exit; end;
+  if z = cErfExAcc_3_0.f then begin h := cErfExAcc_3_1.f; l := cErfExAcc_3_2.f; Exit; end;
+  if z = cErfExAcc_4_0.f then begin h := cErfExAcc_4_1.f; l := cErfExAcc_4_2.f; Exit; end;
 
   if z < Double(0.125) then
   begin

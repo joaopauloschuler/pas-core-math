@@ -142,7 +142,6 @@ var
   iq: Int32;
   dx2, dx3: Double;
   chp, clp, thp, tlp: Double;
-  i: Int32;
   px0, px1, dv: Double;
   x2: Double;
   er, de: UInt64;
@@ -257,8 +256,8 @@ begin
     z2 := z * z;
     z4 := z2 * z2;
     z3 := z * z2;
-    f := z3 * ((cTanpiC[0].f + z2 * cTanpiC[1].f)
-             + z4 * (cTanpiC[2].f + z2 * cTanpiC[3].f));
+    f := z3 * ((cTanpiC_0.f + z2 * cTanpiC_1.f)
+             + z4 * (cTanpiC_2.f + z2 * cTanpiC_3.f));
     if z >= Double(0.0) then
       eps := z3 * cTanpi2pm256.f + cTanpi2pm104.f
     else
@@ -279,18 +278,35 @@ begin
     z := z * cTanpi2pm63.f;
     z2 := z * z;
     dx2 := pcr_fma(z, z, -z2);
-    tl := z2 * (cTanpiRefCl[0].f + z2 * (cTanpiRefCl[1].f + z2 * cTanpiRefCl[2].f));
-    // polydd(z2, dx2, 5, ch, &tl) — seeded
-    chp := cTanpiRefCh[4, 0].f + tl;
-    clp := ((cTanpiRefCh[4, 0].f - chp) + tl) + cTanpiRefCh[4, 1].f;
-    for i := 3 downto 0 do
-    begin
-      chp := pcr_muldd(z2, dx2, chp, clp, clp);
-      thp := chp + cTanpiRefCh[i, 0].f;
-      tlp := (cTanpiRefCh[i, 0].f - thp) + chp;
-      chp := thp;
-      clp := clp + tlp + cTanpiRefCh[i, 1].f;
-    end;
+    tl := z2 * (cTanpiRefCl_0.f + z2 * (cTanpiRefCl_1.f + z2 * cTanpiRefCl_2.f));
+    // polydd(z2, dx2, 5, ch, &tl) — seeded.
+    // Pillar A (Phase 6.3): for i := 3 downto 0 unrolled.
+    chp := cTanpiRefCh_4_0.f + tl;
+    clp := ((cTanpiRefCh_4_0.f - chp) + tl) + cTanpiRefCh_4_1.f;
+    // i = 3
+    chp := pcr_muldd(z2, dx2, chp, clp, clp);
+    thp := chp + cTanpiRefCh_3_0.f;
+    tlp := (cTanpiRefCh_3_0.f - thp) + chp;
+    chp := thp;
+    clp := clp + tlp + cTanpiRefCh_3_1.f;
+    // i = 2
+    chp := pcr_muldd(z2, dx2, chp, clp, clp);
+    thp := chp + cTanpiRefCh_2_0.f;
+    tlp := (cTanpiRefCh_2_0.f - thp) + chp;
+    chp := thp;
+    clp := clp + tlp + cTanpiRefCh_2_1.f;
+    // i = 1
+    chp := pcr_muldd(z2, dx2, chp, clp, clp);
+    thp := chp + cTanpiRefCh_1_0.f;
+    tlp := (cTanpiRefCh_1_0.f - thp) + chp;
+    chp := thp;
+    clp := clp + tlp + cTanpiRefCh_1_1.f;
+    // i = 0
+    chp := pcr_muldd(z2, dx2, chp, clp, clp);
+    thp := chp + cTanpiRefCh_0_0.f;
+    tlp := (cTanpiRefCh_0_0.f - thp) + chp;
+    chp := thp;
+    clp := clp + tlp + cTanpiRefCh_0_1.f;
     th := chp; tl := clp;
     th := pcr_mulddd_pd(th, tl, z, tl);
     TanpiApply(iq, ms, th, tl);
@@ -340,7 +356,7 @@ begin
       // 2^-53 <= |x| < 2^-12: degree-3 fast path then refine
       x2 := x * x;
       z3 := x * x2;
-      f := z3 * (cTanpiSmallC[0].f + x2 * (cTanpiSmallC[1].f + x2 * cTanpiSmallC[2].f));
+      f := z3 * (cTanpiSmallC_0.f + x2 * (cTanpiSmallC_1.f + x2 * cTanpiSmallC_2.f));
       px0 := pcr_mulddd_pd(cTanpiPi0.f, cTanpiPi1.f, x, px1);
       pcr_fasttwosum(th, tlp, px0, f);
       tl := px1 + tlp;
@@ -352,18 +368,23 @@ begin
       // Refinement
       dx2 := pcr_fma(x, x, -x2);
       dx3 := pcr_fma(x2, x, -z3) + dx2 * x;
-      tl := x2 * (cTanpiSmRefCl[0].f + x2 * cTanpiSmRefCl[1].f);
-      // polydd seeded: ch = c[n-1][0] + *l; cl = ((c[n-1][0] - ch) + *l) + c[n-1][1]
-      chp := cTanpiSmRefCh[2, 0].f + tl;
-      clp := ((cTanpiSmRefCh[2, 0].f - chp) + tl) + cTanpiSmRefCh[2, 1].f;
-      for i := 1 downto 0 do
-      begin
-        chp := pcr_muldd(x2, dx2, chp, clp, clp);
-        thp := chp + cTanpiSmRefCh[i, 0].f;
-        tlp := (cTanpiSmRefCh[i, 0].f - thp) + chp;
-        chp := thp;
-        clp := clp + tlp + cTanpiSmRefCh[i, 1].f;
-      end;
+      tl := x2 * (cTanpiSmRefCl_0.f + x2 * cTanpiSmRefCl_1.f);
+      // polydd seeded: ch = c[n-1][0] + *l; cl = ((c[n-1][0] - ch) + *l) + c[n-1][1].
+      // Pillar A (Phase 6.3): for i := 1 downto 0 unrolled.
+      chp := cTanpiSmRefCh_2_0.f + tl;
+      clp := ((cTanpiSmRefCh_2_0.f - chp) + tl) + cTanpiSmRefCh_2_1.f;
+      // i = 1
+      chp := pcr_muldd(x2, dx2, chp, clp, clp);
+      thp := chp + cTanpiSmRefCh_1_0.f;
+      tlp := (cTanpiSmRefCh_1_0.f - thp) + chp;
+      chp := thp;
+      clp := clp + tlp + cTanpiSmRefCh_1_1.f;
+      // i = 0
+      chp := pcr_muldd(x2, dx2, chp, clp, clp);
+      thp := chp + cTanpiSmRefCh_0_0.f;
+      tlp := (cTanpiSmRefCh_0_0.f - thp) + chp;
+      chp := thp;
+      clp := clp + tlp + cTanpiSmRefCh_0_1.f;
       th := chp; tl := clp;
       th := pcr_muldd(z3, dx3, th, tl, tl);
       // fasttwosum(px0, th, &dv)

@@ -72,7 +72,7 @@ var
   d: Tb64u64;
 begin
   kd := pcr_roundeven(x * cExp10m1InvLog210.f);
-  if kd = 4194304.0 then kd := 4194303.0;
+  if kd = Double(4194304.0) then kd := Double(4194303.0);
 
   yh := pcr_fma(-kd, cExp10m1Log210H.f, x);  // exact
   pcr_fasttwosum(yh, yl, yh, -kd * cExp10m1Log210M.f);
@@ -110,10 +110,10 @@ var
   x2, x4, c9, c7, c5, t, hh, ll, e1, e2, saved: Double;
 begin
   x2 := x * x; x4 := x2 * x2;
-  c9 := pcr_fma(cExp10m1P[12].f, x, cExp10m1P[11].f);
-  c7 := pcr_fma(cExp10m1P[10].f, x, cExp10m1P[9].f);
-  c5 := pcr_fma(cExp10m1P[8].f,  x, cExp10m1P[7].f);
-  c9 := pcr_fma(cExp10m1P[13].f, x2, c9);
+  c9 := pcr_fma(cExp10m1P_12.f, x, cExp10m1P_11.f);
+  c7 := pcr_fma(cExp10m1P_10.f, x, cExp10m1P_9.f);
+  c5 := pcr_fma(cExp10m1P_8.f,  x, cExp10m1P_7.f);
+  c9 := pcr_fma(cExp10m1P_13.f, x2, c9);
   c5 := pcr_fma(c7, x2, c5);
   c5 := pcr_fma(c9, x4, c5);
 
@@ -122,8 +122,8 @@ begin
   ll := pcr_fma(c5, x, -hh);
   // fast_two_sum (h, t, P[6], h)
   saved := hh;
-  e1 := cExp10m1P[6].f + saved;
-  t  := saved - (e1 - cExp10m1P[6].f);
+  e1 := cExp10m1P_6.f + saved;
+  t  := saved - (e1 - cExp10m1P_6.f);
   hh := e1;
   ll := ll + t;
 
@@ -134,10 +134,10 @@ begin
   ll := pcr_fma(x, ll, e2);
   hh := e1;
   saved := hh;
-  e1 := cExp10m1P[4].f + saved;
-  t  := saved - (e1 - cExp10m1P[4].f);
+  e1 := cExp10m1P_4.f + saved;
+  t  := saved - (e1 - cExp10m1P_4.f);
   hh := e1;
-  ll := ll + t + cExp10m1P[5].f;
+  ll := ll + t + cExp10m1P_5.f;
 
   // s_mul ... add P[2]+P[3]
   saved := hh;
@@ -146,10 +146,10 @@ begin
   ll := pcr_fma(x, ll, e2);
   hh := e1;
   saved := hh;
-  e1 := cExp10m1P[2].f + saved;
-  t  := saved - (e1 - cExp10m1P[2].f);
+  e1 := cExp10m1P_2.f + saved;
+  t  := saved - (e1 - cExp10m1P_2.f);
   hh := e1;
-  ll := ll + t + cExp10m1P[3].f;
+  ll := ll + t + cExp10m1P_3.f;
 
   // s_mul ... add P[0]+P[1]
   saved := hh;
@@ -158,10 +158,10 @@ begin
   ll := pcr_fma(x, ll, e2);
   hh := e1;
   saved := hh;
-  e1 := cExp10m1P[0].f + saved;
-  t  := saved - (e1 - cExp10m1P[0].f);
+  e1 := cExp10m1P_0.f + saved;
+  t  := saved - (e1 - cExp10m1P_0.f);
   hh := e1;
-  ll := ll + t + cExp10m1P[1].f;
+  ll := ll + t + cExp10m1P_1.f;
 
   // s_mul (h, l, x, h, l) — final multiplication by x
   saved := hh;
@@ -200,7 +200,6 @@ function Exp10m1AccurateTiny(x: Double): Double;
 var
   a, b, c: Int32;
   h, l, t, x2, x4, c15, c13, exc: Double;
-  i: Int32;
 begin
   a := 0; b := 145;
   while a + 1 <> b do
@@ -215,28 +214,47 @@ begin
   end;
 
   x2 := x * x; x4 := x2 * x2;
-  c15 := pcr_fma(cExp10m1Q[23].f, x, cExp10m1Q[22].f);  // degree 15
-  c13 := pcr_fma(cExp10m1Q[21].f, x, cExp10m1Q[20].f);  // degree 13
-  c15 := pcr_fma(cExp10m1Q[24].f, x2, c15);
+  c15 := pcr_fma(cExp10m1Q_23.f, x, cExp10m1Q_22.f);  // degree 15
+  c13 := pcr_fma(cExp10m1Q_21.f, x, cExp10m1Q_20.f);  // degree 13
+  c15 := pcr_fma(cExp10m1Q_24.f, x2, c15);
   // add Q[19]*x + c13*x^2 + c15*x^4 to Q[18] (degree 11)
-  exc := cExp10m1Q[19].f * x + c13 * x2 + c15 * x4;
-  h := cExp10m1Q[18].f + exc;
-  l := exc - (h - cExp10m1Q[18].f);
+  exc := cExp10m1Q_19.f * x + c13 * x2 + c15 * x4;
+  h := cExp10m1Q_18.f + exc;
+  l := exc - (h - cExp10m1Q_18.f);
   // multiply h+l by x and add Q[17] (degree 10)
   E2M1SMul(h, l, x, h, l);
-  pcr_fasttwosum(h, t, cExp10m1Q[17].f, h);
+  pcr_fasttwosum(h, t, cExp10m1Q_17.f, h);
   l := l + t;
   // multiply h+l by x and add Q[16] (degree 9)
   E2M1SMul(h, l, x, h, l);
-  pcr_fasttwosum(h, t, cExp10m1Q[16].f, h);
+  pcr_fasttwosum(h, t, cExp10m1Q_16.f, h);
   l := l + t;
   // degrees 8..1 are dd: pairs (Q[14],Q[15]) ... (Q[0],Q[1])
-  for i := 7 downto 0 do
-  begin
-    E2M1SMul(h, l, x, h, l);
-    pcr_fasttwosum(h, t, cExp10m1Q[i*2].f, h);
-    l := l + t + cExp10m1Q[i*2 + 1].f;
-  end;
+  // Unrolled: for i := 7 downto 0 — Pillar A.
+  E2M1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cExp10m1Q_14.f, h);
+  l := l + t + cExp10m1Q_15.f;
+  E2M1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cExp10m1Q_12.f, h);
+  l := l + t + cExp10m1Q_13.f;
+  E2M1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cExp10m1Q_10.f, h);
+  l := l + t + cExp10m1Q_11.f;
+  E2M1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cExp10m1Q_8.f, h);
+  l := l + t + cExp10m1Q_9.f;
+  E2M1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cExp10m1Q_6.f, h);
+  l := l + t + cExp10m1Q_7.f;
+  E2M1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cExp10m1Q_4.f, h);
+  l := l + t + cExp10m1Q_5.f;
+  E2M1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cExp10m1Q_2.f, h);
+  l := l + t + cExp10m1Q_3.f;
+  E2M1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cExp10m1Q_0.f, h);
+  l := l + t + cExp10m1Q_1.f;
   // multiply h+l by x
   E2M1SMul(h, l, x, h, l);
   Result := h + l;

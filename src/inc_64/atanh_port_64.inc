@@ -84,36 +84,34 @@ const
     ((u:QWord($BE4532C1269E2038)),(u:$3F862E5000000000)));
 
   // Main-branch 5-coefficient polynomial. Differs from acosh only in c[0].
-  cAtanhC: array[0..4] of Tb64u64 = (
-    (u:QWord($BFF0000000000000)), // -0x1p+0
-    (u:$3FF5555555555530), //  0x1.555555555553p+0
-    (u:QWord($BFFFFFFFFFFFFFA0)), // -0x1.fffffffffffap+0
-    (u:$40099999E33A6366), //  0x1.99999e33a6366p+1
-    (u:QWord($C01555559EF9525F)));// -0x1.555559ef9525fp+2
+  // Pillar B: named scalars (was: cAtanhC: array[0..4]).
+  cAtanhC_0: Tb64u64 = (u:QWord($BFF0000000000000)); // -0x1p+0
+  cAtanhC_1: Tb64u64 = (u:$3FF5555555555530);        //  0x1.555555555553p+0
+  cAtanhC_2: Tb64u64 = (u:QWord($BFFFFFFFFFFFFFA0)); // -0x1.fffffffffffap+0
+  cAtanhC_3: Tb64u64 = (u:$40099999E33A6366);        //  0x1.99999e33a6366p+1
+  cAtanhC_4: Tb64u64 = (u:QWord($C01555559EF9525F));// -0x1.555559ef9525fp+2
 
-  // as_atanh_zero polynomial ch[13][2]
-  cAtanhZeroCh: array[0..12, 0..1] of Tb64u64 = (
-    ((u:$3FD5555555555555),(u:$3C75555555555555)),  // 3   :  0x1.5555555555555p-2 ,  0x1.5555555555555p-56
-    ((u:$3FC999999999999A),(u:QWord($BC6999999999611C))),  // 5
-    ((u:$3FC2492492492492),(u:$3C72492490F76B25)),  // 7
-    ((u:$3FBC71C71C71C71C),(u:$3C5C71CD5C38A112)),  // 9
-    ((u:$3FB745D1745D1746),(u:QWord($BC67556C4165F4CA))),  // 11
-    ((u:$3FB3B13B13B13B14),(u:QWord($BC5B893C3B36052E))),  // 13
-    ((u:$3FB1111111111105),(u:$3C54E1AFD723ED1F)),  // 15
-    ((u:$3FAE1E1E1E1E2678),(u:QWord($BC5F86EA96FB1435))),  // 17
-    ((u:$3FAAF286BC9F90CC),(u:$3C41E51A6E54FDE9)),  // 19
-    ((u:$3FA8618618C779B6),(u:QWord($BC3AB913DE95C3BF))),  // 21
-    ((u:$3FA642C84AA383EB),(u:$3C5632E747641B12)),  // 23
-    ((u:$3FA47AE2D205013C),(u:QWord($BC40C9617E7BCFF2))),  // 25
-    ((u:$3FA2F664D60473F9),(u:$3C33ADB3E2B7F35E))); // 27
+  // as_atanh_zero polynomial ch[13][2] — Pillar B: named scalars.
+  cAtanhZeroChH_0:  Tb64u64 = (u:$3FD5555555555555);  cAtanhZeroChL_0:  Tb64u64 = (u:$3C75555555555555);
+  cAtanhZeroChH_1:  Tb64u64 = (u:$3FC999999999999A);  cAtanhZeroChL_1:  Tb64u64 = (u:QWord($BC6999999999611C));
+  cAtanhZeroChH_2:  Tb64u64 = (u:$3FC2492492492492);  cAtanhZeroChL_2:  Tb64u64 = (u:$3C72492490F76B25);
+  cAtanhZeroChH_3:  Tb64u64 = (u:$3FBC71C71C71C71C);  cAtanhZeroChL_3:  Tb64u64 = (u:$3C5C71CD5C38A112);
+  cAtanhZeroChH_4:  Tb64u64 = (u:$3FB745D1745D1746);  cAtanhZeroChL_4:  Tb64u64 = (u:QWord($BC67556C4165F4CA));
+  cAtanhZeroChH_5:  Tb64u64 = (u:$3FB3B13B13B13B14);  cAtanhZeroChL_5:  Tb64u64 = (u:QWord($BC5B893C3B36052E));
+  cAtanhZeroChH_6:  Tb64u64 = (u:$3FB1111111111105);  cAtanhZeroChL_6:  Tb64u64 = (u:$3C54E1AFD723ED1F);
+  cAtanhZeroChH_7:  Tb64u64 = (u:$3FAE1E1E1E1E2678);  cAtanhZeroChL_7:  Tb64u64 = (u:QWord($BC5F86EA96FB1435));
+  cAtanhZeroChH_8:  Tb64u64 = (u:$3FAAF286BC9F90CC);  cAtanhZeroChL_8:  Tb64u64 = (u:$3C41E51A6E54FDE9);
+  cAtanhZeroChH_9:  Tb64u64 = (u:$3FA8618618C779B6);  cAtanhZeroChL_9:  Tb64u64 = (u:QWord($BC3AB913DE95C3BF));
+  cAtanhZeroChH_10: Tb64u64 = (u:$3FA642C84AA383EB);  cAtanhZeroChL_10: Tb64u64 = (u:$3C5632E747641B12);
+  cAtanhZeroChH_11: Tb64u64 = (u:$3FA47AE2D205013C);  cAtanhZeroChL_11: Tb64u64 = (u:QWord($BC40C9617E7BCFF2));
+  cAtanhZeroChH_12: Tb64u64 = (u:$3FA2F664D60473F9);  cAtanhZeroChL_12: Tb64u64 = (u:$3C33ADB3E2B7F35E);
 
-  // as_atanh_zero polynomial cl[5] (plain Horner, tail)
-  cAtanhZeroCl: array[0..4] of Tb64u64 = (
-    (u:$3FA1A9A91FD692AF), //  0x1.1a9a91fd692afp-5   // 29
-    (u:$3FA06DFBB35E7F44), //  0x1.06dfbb35e7f44p-5   // 31
-    (u:$3FA037BED4D7588F), //  0x1.037bed4d7588fp-5   // 33
-    (u:$3F95ACA6D6D720D6), //  0x1.5aca6d6d720d6p-6   // 35
-    (u:$3FA99EA5700D53A5));//  0x1.99ea5700d53a5p-5   // 37
+  // as_atanh_zero polynomial cl[5] (plain Horner, tail) — Pillar B: named scalars.
+  cAtanhZeroCl_0: Tb64u64 = (u:$3FA1A9A91FD692AF); //  0x1.1a9a91fd692afp-5
+  cAtanhZeroCl_1: Tb64u64 = (u:$3FA06DFBB35E7F44); //  0x1.06dfbb35e7f44p-5
+  cAtanhZeroCl_2: Tb64u64 = (u:$3FA037BED4D7588F); //  0x1.037bed4d7588fp-5
+  cAtanhZeroCl_3: Tb64u64 = (u:$3F95ACA6D6D720D6); //  0x1.5aca6d6d720d6p-6
+  cAtanhZeroCl_4: Tb64u64 = (u:$3FA99EA5700D53A5); //  0x1.99ea5700d53a5p-5
 
   // Database (only 2 entries, sign-flipped on negative x)
   cAtanhDb: array[0..1, 0..2] of Tb64u64 = (
@@ -177,24 +175,63 @@ var
   x2, x2l, y0, y1, y2: Double;
   ch, cl, th, tl, hh: Double;
   t, w: Tb64u64;
-  i: Int32;
 begin
   x2  := x * x;
   x2l := pcr_fma(x, x, -x2);
-  y2  := x2 * (cAtanhZeroCl[0].f + x2 * (cAtanhZeroCl[1].f
-      + x2 * (cAtanhZeroCl[2].f + x2 * (cAtanhZeroCl[3].f + x2 * cAtanhZeroCl[4].f))));
+  y2  := x2 * (cAtanhZeroCl_0.f + x2 * (cAtanhZeroCl_1.f
+      + x2 * (cAtanhZeroCl_2.f + x2 * (cAtanhZeroCl_3.f + x2 * cAtanhZeroCl_4.f))));
 
-  // Seeded polydd: n=13, seed *l = y2
-  ch := cAtanhZeroCh[12, 0].f + y2;
-  cl := ((cAtanhZeroCh[12, 0].f - ch) + y2) + cAtanhZeroCh[12, 1].f;
-  for i := 11 downto 0 do
-  begin
-    ch := AtanhMuldd(x2, x2l, ch, cl, cl);
-    th := ch + cAtanhZeroCh[i, 0].f;
-    tl := (cAtanhZeroCh[i, 0].f - th) + ch;
-    ch := th;
-    cl := cl + tl + cAtanhZeroCh[i, 1].f;
-  end;
+  // Seeded polydd: n=13, seed *l = y2 — Pillar A unroll of `for i := 11 downto 0`.
+  ch := cAtanhZeroChH_12.f + y2;
+  cl := ((cAtanhZeroChH_12.f - ch) + y2) + cAtanhZeroChL_12.f;
+
+  ch := AtanhMuldd(x2, x2l, ch, cl, cl);
+  th := ch + cAtanhZeroChH_11.f; tl := (cAtanhZeroChH_11.f - th) + ch;
+  ch := th; cl := cl + tl + cAtanhZeroChL_11.f;
+
+  ch := AtanhMuldd(x2, x2l, ch, cl, cl);
+  th := ch + cAtanhZeroChH_10.f; tl := (cAtanhZeroChH_10.f - th) + ch;
+  ch := th; cl := cl + tl + cAtanhZeroChL_10.f;
+
+  ch := AtanhMuldd(x2, x2l, ch, cl, cl);
+  th := ch + cAtanhZeroChH_9.f; tl := (cAtanhZeroChH_9.f - th) + ch;
+  ch := th; cl := cl + tl + cAtanhZeroChL_9.f;
+
+  ch := AtanhMuldd(x2, x2l, ch, cl, cl);
+  th := ch + cAtanhZeroChH_8.f; tl := (cAtanhZeroChH_8.f - th) + ch;
+  ch := th; cl := cl + tl + cAtanhZeroChL_8.f;
+
+  ch := AtanhMuldd(x2, x2l, ch, cl, cl);
+  th := ch + cAtanhZeroChH_7.f; tl := (cAtanhZeroChH_7.f - th) + ch;
+  ch := th; cl := cl + tl + cAtanhZeroChL_7.f;
+
+  ch := AtanhMuldd(x2, x2l, ch, cl, cl);
+  th := ch + cAtanhZeroChH_6.f; tl := (cAtanhZeroChH_6.f - th) + ch;
+  ch := th; cl := cl + tl + cAtanhZeroChL_6.f;
+
+  ch := AtanhMuldd(x2, x2l, ch, cl, cl);
+  th := ch + cAtanhZeroChH_5.f; tl := (cAtanhZeroChH_5.f - th) + ch;
+  ch := th; cl := cl + tl + cAtanhZeroChL_5.f;
+
+  ch := AtanhMuldd(x2, x2l, ch, cl, cl);
+  th := ch + cAtanhZeroChH_4.f; tl := (cAtanhZeroChH_4.f - th) + ch;
+  ch := th; cl := cl + tl + cAtanhZeroChL_4.f;
+
+  ch := AtanhMuldd(x2, x2l, ch, cl, cl);
+  th := ch + cAtanhZeroChH_3.f; tl := (cAtanhZeroChH_3.f - th) + ch;
+  ch := th; cl := cl + tl + cAtanhZeroChL_3.f;
+
+  ch := AtanhMuldd(x2, x2l, ch, cl, cl);
+  th := ch + cAtanhZeroChH_2.f; tl := (cAtanhZeroChH_2.f - th) + ch;
+  ch := th; cl := cl + tl + cAtanhZeroChL_2.f;
+
+  ch := AtanhMuldd(x2, x2l, ch, cl, cl);
+  th := ch + cAtanhZeroChH_1.f; tl := (cAtanhZeroChH_1.f - th) + ch;
+  ch := th; cl := cl + tl + cAtanhZeroChL_1.f;
+
+  ch := AtanhMuldd(x2, x2l, ch, cl, cl);
+  th := ch + cAtanhZeroChH_0.f; tl := (cAtanhZeroChH_0.f - th) + ch;
+  ch := th; cl := cl + tl + cAtanhZeroChL_0.f;
   y2 := cl;
   y1 := ch;
 
@@ -274,18 +311,22 @@ begin
   xl := xl + th * t.f;
   xh := AcoshAddDD(xh, xl, shm, slm, xl);
 
-  sl2 := xh * (cAcoshRefineCl[0].f + xh * (cAcoshRefineCl[1].f + xh * cAcoshRefineCl[2].f));
-  // Seeded polydd: n=3, seed *l = sl2
-  xh2 := cAcoshRefineCh[2, 0].f + sl2;
-  sh2 := ((cAcoshRefineCh[2, 0].f - xh2) + sl2) + cAcoshRefineCh[2, 1].f;
-  for i1 := 1 downto 0 do
-  begin
-    xh2 := pcr_muldd(xh, xl, xh2, sh2, sh2);
-    th  := xh2 + cAcoshRefineCh[i1, 0].f;
-    tl  := (cAcoshRefineCh[i1, 0].f - th) + xh2;
-    xh2 := th;
-    sh2 := sh2 + tl + cAcoshRefineCh[i1, 1].f;
-  end;
+  sl2 := xh * (cAcoshRefineCl_0.f + xh * (cAcoshRefineCl_1.f + xh * cAcoshRefineCl_2.f));
+  // Seeded polydd: n=3, seed *l = sl2 — Pillar A unroll of `for i1 := 1 downto 0`.
+  xh2 := cAcoshRefineChH_2.f + sl2;
+  sh2 := ((cAcoshRefineChH_2.f - xh2) + sl2) + cAcoshRefineChL_2.f;
+
+  xh2 := pcr_muldd(xh, xl, xh2, sh2, sh2);
+  th  := xh2 + cAcoshRefineChH_1.f;
+  tl  := (cAcoshRefineChH_1.f - th) + xh2;
+  xh2 := th;
+  sh2 := sh2 + tl + cAcoshRefineChL_1.f;
+
+  xh2 := pcr_muldd(xh, xl, xh2, sh2, sh2);
+  th  := xh2 + cAcoshRefineChH_0.f;
+  tl  := (cAcoshRefineChH_0.f - th) + xh2;
+  xh2 := th;
+  sh2 := sh2 + tl + cAcoshRefineChL_0.f;
   sh_ := pcr_muldd(xh, xl, xh2, sh2, sl2);
   sh_ := AcoshAddDD(sh_, sl2, el1, el2, sl2);
   sh_ := AcoshAddDD(sh_, sl2, L1, L2, sl2);
@@ -394,8 +435,8 @@ begin
   r := (Double(0.5) * cAcoshR1[i1].f) * cAcoshR2[i2].f;
   dx := pcr_fma(r, t.f, -Double(0.5));
   dx2 := dx * dx;
-  f := dx2 * ((cAtanhC[0].f + dx * cAtanhC[1].f)
-            + dx2 * (cAtanhC[2].f + dx * cAtanhC[3].f + dx2 * cAtanhC[4].f));
+  f := dx2 * ((cAtanhC_0.f + dx * cAtanhC_1.f)
+            + dx2 * (cAtanhC_2.f + dx * cAtanhC_3.f + dx2 * cAtanhC_4.f));
   // rx/dxl for atanh: rx = r*t.f, dxl = fma(r,t.f,-rx)
   lh := (cAtanhL1[i1, 1].f + cAtanhL2[i2, 1].f) + cAtanhFastL2h.f * ed;
   pcr_fasttwosum(lh, ll, lh, r * t.f - Double(0.5));

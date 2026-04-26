@@ -285,9 +285,13 @@ const
     (u:$3D1EBE9176DF3F65), (u:QWord($BD2F08AD603C488E)), (u:QWord($BD2DB623E731AE00))
   );
 
-  cLogP: array[0..5] of Tb64u64 = (
-    (u:$3FF0000000000000), (u:QWord($BFDFFFFFFFFFFFFA)), (u:$3FD555555554F4D8), (u:QWord($BFD0000000537DF6)), (u:$3FC999A14758B084), (u:QWord($BFC55362255E0F63))
-  );
+  // cLogP fast-path polynomial — Pillar B: lifted to named Tb64u64 scalars.
+  cLogP_0: Tb64u64 = (u:$3FF0000000000000);
+  cLogP_1: Tb64u64 = (u:QWord($BFDFFFFFFFFFFFFA));
+  cLogP_2: Tb64u64 = (u:$3FD555555554F4D8);
+  cLogP_3: Tb64u64 = (u:QWord($BFD0000000537DF6));
+  cLogP_4: Tb64u64 = (u:$3FC999A14758B084);
+  cLogP_5: Tb64u64 = (u:QWord($BFC55362255E0F63));
 
   cLogLog2h: Tb64u64 = (u:$3FE62E42FEFA3800); // 0x1.62e42fefa38p-1
   cLogLog2l: Tb64u64 = (u:$3D2EF35793C76730); // 0x1.ef35793c7673p-45

@@ -76,7 +76,7 @@ end;
 procedure A2piFastDiv(out h, l: Double; bh, ah: Double); inline;
 var y, eh: Double;
 begin
-  y  := 1.0 / ah;
+  y  := Double(1.0) / ah;
   h  := bh * y;
   eh := pcr_fma(ah, -h, bh);
   l  := y * eh;
@@ -112,21 +112,21 @@ begin
     isInfx := ax = (UInt64($7FF) shl 52);
     if isInfy and isInfx then begin
       if x < 0 then
-        if y > 0 then Result := 0.75 else Result := -0.75
+        if y > 0 then Result := Double(0.75) else Result := Double(-0.75)
       else
-        if y > 0 then Result := 0.25 else Result := -0.25;
+        if y > 0 then Result := Double(0.25) else Result := Double(-0.25);
       Exit;
     end;
     if isInfx then begin
       if x < 0 then begin
-        if (uy.u shr 63) <> 0 then Result := -1.0 else Result := 1.0;
+        if (uy.u shr 63) <> 0 then Result := Double(-1.0) else Result := Double(1.0);
         Exit;
       end;
-      Result := pcr_copysign(0.0, y);
+      Result := pcr_copysign(Double(0.0), y);
       Exit;
     end;
     // y = +/-Inf, x finite
-    if y > 0 then Result := 0.5 else Result := -0.5;
+    if y > 0 then Result := Double(0.5) else Result := Double(-0.5);
     Exit;
   end;
 
@@ -137,7 +137,7 @@ begin
       Exit;
     end;
     // atan2pi(+/-0, -0) = +/-1
-    if uy.u = 0 then Result := 1.0 else Result := -1.0;
+    if uy.u = 0 then Result := Double(1.0) else Result := Double(-1.0);
     Exit;
   end;
   if ay = 0 then begin
@@ -145,11 +145,11 @@ begin
       Result := y;
       Exit;
     end;
-    if uy.u = 0 then Result := 1.0 else Result := -1.0;
+    if uy.u = 0 then Result := Double(1.0) else Result := Double(-1.0);
     Exit;
   end;
   // ax = 0 (only x is zero)
-  if y > 0 then Result := 0.5 else Result := -0.5;
+  if y > 0 then Result := Double(0.5) else Result := Double(-0.5);
 end;
 
 // ---------------------------------------------------------------------------
@@ -174,9 +174,9 @@ begin
 
   if absy = absx then begin
     if y > 0 then begin
-      if x > 0 then Result := 0.25 else Result := 0.75;
+      if x > 0 then Result := Double(0.25) else Result := Double(0.75);
     end else begin
-      if x < 0 then Result := -0.75 else Result := -0.25;
+      if x < 0 then Result := Double(-0.75) else Result := Double(-0.25);
     end;
     Exit;
   end;
@@ -187,11 +187,11 @@ begin
     ey := Int32((uy.u shr 52) and $7FF);
     if ey - ex > 54 then begin
       if x > 0 then begin
-        if y > 0 then Result :=  0.5 - cA2pi_2pm55.f
-                 else Result := -0.5 + cA2pi_2pm55.f;
+        if y > 0 then Result :=  Double(0.5) - cA2pi_2pm55.f
+                 else Result := Double(-0.5) + cA2pi_2pm55.f;
       end else begin
-        if y > 0 then Result :=  0.5 + cA2pi_2pm54.f
-                 else Result := -0.5 - cA2pi_2pm54.f;
+        if y > 0 then Result :=  Double(0.5) + cA2pi_2pm54.f
+                 else Result := Double(-0.5) - cA2pi_2pm54.f;
       end;
       Exit;
     end;
@@ -202,8 +202,8 @@ begin
       ex := Int32((ux.u shr 52) and $7FF);
       ey := Int32((uy.u shr 52) and $7FF);
       if ey - ex < -54 then begin
-        if y > 0 then Result :=  1.0 - cA2pi_2pm54.f
-                 else Result := -1.0 + cA2pi_2pm54.f;
+        if y > 0 then Result :=  Double(1.0) - cA2pi_2pm54.f
+                 else Result := Double(-1.0) + cA2pi_2pm54.f;
         Exit;
       end;
     end;
@@ -284,26 +284,26 @@ begin
   // Avoid spurious inexact when |y|=|x|.
   if ax = ay then begin
     if y = x then begin
-      if x > 0 then h := 0.25 else h := -0.75;
+      if x > 0 then h := Double(0.25) else h := Double(-0.75);
     end else begin
-      if x > 0 then h := -0.25 else h := 0.75;
+      if x > 0 then h := Double(-0.25) else h := Double(0.75);
     end;
-    l := 0.0;
-    Result := 0.0;  // exact
+    l := Double(0.0);
+    Result := Double(0.0);  // exact
     Exit;
   end;
 
   A2piFastDiv(zh, zl, y, x);
 
-  sz := 1.0;
+  sz := Double(1.0);
   if zh < 0 then begin
     zh := -zh;
     zl := -zl;
-    sz := -1.0;
+    sz := Double(-1.0);
   end;
 
   // 0 <= i <= 64
-  i := Int32(Trunc(64.0 * zh));
+  i := Int32(Trunc(Double(64.0) * zh));
   if i < 0 then i := 0;
   if i > 64 then i := 64;
   pbase := 10 * i;
@@ -340,16 +340,16 @@ begin
   // -1/4 < h+l < 1/4
   if inv then begin
     if not negz then
-      A2piDDSum1(h, l, 0.5, -h, -l)
+      A2piDDSum1(h, l, Double(0.5), -h, -l)
     else
-      A2piDDSum1(h, l, -0.5, -h, -l);
+      A2piDDSum1(h, l, Double(-0.5), -h, -l);
   end;
 
   if negx then begin
     if not negz then
-      A2piDDSum1(h, l, -1.0, h, l)
+      A2piDDSum1(h, l, Double(-1.0), h, l)
     else
-      A2piDDSum1(h, l, 1.0, h, l);
+      A2piDDSum1(h, l, Double(1.0), h, l);
   end;
 
   Result := cAtan2piErrFast[i].f;
@@ -383,8 +383,25 @@ begin
      and (ey - ex >= -341) and (ey - ex <= 341) then
   begin
     err := Atan2piFast(h, l, y, x);
+    {$IFDEF AVX2}
+    asm
+      movsd        xmm0, h
+      movsd        xmm1, err
+      movsd        xmm2, l
+      vfnmadd213sd xmm0, xmm1, xmm2          // -(h*err) + l
+      movsd        left, xmm0
+      movsd        xmm0, h
+      movsd        xmm1, err
+      movsd        xmm2, l
+      vfmadd213sd  xmm0, xmm1, xmm2          // h*err + l
+      movsd        right, xmm0
+    end ['xmm0', 'xmm1', 'xmm2'];
+    left  := h + left;
+    right := h + right;
+    {$ELSE}
     left  := h + pcr_fma(h, -err, l);
     right := h + pcr_fma(h,  err, l);
+    {$ENDIF}
     if left = right then begin
       Result := left;
       Exit;

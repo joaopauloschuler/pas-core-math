@@ -10,7 +10,7 @@ import re, struct, sys, os
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOG_C = os.path.join(ROOT, '..', 'core-math', 'src', 'binary64', 'log', 'log.c')
 DINT_H = os.path.join(ROOT, '..', 'core-math', 'src', 'binary64', 'log', 'dint.h')
-OUT = os.path.join(ROOT, 'src', 'log_const.inc')
+OUT = os.path.join(ROOT, 'src', 'inc_64', 'log_const_64.inc')
 
 def b64(s):
     """Hex-float string -> uint64 bit pattern."""
@@ -18,7 +18,12 @@ def b64(s):
     return struct.unpack('<Q', struct.pack('<d', f))[0]
 
 def fu(u):
-    return f"$%016X" % u
+    s = f"$%016X" % u
+    # Wrap negative-bit-pattern (bit 63 set) with QWord() so FPC range-check
+    # does not warn while parsing the literal as Int64.
+    if u >= (1 << 63):
+        return f"QWord({s})"
+    return s
 
 def slurp(p):
     with open(p) as f:
@@ -140,11 +145,10 @@ for i in range(0, 363, 4):
 lines.append('  );')
 lines.append('')
 
-# P[6]
-lines.append('  cLogP: array[0..5] of Tb64u64 = (')
-s = ', '.join(f'(u:{fu(u)})' for u in P_FAST)
-lines.append(f'    {s}')
-lines.append('  );')
+# P[6] — Phase 6.2 Pillar B: lift to named Tb64u64 scalars (all reads are .f).
+lines.append('  // cLogP fast-path polynomial — Pillar B: lifted to named Tb64u64 scalars.')
+for i, u in enumerate(P_FAST):
+    lines.append(f'  cLogP_{i}: Tb64u64 = (u:{fu(u)});')
 lines.append('')
 
 # log2_h, log2_l, err
@@ -156,7 +160,7 @@ lines.append('')
 # Refine-path TDInt64 arrays: emit as initialised constant arrays.
 def fmt_dint(rec):
     hi, lo, ex, sgn = rec
-    return f'(hi:${hi:016X}; lo:${lo:016X}; ex:{ex}; sgn:{sgn})'
+    return f'(hi:{fu(hi)}; lo:{fu(lo)}; ex:{ex}; sgn:{sgn})'
 
 lines.append(f'  cLogInverse2: array[0..{N2-1}] of TDInt64 = (')
 for i in range(N2):

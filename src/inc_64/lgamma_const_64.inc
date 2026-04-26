@@ -114,11 +114,25 @@
     (u:$3FB566B51C990008)  // 0x1.566b51c990008p-4
   );
 
+  cLgammaTinyQ_0: Tb64u64 = (u:QWord($BFCA8B9C17AA5D3D));
+  cLgammaTinyQ_1: Tb64u64 = (u:$3FC5B40CB100B9BF);
+  cLgammaTinyQ_2: Tb64u64 = (u:QWord($BFC2703A1E13BCBC));
+  cLgammaTinyQ_3: Tb64u64 = (u:$3FC010B36B6AFDC1);
+  cLgammaTinyQ_4: Tb64u64 = (u:QWord($BFBC8062DD09EC62));
+  cLgammaTinyQ_5: Tb64u64 = (u:$3FB9A018C7345316);
+  cLgammaTinyQ_6: Tb64u64 = (u:QWord($BFB7578EA8068CC4));
+  cLgammaTinyQ_7: Tb64u64 = (u:$3FB566B51C990008);
+
   // cLgammaAsymC [2][2] |x|>=8.29541 dd constants
   cLgammaAsymC: array[0..1,0..1] of Tb64u64 = (
     ((u:$3FDACFE390C97D6A), (u:QWord($BC51D9792CED423A))),  // i=0
     ((u:$3FB55555555554C1), (u:QWord($BC40143AF34001BD)))  // i=1
   );
+
+  cLgammaAsymC_0_0: Tb64u64 = (u:$3FDACFE390C97D6A);
+  cLgammaAsymC_0_1: Tb64u64 = (u:QWord($BC51D9792CED423A));
+  cLgammaAsymC_1_0: Tb64u64 = (u:$3FB55555555554C1);
+  cLgammaAsymC_1_1: Tb64u64 = (u:QWord($BC40143AF34001BD));
 
   // cLgammaAsymQ [5] |x|>=8.29541 single polynomial
   cLgammaAsymQ: array[0..4] of Tb64u64 = (
@@ -128,6 +142,12 @@
     (u:$3F4B617D2C5B5B66),  // 0x1.b617d2c5b5b66p-11
     (u:QWord($BF5A7FD66A05CCFC))  // -0x1.a7fd66a05ccfcp-10
   );
+
+  cLgammaAsymQ_0: Tb64u64 = (u:QWord($BF66C16C1697DE08));
+  cLgammaAsymQ_1: Tb64u64 = (u:$3F4A019F47B230FD);
+  cLgammaAsymQ_2: Tb64u64 = (u:QWord($BF4380AAB821E42E));
+  cLgammaAsymQ_3: Tb64u64 = (u:$3F4B617D2C5B5B66);
+  cLgammaAsymQ_4: Tb64u64 = (u:QWord($BF5A7FD66A05CCFC));
 
   // cLgammaLogB: 32 pairs of (c0:UInt16; c1:Int16) used in as_logd reduction
   cLgammaLogB: array[0..31] of record c0: UInt16; c1: Int16; end = (
@@ -320,6 +340,11 @@
     (u:$3FC999A692C56E4E)  // 0x1.999a692c56e4ep-3
   );
 
+  cLgammaLogC_0: Tb64u64 = (u:QWord($BFDFFFFFFFFFFFD3));
+  cLgammaLogC_1: Tb64u64 = (u:$3FD55555555543D5);
+  cLgammaLogC_2: Tb64u64 = (u:QWord($BFD000002BB2D74E));
+  cLgammaLogC_3: Tb64u64 = (u:$3FC999A692C56E4E);
+
   // cLgammaLogH1 [33][3]
   cLgammaLogH1: array[0..32,0..2] of Tb64u64 = (
     ((u:$0000000000000000), (u:$0000000000000000), (u:$0000000000000000)),  // i=0
@@ -407,6 +432,25 @@
     ((u:$3FBC71E5EC7051F6), (u:$3C5217EC3DCB2F03))  // i=8
   );
 
+  cLgammaLogAC_0_0: Tb64u64 = (u:$3FF0000000000000);
+  cLgammaLogAC_0_1: Tb64u64 = (u:$389A193D7F59D80A);
+  cLgammaLogAC_1_0: Tb64u64 = (u:QWord($BFE0000000000000));
+  cLgammaLogAC_1_1: Tb64u64 = (u:$39C8C7D7A8733406);
+  cLgammaLogAC_2_0: Tb64u64 = (u:$3FD5555555555555);
+  cLgammaLogAC_2_1: Tb64u64 = (u:$3C755555554F571D);
+  cLgammaLogAC_3_0: Tb64u64 = (u:QWord($BFD0000000000000));
+  cLgammaLogAC_3_1: Tb64u64 = (u:QWord($BB6E516B5D7B8C15));
+  cLgammaLogAC_4_0: Tb64u64 = (u:$3FC999999999999A);
+  cLgammaLogAC_4_1: Tb64u64 = (u:QWord($BC697F2898534175));
+  cLgammaLogAC_5_0: Tb64u64 = (u:QWord($BFC55555555554B5));
+  cLgammaLogAC_5_1: Tb64u64 = (u:QWord($BC43834D62D64EC4));
+  cLgammaLogAC_6_0: Tb64u64 = (u:$3FC249249248DBDC);
+  cLgammaLogAC_6_1: Tb64u64 = (u:QWord($BC58AA032979EBED));
+  cLgammaLogAC_7_0: Tb64u64 = (u:QWord($BFC000004E71581B));
+  cLgammaLogAC_7_1: Tb64u64 = (u:$3C62E7F17D1C0E63);
+  cLgammaLogAC_8_0: Tb64u64 = (u:$3FBC71E5EC7051F6);
+  cLgammaLogAC_8_1: Tb64u64 = (u:$3C5217EC3DCB2F03);
+
   // cLgammaStpi [65][2] sin/cos at i*pi/128
   cLgammaStpi: array[0..64,0..1] of Tb64u64 = (
     ((u:$0000000000000000), (u:$0000000000000000)),  // i=0
@@ -482,12 +526,19 @@
     (u:QWord($BC816CC8F2044A4A))  // -0x1.16cc8f2044a4ap-55
   );
 
+  cLgammaSinKx2C_0: Tb64u64 = (u:QWord($BFFA51A6625307D3));
+  cLgammaSinKx2C_1: Tb64u64 = (u:QWord($BC816CC8F2044A4A));
+
   // cLgammaSinKx2Cl [3] kx<2 polynomial
   cLgammaSinKx2Cl: array[0..2] of Tb64u64 = (
     (u:$3FE9F9CB402BC42A),  // 0x1.9f9cb402bc42ap-1
     (u:QWord($BFC86A8E46DDF78D)),  // -0x1.86a8e46ddf78dp-3
     (u:$3F9AC644E7AA33E6)  // 0x1.ac644e7aa33e6p-6
   );
+
+  cLgammaSinKx2Cl_0: Tb64u64 = (u:$3FE9F9CB402BC42A);
+  cLgammaSinKx2Cl_1: Tb64u64 = (u:QWord($BFC86A8E46DDF78D));
+  cLgammaSinKx2Cl_2: Tb64u64 = (u:$3F9AC644E7AA33E6);
 
   // cLgammaSinC [4] sinpipid polynomial — cos coeffs
   cLgammaSinC: array[0..3] of Tb64u64 = (
@@ -497,6 +548,11 @@
     (u:$3C4E1F4826790653)  // 0x1.e1f4826790653p-59
   );
 
+  cLgammaSinC_0: Tb64u64 = (u:QWord($BF33BD3CC9BE45DE));
+  cLgammaSinC_1: Tb64u64 = (u:$3E503C1F081B5AC4);
+  cLgammaSinC_2: Tb64u64 = (u:QWord($BD555D3C7E3BD8BF));
+  cLgammaSinC_3: Tb64u64 = (u:$3C4E1F4826790653);
+
   // cLgammaSinS [4] sinpipid polynomial — sin coeffs
   cLgammaSinS: array[0..3] of Tb64u64 = (
     (u:$3F9921FB54442D18),  // 0x1.921fb54442d18p-6
@@ -505,15 +561,24 @@
     (u:QWord($BCD32D26E446373A))  // -0x1.32d26e446373ap-50
   );
 
+  cLgammaSinS_0: Tb64u64 = (u:$3F9921FB54442D18);
+  cLgammaSinS_1: Tb64u64 = (u:QWord($BEC4ABBCE625BE53));
+  cLgammaSinS_2: Tb64u64 = (u:$3DD466BC67748EFC);
+  cLgammaSinS_3: Tb64u64 = (u:QWord($BCD32D26E446373A));
+
   // cLgammaSinC0 (scalar)
   cLgammaSinC0: array[0..0] of Tb64u64 = (
     (u:QWord($BBD692B66E3CF6E8))  // -0x1.692b66e3cf6e8p-66
   );
 
+  cLgammaSinC0_0: Tb64u64 = (u:QWord($BBD692B66E3CF6E8));
+
   // cLgammaSinS0 (scalar)
   cLgammaSinS0: array[0..0] of Tb64u64 = (
     (u:$3C31A624B88C9448)  // 0x1.1a624b88c9448p-60
   );
+
+  cLgammaSinS0_0: Tb64u64 = (u:$3C31A624B88C9448);
 
   // cLgammaSinAccC [5][2]
   cLgammaSinAccC: array[0..4,0..1] of Tb64u64 = (
@@ -546,6 +611,9 @@
     ((u:$3F7A0A6926F49920), (u:QWord($BC01F355CBF82229)))  // i=7
   );
 
+  cLgammaAsy48C_0_0: Tb64u64 = (u:$3FDACFE390C97D69);
+  cLgammaAsy48C_0_1: Tb64u64 = (u:$3C73494BC9001766);
+
   // cLgammaAsy14C [12][2] xh>=14.5 polynomial
   cLgammaAsy14C: array[0..11,0..1] of Tb64u64 = (
     ((u:$3FDACFE390C97D69), (u:$3C73494BC9007F28)),  // i=0
@@ -561,6 +629,9 @@
     ((u:QWord($BFF5762C9F49FE25)), (u:$3C9AFEFF5294AD13)),  // i=10
     ((u:$4022EA102098F818), (u:$3CC609DB97F1BC89))  // i=11
   );
+
+  cLgammaAsy14C_0_0: Tb64u64 = (u:$3FDACFE390C97D69);
+  cLgammaAsy14C_0_1: Tb64u64 = (u:$3C73494BC9007F28);
 
   // cLgammaAsy4C [28][2] xh<14.5 polynomial
   cLgammaAsy4C: array[0..27,0..1] of Tb64u64 = (
@@ -593,6 +664,9 @@
     ((u:QWord($C2EB53232E707F4B)), (u:$3F76D239ACD71B5C)),  // i=26
     ((u:$42E59BAD61BD81D5), (u:$3F80E3F2EA42A0E0))  // i=27
   );
+
+  cLgammaAsy4C_0_0: Tb64u64 = (u:$3FDACFE390C97D69);
+  cLgammaAsy4C_0_1: Tb64u64 = (u:$3C73494BCE9B5C50);
 
   // cLgammaDB [19][3] database for ~zero outputs
   cLgammaDB: array[0..18,0..2] of Tb64u64 = (

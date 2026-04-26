@@ -602,22 +602,47 @@ const
   cAtanRefCl2:  Tb64u64 = (u:$3FB3B13B115BCBC4);  //  0x1.3b13b115bcbc4p-4
   cAtanRefCl3:  Tb64u64 = (u:QWord($BFB1107C41AD3253));  // -0x1.1107c41ad3253p-4
 
-  // Hard cases db[0..11]: (|x| input, |result| output, correction)
-  cAtanDbIn:  array[0..11] of Tb64u64 = (
-    (u:$3F80DC89A3B55010),(u:$3F7E3FB41D2D2260),(u:$3FE7BA49F739829F),
-    (u:$3FCA933FE176B375),(u:$3F7BB04A79820063),(u:$3F7CD30A9499618B),
-    (u:$3F8F44AA37B8E66B),(u:$3F7FD2AC95E57EF9),(u:$3F96419079BBF601),
-    (u:$3FE7BA49F739829F),(u:$3FCD768804487B07),(u:$3F7BB04A79820063));
-  cAtanDbOut: array[0..11] of Tb64u64 = (
-    (u:$3F80DC70AC228717),(u:$3F7E3F9013A852F8),(u:$3FE46AC372243536),
-    (u:$3FCA33F32AC5CEB5),(u:$3F7BB02ED5C5E956),(u:$3F7CD2EB65F92A46),
-    (u:$3F8F440B04187C87),(u:$3F7FD2829FEBC03A),(u:$3F9640AADE8F5427),
-    (u:$3FE46AC372243536),(u:$3FCCF5676F373EC1),(u:$3F7BB02ED5C5E956));
-  cAtanDbCor: array[0..11] of Tb64u64 = (
-    (u:$3C20000000000000),(u:$3C10000000000000),(u:$3920000000000000),
-    (u:QWord($B8F0000000000000)),(u:QWord($B8C0000000000000)),(u:QWord($B8F0000000000000)),
-    (u:QWord($B8F0000000000000)),(u:QWord($B8F0000000000000)),(u:$38D0000000000000),
-    (u:$3910000000000000),(u:QWord($B910000000000000)),(u:QWord($B8C0000000000000)));
+  // Phase 6.4/A+B: Hard-case db[0..11] triples (|x| input, |result| output,
+  // correction) lifted to named Tb64u64 scalars; the 12-iteration scan in
+  // pcr_atan was unrolled to literal-indexed reads.
+  cAtanDbIn_00:  Tb64u64 = (u:$3F80DC89A3B55010);
+  cAtanDbIn_01:  Tb64u64 = (u:$3F7E3FB41D2D2260);
+  cAtanDbIn_02:  Tb64u64 = (u:$3FE7BA49F739829F);
+  cAtanDbIn_03:  Tb64u64 = (u:$3FCA933FE176B375);
+  cAtanDbIn_04:  Tb64u64 = (u:$3F7BB04A79820063);
+  cAtanDbIn_05:  Tb64u64 = (u:$3F7CD30A9499618B);
+  cAtanDbIn_06:  Tb64u64 = (u:$3F8F44AA37B8E66B);
+  cAtanDbIn_07:  Tb64u64 = (u:$3F7FD2AC95E57EF9);
+  cAtanDbIn_08:  Tb64u64 = (u:$3F96419079BBF601);
+  cAtanDbIn_09:  Tb64u64 = (u:$3FE7BA49F739829F);
+  cAtanDbIn_10:  Tb64u64 = (u:$3FCD768804487B07);
+  cAtanDbIn_11:  Tb64u64 = (u:$3F7BB04A79820063);
+
+  cAtanDbOut_00: Tb64u64 = (u:$3F80DC70AC228717);
+  cAtanDbOut_01: Tb64u64 = (u:$3F7E3F9013A852F8);
+  cAtanDbOut_02: Tb64u64 = (u:$3FE46AC372243536);
+  cAtanDbOut_03: Tb64u64 = (u:$3FCA33F32AC5CEB5);
+  cAtanDbOut_04: Tb64u64 = (u:$3F7BB02ED5C5E956);
+  cAtanDbOut_05: Tb64u64 = (u:$3F7CD2EB65F92A46);
+  cAtanDbOut_06: Tb64u64 = (u:$3F8F440B04187C87);
+  cAtanDbOut_07: Tb64u64 = (u:$3F7FD2829FEBC03A);
+  cAtanDbOut_08: Tb64u64 = (u:$3F9640AADE8F5427);
+  cAtanDbOut_09: Tb64u64 = (u:$3FE46AC372243536);
+  cAtanDbOut_10: Tb64u64 = (u:$3FCCF5676F373EC1);
+  cAtanDbOut_11: Tb64u64 = (u:$3F7BB02ED5C5E956);
+
+  cAtanDbCor_00: Tb64u64 = (u:$3C20000000000000);
+  cAtanDbCor_01: Tb64u64 = (u:$3C10000000000000);
+  cAtanDbCor_02: Tb64u64 = (u:$3920000000000000);
+  cAtanDbCor_03: Tb64u64 = (u:QWord($B8F0000000000000));
+  cAtanDbCor_04: Tb64u64 = (u:QWord($B8C0000000000000));
+  cAtanDbCor_05: Tb64u64 = (u:QWord($B8F0000000000000));
+  cAtanDbCor_06: Tb64u64 = (u:QWord($B8F0000000000000));
+  cAtanDbCor_07: Tb64u64 = (u:QWord($B8F0000000000000));
+  cAtanDbCor_08: Tb64u64 = (u:$38D0000000000000);
+  cAtanDbCor_09: Tb64u64 = (u:$3910000000000000);
+  cAtanDbCor_10: Tb64u64 = (u:QWord($B910000000000000));
+  cAtanDbCor_11: Tb64u64 = (u:QWord($B8C0000000000000));
 
 function AtanAddDD(xh, xl, ch, cl: Double; out l: Double): Double; inline;
 var s, d: Double;
@@ -643,7 +668,6 @@ var
   v0, v1, v2: Double;
   ax: Double;
   t0, t1, w_r: Tb64u64;
-  j: Integer;
 begin
   phi.f := Abs(a) * cAtanPhiScale.f + Double(256.5);
   ip := Int64((phi.u shr 44) and UInt64($FF));
@@ -729,16 +753,35 @@ begin
   if (((t1.u + UInt64(1)) and UInt64($000FFFFFFFFFFFFF)) <= UInt64(2)) or
      (((t0.u shr 52) and UInt64($7FF)) - ((t1.u shr 52) and UInt64($7FF)) > UInt64(103)) then
   begin
-    for j := 0 to 11 do
+    // Phase 6.4/A: 12-iteration unroll, sign-branch-first so each match list
+    // is literal-indexed (cf. atanpi / asinpi exception scans).
+    if x >= Double(0.0) then
     begin
-      if ax = cAtanDbIn[j].f then
-      begin
-        if x >= Double(0.0) then
-          Result := cAtanDbOut[j].f + cAtanDbCor[j].f
-        else
-          Result := -(cAtanDbOut[j].f + cAtanDbCor[j].f);
-        Exit;
-      end;
+      if ax = cAtanDbIn_00.f then begin Result := cAtanDbOut_00.f + cAtanDbCor_00.f; Exit; end;
+      if ax = cAtanDbIn_01.f then begin Result := cAtanDbOut_01.f + cAtanDbCor_01.f; Exit; end;
+      if ax = cAtanDbIn_02.f then begin Result := cAtanDbOut_02.f + cAtanDbCor_02.f; Exit; end;
+      if ax = cAtanDbIn_03.f then begin Result := cAtanDbOut_03.f + cAtanDbCor_03.f; Exit; end;
+      if ax = cAtanDbIn_04.f then begin Result := cAtanDbOut_04.f + cAtanDbCor_04.f; Exit; end;
+      if ax = cAtanDbIn_05.f then begin Result := cAtanDbOut_05.f + cAtanDbCor_05.f; Exit; end;
+      if ax = cAtanDbIn_06.f then begin Result := cAtanDbOut_06.f + cAtanDbCor_06.f; Exit; end;
+      if ax = cAtanDbIn_07.f then begin Result := cAtanDbOut_07.f + cAtanDbCor_07.f; Exit; end;
+      if ax = cAtanDbIn_08.f then begin Result := cAtanDbOut_08.f + cAtanDbCor_08.f; Exit; end;
+      if ax = cAtanDbIn_09.f then begin Result := cAtanDbOut_09.f + cAtanDbCor_09.f; Exit; end;
+      if ax = cAtanDbIn_10.f then begin Result := cAtanDbOut_10.f + cAtanDbCor_10.f; Exit; end;
+      if ax = cAtanDbIn_11.f then begin Result := cAtanDbOut_11.f + cAtanDbCor_11.f; Exit; end;
+    end else begin
+      if ax = cAtanDbIn_00.f then begin Result := -(cAtanDbOut_00.f + cAtanDbCor_00.f); Exit; end;
+      if ax = cAtanDbIn_01.f then begin Result := -(cAtanDbOut_01.f + cAtanDbCor_01.f); Exit; end;
+      if ax = cAtanDbIn_02.f then begin Result := -(cAtanDbOut_02.f + cAtanDbCor_02.f); Exit; end;
+      if ax = cAtanDbIn_03.f then begin Result := -(cAtanDbOut_03.f + cAtanDbCor_03.f); Exit; end;
+      if ax = cAtanDbIn_04.f then begin Result := -(cAtanDbOut_04.f + cAtanDbCor_04.f); Exit; end;
+      if ax = cAtanDbIn_05.f then begin Result := -(cAtanDbOut_05.f + cAtanDbCor_05.f); Exit; end;
+      if ax = cAtanDbIn_06.f then begin Result := -(cAtanDbOut_06.f + cAtanDbCor_06.f); Exit; end;
+      if ax = cAtanDbIn_07.f then begin Result := -(cAtanDbOut_07.f + cAtanDbCor_07.f); Exit; end;
+      if ax = cAtanDbIn_08.f then begin Result := -(cAtanDbOut_08.f + cAtanDbCor_08.f); Exit; end;
+      if ax = cAtanDbIn_09.f then begin Result := -(cAtanDbOut_09.f + cAtanDbCor_09.f); Exit; end;
+      if ax = cAtanDbIn_10.f then begin Result := -(cAtanDbOut_10.f + cAtanDbCor_10.f); Exit; end;
+      if ax = cAtanDbIn_11.f then begin Result := -(cAtanDbOut_11.f + cAtanDbCor_11.f); Exit; end;
     end;
     if (t1.u and UInt64($000FFFFFFFFFFFFF)) = UInt64(0) then
     begin
@@ -1265,16 +1308,23 @@ const
     (u:$3C7562172A361FD3),(u:QWord($BC87A0A8CA13571F)),(u:QWord($BC887DF6378811C7)),(u:QWord($BC6C57BC2E24AA15)),
     (u:$0000000000000000));
 
-  // c[5][2]: inner asin polynomial (after substitution) for the accurate path.
-  cAcosCHi: array[0..4] of Tb64u64 = (
-    (u:$3FF0000000000000),(u:$3FC5555555555555),(u:$3FB3333333333333),
-    (u:$3FA6DB6DB6DB6DB7),(u:$3F9F1C71C71C6D5B));
-  cAcosCLo: array[0..4] of Tb64u64 = (
-    (u:QWord($B93FC2C76456515B)),(u:$3C65555555623513),(u:$3C49997E3427441B),
-    (u:QWord($BC1CB95FF08658E6)),(u:$3C3B125BCCDCC89E));
-  // ct[3]: outer polynomial tail (degree 5..7) used as seed for polydd.
-  cAcosCt: array[0..2] of Tb64u64 = (
-    (u:$3F96E8BA2EC8CB69),(u:$3F91C4EA7A15C997),(u:$3F8CA8355D39BB67));
+  // Phase 6.4/B: c[5][2] inner asin polynomial (accurate path) — lifted to
+  // named cAcosCHi_<i> / cAcosCLo_<i> Tb64u64 scalars; original arrays dropped.
+  // Reused by both AcosRefine and the asin AccPath.
+  cAcosCHi_0: Tb64u64 = (u:$3FF0000000000000);
+  cAcosCHi_1: Tb64u64 = (u:$3FC5555555555555);
+  cAcosCHi_2: Tb64u64 = (u:$3FB3333333333333);
+  cAcosCHi_3: Tb64u64 = (u:$3FA6DB6DB6DB6DB7);
+  cAcosCHi_4: Tb64u64 = (u:$3F9F1C71C71C6D5B);
+  cAcosCLo_0: Tb64u64 = (u:QWord($B93FC2C76456515B));
+  cAcosCLo_1: Tb64u64 = (u:$3C65555555623513);
+  cAcosCLo_2: Tb64u64 = (u:$3C49997E3427441B);
+  cAcosCLo_3: Tb64u64 = (u:QWord($BC1CB95FF08658E6));
+  cAcosCLo_4: Tb64u64 = (u:$3C3B125BCCDCC89E);
+  // Phase 6.4/B: ct[3] outer polynomial tail — lifted to named scalars.
+  cAcosCt_0: Tb64u64 = (u:$3F96E8BA2EC8CB69);
+  cAcosCt_1: Tb64u64 = (u:$3F91C4EA7A15C997);
+  cAcosCt_2: Tb64u64 = (u:$3F8CA8355D39BB67);
 
   cAcosOffH: array[0..1] of Tb64u64 = ((u:$0000000000000000),(u:$400921FB54442D18));
   cAcosOffL: array[0..1] of Tb64u64 = ((u:$0000000000000000),(u:$3CA1A62633145C07));
@@ -1299,14 +1349,24 @@ const
     (u:QWord($BFC771164BFD1F84)),(u:QWord($BFE4510EE8EB4E67)),(u:QWord($BFD011C543F23A17)),
     (u:$3FEFFFFFFFFFFDC0),(u:$3FB53EA6C7255E88),(u:$3F4FD737BE914578),
     (u:$3FEFFFFFFFFFFF70));
-  cAcosWcHi: array[0..6] of Tb64u64 = (
-    (u:$3FFC14601DAAF657),(u:$400211C0E2C2559E),(u:$3FFD318C90D9E8B7),
-    (u:$3E98000000000024),(u:$3FF7CDACB6BBE707),(u:$3FF91E006D41D8D8),
-    (u:$3E88000000000009));
-  cAcosWcLo: array[0..6] of Tb64u64 = (
-    (u:QWord($BC90000000000000)),(u:QWord($BCA0000000000000)),(u:QWord($BC90000000000000)),
-    (u:$3B30000000000000),(u:$3C90000000000000),(u:$3CA8000000000000),
-    (u:$3B20000000000000));
+  // Phase 6.4/B: lift cAcosWcHi/Lo[0..6] to named scalars; drop arrays.
+  // (cAcosWcIn kept as array — reads are .u, indexed by literal but not
+  // flagged; the unrolled k=0..6 scan in AcosRefine still uses cAcosWcIn[i].u
+  // for the integer-pattern comparison.)
+  cAcosWcHi_0: Tb64u64 = (u:$3FFC14601DAAF657);
+  cAcosWcHi_1: Tb64u64 = (u:$400211C0E2C2559E);
+  cAcosWcHi_2: Tb64u64 = (u:$3FFD318C90D9E8B7);
+  cAcosWcHi_3: Tb64u64 = (u:$3E98000000000024);
+  cAcosWcHi_4: Tb64u64 = (u:$3FF7CDACB6BBE707);
+  cAcosWcHi_5: Tb64u64 = (u:$3FF91E006D41D8D8);
+  cAcosWcHi_6: Tb64u64 = (u:$3E88000000000009);
+  cAcosWcLo_0: Tb64u64 = (u:QWord($BC90000000000000));
+  cAcosWcLo_1: Tb64u64 = (u:QWord($BCA0000000000000));
+  cAcosWcLo_2: Tb64u64 = (u:QWord($BC90000000000000));
+  cAcosWcLo_3: Tb64u64 = (u:$3B30000000000000);
+  cAcosWcLo_4: Tb64u64 = (u:$3C90000000000000);
+  cAcosWcLo_5: Tb64u64 = (u:$3CA8000000000000);
+  cAcosWcLo_6: Tb64u64 = (u:$3B20000000000000);
 
 function AcosRefine(x, phi: Double): Double;
 var
@@ -1324,7 +1384,6 @@ var
   t_u, w_u, xu: Tb64u64;
   e: Int64;
   m, ebit: UInt64;
-  k: Int32;
 begin
   s2  := x * x;
   dx2 := pcr_fma(x, x, -s2);
@@ -1363,24 +1422,24 @@ begin
   v  := v  * (-sgn);
   dv := dv * (-sgn);
 
-  fl := v2 * (cAcosCt[0].f + v2 * (cAcosCt[1].f + v2 * cAcosCt[2].f));
+  fl := v2 * (cAcosCt_0.f + v2 * (cAcosCt_1.f + v2 * cAcosCt_2.f));
   // fh = polydd(v2, dv2, 5, c, &fl) with incoming *l = fl:
   //   i=4: ch = fasttwosum(c[4][0], fl_in, &fl_out); cl = c[4][1] + fl_out
-  pcr_fasttwosum(chp, fl, cAcosCHi[4].f, fl);
-  clp := cAcosCLo[4].f + fl;
+  pcr_fasttwosum(chp, fl, cAcosCHi_4.f, fl);
+  clp := cAcosCLo_4.f + fl;
   // i=3..0: ch = muldd(v2, dv2, ch, cl, &cl); ch = fastsum(c[i][0], c[i][1], ch, cl, &cl)
   chp := pcr_muldd(v2, dv2, chp, clp, clp);
-  pcr_fasttwosum(th, tl, cAcosCHi[3].f, chp);
-  chp := th;  clp := (cAcosCLo[3].f + clp) + tl;
+  pcr_fasttwosum(th, tl, cAcosCHi_3.f, chp);
+  chp := th;  clp := (cAcosCLo_3.f + clp) + tl;
   chp := pcr_muldd(v2, dv2, chp, clp, clp);
-  pcr_fasttwosum(th, tl, cAcosCHi[2].f, chp);
-  chp := th;  clp := (cAcosCLo[2].f + clp) + tl;
+  pcr_fasttwosum(th, tl, cAcosCHi_2.f, chp);
+  chp := th;  clp := (cAcosCLo_2.f + clp) + tl;
   chp := pcr_muldd(v2, dv2, chp, clp, clp);
-  pcr_fasttwosum(th, tl, cAcosCHi[1].f, chp);
-  chp := th;  clp := (cAcosCLo[1].f + clp) + tl;
+  pcr_fasttwosum(th, tl, cAcosCHi_1.f, chp);
+  chp := th;  clp := (cAcosCLo_1.f + clp) + tl;
   chp := pcr_muldd(v2, dv2, chp, clp, clp);
-  pcr_fasttwosum(th, tl, cAcosCHi[0].f, chp);
-  chp := th;  clp := (cAcosCLo[0].f + clp) + tl;
+  pcr_fasttwosum(th, tl, cAcosCHi_0.f, chp);
+  chp := th;  clp := (cAcosCLo_0.f + clp) + tl;
   fh := chp;  fl := clp;
 
   fh := pcr_muldd(v, dv, fh, fl, fl);
@@ -1409,13 +1468,16 @@ begin
   ebit := UInt64(1) shl (e - 1);
   if ((t_u.u + ebit) and m) = 0 then
   begin
+    // Phase 6.4/A: 7-iteration unroll of the worst-case scan; reads are
+    // literal-indexed both on the .u side (cAcosWcIn) and the .f side.
     xu.f := x;
-    for k := 0 to 6 do
-      if xu.u = cAcosWcIn[k].u then
-      begin
-        Result := cAcosWcHi[k].f + cAcosWcLo[k].f;
-        Exit;
-      end;
+    if xu.u = cAcosWcIn[0].u then begin Result := cAcosWcHi_0.f + cAcosWcLo_0.f; Exit; end;
+    if xu.u = cAcosWcIn[1].u then begin Result := cAcosWcHi_1.f + cAcosWcLo_1.f; Exit; end;
+    if xu.u = cAcosWcIn[2].u then begin Result := cAcosWcHi_2.f + cAcosWcLo_2.f; Exit; end;
+    if xu.u = cAcosWcIn[3].u then begin Result := cAcosWcHi_3.f + cAcosWcLo_3.f; Exit; end;
+    if xu.u = cAcosWcIn[4].u then begin Result := cAcosWcHi_4.f + cAcosWcLo_4.f; Exit; end;
+    if xu.u = cAcosWcIn[5].u then begin Result := cAcosWcHi_5.f + cAcosWcLo_5.f; Exit; end;
+    if xu.u = cAcosWcIn[6].u then begin Result := cAcosWcHi_6.f + cAcosWcLo_6.f; Exit; end;
     w_u.f := ps;
     if ((w_u.u xor t_u.u) shr 63) <> 0 then
       Dec(t_u.u)
@@ -1654,11 +1716,14 @@ const
     ((u:$3FE33DFEB0FA4BFE),(u:$3FE1372F9EE76E99),(u:$3C90000000000000)),
     ((u:$3FE49F24AC5CAC35),(u:$3FE22C495FF06104),(u:QWord($B970000000000000))));
 
-  // as_exp_accurate: ch[3][2]
-  cTanhExpCh: array[0..2, 0..1] of Tb64u64 = (
-    ((u:$3FF0000000000000),(u:$3A16C16BD194535D)),
-    ((u:$3FE0000000000000),(u:QWord($BA28259D904FD34F))),
-    ((u:$3FC5555555555555),(u:$3C653E93E9F26E62)));
+  // as_exp_accurate: ch[3][2] — Pillar B: named Tb64u64 scalars
+  // (used by tanh + cosh + sinh via TanhExpAccurate).
+  cTanhExpChH_0: Tb64u64 = (u:$3FF0000000000000);
+  cTanhExpChL_0: Tb64u64 = (u:$3A16C16BD194535D);
+  cTanhExpChH_1: Tb64u64 = (u:$3FE0000000000000);
+  cTanhExpChL_1: Tb64u64 = (u:QWord($BA28259D904FD34F));
+  cTanhExpChH_2: Tb64u64 = (u:$3FC5555555555555);
+  cTanhExpChL_2: Tb64u64 = (u:$3C653E93E9F26E62);
   // Inner exp polynomial seed coefficients (0x1.555...p-5 etc.)
   cTanhExpP0: Tb64u64 = (u:$3FA5555555555555);
   cTanhExpP1: Tb64u64 = (u:$3F811111113E93E9);
@@ -1668,32 +1733,41 @@ const
   cTanhL2lA:  Tb64u64 = (u:$3D0718432A1B0E26);   //  0x1.718432a1b0e26p-47
   cTanhL2llA: Tb64u64 = (u:$3999FF0342542FC3);   //  0x1.9ff0342542fc3p-102
 
-  // as_tanh_zero: ch[10][2]
-  cTanhZeroCh: array[0..9, 0..1] of Tb64u64 = (
-    ((u:QWord($BFD5555555555555)),(u:QWord($BC75555555555555))),
-    ((u:$3FC1111111111111),(u:$3C41111111110916)),
-    ((u:QWord($BFABA1BA1BA1BA1C)),(u:$3C47917917A46F2C)),
-    ((u:$3F9664F4882C10FA),(u:QWord($BC09A52A06F1E599))),
-    ((u:QWord($BF8226E355E6C23D)),(u:$3C2C297394C24E38)),
-    ((u:$3F6D6D3D0E157DE0),(u:QWord($BC0311087E5B1526))),
-    ((u:QWord($BF57DA36452B75E1)),(u:QWord($BBE2868CDE54EA0C))),
-    ((u:$3F4355824803667B),(u:$3BD2CD8FC406C3F7)),
-    ((u:QWord($BF2F57D7734C821D)),(u:$3B9DA22861B4CA80)),
-    ((u:$3F1967E18AD3FACF),(u:QWord($BBB0831108273A74))));
+  // as_tanh_zero: ch[10][2] — Pillar B: named scalars.
+  cTanhZeroChH_0: Tb64u64 = (u:QWord($BFD5555555555555));  cTanhZeroChL_0: Tb64u64 = (u:QWord($BC75555555555555));
+  cTanhZeroChH_1: Tb64u64 = (u:$3FC1111111111111);         cTanhZeroChL_1: Tb64u64 = (u:$3C41111111110916);
+  cTanhZeroChH_2: Tb64u64 = (u:QWord($BFABA1BA1BA1BA1C));  cTanhZeroChL_2: Tb64u64 = (u:$3C47917917A46F2C);
+  cTanhZeroChH_3: Tb64u64 = (u:$3F9664F4882C10FA);         cTanhZeroChL_3: Tb64u64 = (u:QWord($BC09A52A06F1E599));
+  cTanhZeroChH_4: Tb64u64 = (u:QWord($BF8226E355E6C23D));  cTanhZeroChL_4: Tb64u64 = (u:$3C2C297394C24E38);
+  cTanhZeroChH_5: Tb64u64 = (u:$3F6D6D3D0E157DE0);         cTanhZeroChL_5: Tb64u64 = (u:QWord($BC0311087E5B1526));
+  cTanhZeroChH_6: Tb64u64 = (u:QWord($BF57DA36452B75E1));  cTanhZeroChL_6: Tb64u64 = (u:QWord($BBE2868CDE54EA0C));
+  cTanhZeroChH_7: Tb64u64 = (u:$3F4355824803667B);         cTanhZeroChL_7: Tb64u64 = (u:$3BD2CD8FC406C3F7);
+  cTanhZeroChH_8: Tb64u64 = (u:QWord($BF2F57D7734C821D));  cTanhZeroChL_8: Tb64u64 = (u:$3B9DA22861B4CA80);
+  cTanhZeroChH_9: Tb64u64 = (u:$3F1967E18AD3FACF);         cTanhZeroChL_9: Tb64u64 = (u:QWord($BBB0831108273A74));
 
-  // as_tanh_zero: cl[6]
-  cTanhZeroCl: array[0..5] of Tb64u64 = (
-    (u:QWord($BF0497D8E6462927)),(u:$3EF0B1318C243BD7),(u:QWord($BEDB0F2935E9A120)),
-    (u:$3EC5E9444536E654),(u:QWord($BEB174FF2A31908C)),(u:$3E9749698C8D338D));
+  // as_tanh_zero: cl[6] — Pillar B: named scalars.
+  cTanhZeroCl_0: Tb64u64 = (u:QWord($BF0497D8E6462927));
+  cTanhZeroCl_1: Tb64u64 = (u:$3EF0B1318C243BD7);
+  cTanhZeroCl_2: Tb64u64 = (u:QWord($BEDB0F2935E9A120));
+  cTanhZeroCl_3: Tb64u64 = (u:$3EC5E9444536E654);
+  cTanhZeroCl_4: Tb64u64 = (u:QWord($BEB174FF2A31908C));
+  cTanhZeroCl_5: Tb64u64 = (u:$3E9749698C8D338D);
 
-  // Medium-path polynomial in x2 (after x^3 factor) for |x| in [2^-30, 0.25)
-  cTanhMedC: array[0..7] of Tb64u64 = (
-    (u:QWord($BFD5555555555554)),(u:$3FC1111111110D61),(u:QWord($BFABA1BA1B983D8B)),(u:$3F9664F4820E99F0),
-    (u:QWord($BF8226E11E4AC7CF)),(u:$3F6D6C4AB70668B6),(u:QWord($BF57BBECB57CE996)),(u:$3F41451443697DD8));
+  // Medium-path polynomial in x2 (after x^3 factor) for |x| in [2^-30, 0.25) — Pillar B.
+  cTanhMedC_0: Tb64u64 = (u:QWord($BFD5555555555554));
+  cTanhMedC_1: Tb64u64 = (u:$3FC1111111110D61);
+  cTanhMedC_2: Tb64u64 = (u:QWord($BFABA1BA1B983D8B));
+  cTanhMedC_3: Tb64u64 = (u:$3F9664F4820E99F0);
+  cTanhMedC_4: Tb64u64 = (u:QWord($BF8226E11E4AC7CF));
+  cTanhMedC_5: Tb64u64 = (u:$3F6D6C4AB70668B6);
+  cTanhMedC_6: Tb64u64 = (u:QWord($BF57BBECB57CE996));
+  cTanhMedC_7: Tb64u64 = (u:$3F41451443697DD8);
 
-  // Large/medium exp polynomial ch[4]
-  cTanhChOuter: array[0..3] of Tb64u64 = (
-    (u:$4000000000000000),(u:$4000000000000000),(u:$3FF55555557E54FF),(u:$3FE55555553A12F4));
+  // Large/medium exp polynomial ch[4] — Pillar B: named scalars.
+  cTanhChOuter_0: Tb64u64 = (u:$4000000000000000);
+  cTanhChOuter_1: Tb64u64 = (u:$4000000000000000);
+  cTanhChOuter_2: Tb64u64 = (u:$3FF55555557E54FF);
+  cTanhChOuter_3: Tb64u64 = (u:$3FE55555553A12F4);
 
   cTanhSBig:   Tb64u64 = (u:QWord($C0C71547652B82FE));   // -0x1.71547652b82fep+13
   cTanhMagic:  Tb64u64 = (u:$4188000004000000);   //  0x1.8000004p+25
@@ -1751,17 +1825,17 @@ begin
   // Seed fl = dxh*(p0 + dxh*(p1 + dxh*p2))
   fl := dxh * (cTanhExpP0.f + dxh * (cTanhExpP1.f + dxh * cTanhExpP2.f));
 
-  // polydd(dxh, dxl, 3, ch, &fl) — seeded
-  chp := cTanhExpCh[2,0].f + fl;
-  clp := ((cTanhExpCh[2,0].f - chp) + fl) + cTanhExpCh[2,1].f;
+  // polydd(dxh, dxl, 3, ch, &fl) — seeded; manually unrolled 3-step.
+  chp := cTanhExpChH_2.f + fl;
+  clp := ((cTanhExpChH_2.f - chp) + fl) + cTanhExpChL_2.f;
   // i = 1
   chp := pcr_muldd(dxh, dxl, chp, clp, clp);
-  thp := chp + cTanhExpCh[1,0].f; tlp := (cTanhExpCh[1,0].f - thp) + chp;
-  chp := thp; clp := clp + tlp + cTanhExpCh[1,1].f;
+  thp := chp + cTanhExpChH_1.f; tlp := (cTanhExpChH_1.f - thp) + chp;
+  chp := thp; clp := clp + tlp + cTanhExpChL_1.f;
   // i = 0
   chp := pcr_muldd(dxh, dxl, chp, clp, clp);
-  thp := chp + cTanhExpCh[0,0].f; tlp := (cTanhExpCh[0,0].f - thp) + chp;
-  chp := thp; clp := clp + tlp + cTanhExpCh[0,1].f;
+  thp := chp + cTanhExpChH_0.f; tlp := (cTanhExpChH_0.f - thp) + chp;
+  chp := thp; clp := clp + tlp + cTanhExpChL_0.f;
 
   fh := chp; fl := clp;
   fh := pcr_muldd(dxh, dxl, fh, fl, fl);
@@ -1779,26 +1853,53 @@ var
   x2, x2l, y0, y1, y2: Double;
   chp, clp, thp, tlp: Double;
   s_tmp, z_tmp: Double;
-  i: Int32;
   t_u, w_u: Tb64u64;
 begin
   x2  := x * x;
   x2l := pcr_fma(x, x, -x2);
 
-  y2 := x2 * (cTanhZeroCl[0].f + x2 * (cTanhZeroCl[1].f + x2 * (cTanhZeroCl[2].f
-        + x2 * (cTanhZeroCl[3].f + x2 * (cTanhZeroCl[4].f + x2 * cTanhZeroCl[5].f)))));
+  y2 := x2 * (cTanhZeroCl_0.f + x2 * (cTanhZeroCl_1.f + x2 * (cTanhZeroCl_2.f
+        + x2 * (cTanhZeroCl_3.f + x2 * (cTanhZeroCl_4.f + x2 * cTanhZeroCl_5.f)))));
 
-  // polydd (n=10) seeded with y2
-  chp := cTanhZeroCh[9,0].f + y2;
-  clp := ((cTanhZeroCh[9,0].f - chp) + y2) + cTanhZeroCh[9,1].f;
-  for i := 8 downto 0 do
-  begin
-    chp := pcr_muldd(x2, x2l, chp, clp, clp);
-    thp := chp + cTanhZeroCh[i,0].f;
-    tlp := (cTanhZeroCh[i,0].f - thp) + chp;
-    chp := thp;
-    clp := clp + tlp + cTanhZeroCh[i,1].f;
-  end;
+  // polydd (n=10) seeded with y2 — Pillar A unroll of `for i := 8 downto 0`.
+  chp := cTanhZeroChH_9.f + y2;
+  clp := ((cTanhZeroChH_9.f - chp) + y2) + cTanhZeroChL_9.f;
+
+  chp := pcr_muldd(x2, x2l, chp, clp, clp);
+  thp := chp + cTanhZeroChH_8.f; tlp := (cTanhZeroChH_8.f - thp) + chp;
+  chp := thp; clp := clp + tlp + cTanhZeroChL_8.f;
+
+  chp := pcr_muldd(x2, x2l, chp, clp, clp);
+  thp := chp + cTanhZeroChH_7.f; tlp := (cTanhZeroChH_7.f - thp) + chp;
+  chp := thp; clp := clp + tlp + cTanhZeroChL_7.f;
+
+  chp := pcr_muldd(x2, x2l, chp, clp, clp);
+  thp := chp + cTanhZeroChH_6.f; tlp := (cTanhZeroChH_6.f - thp) + chp;
+  chp := thp; clp := clp + tlp + cTanhZeroChL_6.f;
+
+  chp := pcr_muldd(x2, x2l, chp, clp, clp);
+  thp := chp + cTanhZeroChH_5.f; tlp := (cTanhZeroChH_5.f - thp) + chp;
+  chp := thp; clp := clp + tlp + cTanhZeroChL_5.f;
+
+  chp := pcr_muldd(x2, x2l, chp, clp, clp);
+  thp := chp + cTanhZeroChH_4.f; tlp := (cTanhZeroChH_4.f - thp) + chp;
+  chp := thp; clp := clp + tlp + cTanhZeroChL_4.f;
+
+  chp := pcr_muldd(x2, x2l, chp, clp, clp);
+  thp := chp + cTanhZeroChH_3.f; tlp := (cTanhZeroChH_3.f - thp) + chp;
+  chp := thp; clp := clp + tlp + cTanhZeroChL_3.f;
+
+  chp := pcr_muldd(x2, x2l, chp, clp, clp);
+  thp := chp + cTanhZeroChH_2.f; tlp := (cTanhZeroChH_2.f - thp) + chp;
+  chp := thp; clp := clp + tlp + cTanhZeroChL_2.f;
+
+  chp := pcr_muldd(x2, x2l, chp, clp, clp);
+  thp := chp + cTanhZeroChH_1.f; tlp := (cTanhZeroChH_1.f - thp) + chp;
+  chp := thp; clp := clp + tlp + cTanhZeroChL_1.f;
+
+  chp := pcr_muldd(x2, x2l, chp, clp, clp);
+  thp := chp + cTanhZeroChH_0.f; tlp := (cTanhZeroChH_0.f - thp) + chp;
+  chp := thp; clp := clp + tlp + cTanhZeroChL_0.f;
   y1 := chp; y2 := clp;
 
   // y1 = mulddd(y1, y2, x, &y2)
@@ -1894,10 +1995,10 @@ begin
       end;
 
       x2 := x * x; x3 := x2 * x; x4 := x2 * x2; x8 := x4 * x4;
-      p1 := (cTanhMedC[4].f + x2 * cTanhMedC[5].f)
-            + x4 * (cTanhMedC[6].f + x2 * cTanhMedC[7].f);
-      p0 := (cTanhMedC[0].f + x2 * cTanhMedC[1].f)
-            + x4 * (cTanhMedC[2].f + x2 * cTanhMedC[3].f);
+      p1 := (cTanhMedC_4.f + x2 * cTanhMedC_5.f)
+            + x4 * (cTanhMedC_6.f + x2 * cTanhMedC_7.f);
+      p0 := (cTanhMedC_0.f + x2 * cTanhMedC_1.f)
+            + x4 * (cTanhMedC_2.f + x2 * cTanhMedC_3.f);
       p0 := p0 + x8 * p1;
       p0 := p0 * x3;
 
@@ -1919,8 +2020,8 @@ begin
 
     dx  := (cTanhL2hM.f * t - ax) - cTanhL2lM.f * t;
     dx2 := dx * dx;
-    p   := dx * ((cTanhChOuter[0].f + dx * cTanhChOuter[1].f)
-                 + dx2 * (cTanhChOuter[2].f + dx * cTanhChOuter[3].f));
+    p   := dx * ((cTanhChOuter_0.f + dx * cTanhChOuter_1.f)
+                 + dx2 * (cTanhChOuter_2.f + dx * cTanhChOuter_3.f));
     rh  := th;
     rl  := tl + rh * p;
     pcr_fasttwosum(rh, rl, rh, rl);
@@ -1952,8 +2053,8 @@ begin
     // |x| >= 3.683 — fast fallback when tanh ≈ ±1
     dx  := pcr_fma(cTanhL2L.f, t, -ax);
     dx2 := dx * dx;
-    p   := dx * ((cTanhChOuter[0].f + dx * cTanhChOuter[1].f)
-                 + dx2 * (cTanhChOuter[2].f + dx * cTanhChOuter[3].f));
+    p   := dx * ((cTanhChOuter_0.f + dx * cTanhChOuter_1.f)
+                 + dx2 * (cTanhChOuter_2.f + dx * cTanhChOuter_3.f));
     rh  := th * sp.f;
     rh  := rh + (p + ((Double(2.0) * cTanh1p3_55.f) * ax)) * rh;
     e   := rh * cTanh11p49.f;
@@ -2011,32 +2112,41 @@ end;
 // ---------------------------------------------------------------------------
 
 const
+  // Pillar B (Phase 6.3): shared sinpi/cospi polynomial arrays lifted to named
+  // Tb64u64 scalars. Read from sinpi_port_64.inc (SinpiRefine, pcr_sinpi main
+  // path) and pascoremath64.pas (CospiSinpiRefine, pcr_cospi main path).
   // Main path constants sn[3], cn[2]
-  cCospiSn: array[0..2] of Tb64u64 = (
-    (u:$3B5921FB54442D18),(u:QWord($B204ABBCE625BE51)),(u:$289466BC6044BA16));
-  cCospiCn: array[0..1] of Tb64u64 = (
-    (u:QWord($B6B3BD3CC9BE45DB)),(u:$2D503C1F00186416));
+  cCospiSn_0: Tb64u64 = (u:$3B5921FB54442D18);
+  cCospiSn_1: Tb64u64 = (u:QWord($B204ABBCE625BE51));
+  cCospiSn_2: Tb64u64 = (u:$289466BC6044BA16);
+  cCospiCn_0: Tb64u64 = (u:QWord($B6B3BD3CC9BE45DB));
+  cCospiCn_1: Tb64u64 = (u:$2D503C1F00186416);
 
   // as_cospi_zero tables
-  cCospiZeroCh: array[0..1, 0..1] of Tb64u64 = (
-    ((u:QWord($C013BD3CC9BE45DE)),(u:QWord($BCB692B71366CC04))),
-    ((u:$40103C1F081B5AC4),(u:QWord($BCB32B33FDA9113C))));
-  cCospiZeroCl: array[0..1] of Tb64u64 = (
-    (u:QWord($BFF55D3C7E3CBFF9)),(u:$3FCE1F50604FA0FF));
+  cCospiZeroCh_0_0: Tb64u64 = (u:QWord($C013BD3CC9BE45DE));
+  cCospiZeroCh_0_1: Tb64u64 = (u:QWord($BCB692B71366CC04));
+  cCospiZeroCh_1_0: Tb64u64 = (u:$40103C1F081B5AC4);
+  cCospiZeroCh_1_1: Tb64u64 = (u:QWord($BCB32B33FDA9113C));
+  cCospiZeroCl_0:   Tb64u64 = (u:QWord($BFF55D3C7E3CBFF9));
+  cCospiZeroCl_1:   Tb64u64 = (u:$3FCE1F50604FA0FF);
 
   // Fast-path polynomial c[0..3] for |x| <= 2^-12 branch
-  cCospiFastC: array[0..3] of Tb64u64 = (
-    (u:QWord($C013BD3CC9BE45DC)),(u:$40103C1F081B0833),
-    (u:QWord($BFF55D3C6FC9AF15)),(u:$3FCE1D3FF2AE3F9A));
+  cCospiFastC_0: Tb64u64 = (u:QWord($C013BD3CC9BE45DC));
+  cCospiFastC_1: Tb64u64 = (u:$40103C1F081B0833);
+  cCospiFastC_2: Tb64u64 = (u:QWord($BFF55D3C6FC9AF15));
+  cCospiFastC_3: Tb64u64 = (u:$3FCE1D3FF2AE3F9A);
 
   // as_sinpi_refine tables sh[3][2], ch[2][2]
-  cSinpiRefSh: array[0..2, 0..1] of Tb64u64 = (
-    ((u:$400921FB54442D18),(u:$3CA1A62633145C06)),
-    ((u:QWord($BE94ABBCE625BE53)),(u:$3B305511CBC65743)),
-    ((u:$3D0466BC6775AAE1),(u:QWord($B8D9C3C168D990A0))));
-  cSinpiRefCh: array[0..1, 0..1] of Tb64u64 = (
-    ((u:QWord($BE93BD3CC9BE45DE)),(u:QWord($BB3692B71366CC04))),
-    ((u:$3D103C1F081B5AC4),(u:QWord($B9B32B33FDA9113C))));
+  cSinpiRefSh_0_0: Tb64u64 = (u:$400921FB54442D18);
+  cSinpiRefSh_0_1: Tb64u64 = (u:$3CA1A62633145C06);
+  cSinpiRefSh_1_0: Tb64u64 = (u:QWord($BE94ABBCE625BE53));
+  cSinpiRefSh_1_1: Tb64u64 = (u:$3B305511CBC65743);
+  cSinpiRefSh_2_0: Tb64u64 = (u:$3D0466BC6775AAE1);
+  cSinpiRefSh_2_1: Tb64u64 = (u:QWord($B8D9C3C168D990A0));
+  cSinpiRefCh_0_0: Tb64u64 = (u:QWord($BE93BD3CC9BE45DE));
+  cSinpiRefCh_0_1: Tb64u64 = (u:QWord($BB3692B71366CC04));
+  cSinpiRefCh_1_0: Tb64u64 = (u:$3D103C1F081B5AC4);
+  cSinpiRefCh_1_1: Tb64u64 = (u:QWord($B9B32B33FDA9113C));
 
   // as_sinpi_refine scalar constants
   cSinpiRefSllK: Tb64u64 = (u:QWord($BB632D2CC920DCB4)); // -0x1.32d2cc920dcb4p-73
@@ -2054,17 +2164,40 @@ const
   // 1ulp constants
   cCospiP55: Tb64u64 = (u:$3C80000000000000); //  0x1p-55
 
-  // Database for as_sinpi_refine exceptions
-  cSinpiDbIq: array[0..7] of Int32 = (903, 1029, 1078, 1217, 1025, 1026, 1033, 1235);
-  cSinpiDbX:  array[0..7] of Tb64u64 = (
-    (u:QWord($BFDBDD02D1AD6000)),(u:QWord($BFCA4AD070549D00)),(u:$3FCFBDB79CA3DA00),(u:$3FEC0CCEE4ADA200),
-    (u:$3FDB536647B1FE98),(u:QWord($BFDDC93EAAD12A18)),(u:$3FEE78F0E592B360),(u:$3FDF13412A48D800));
-  cSinpiDbR:  array[0..7] of Tb64u64 = (
-    (u:$3FEF72C906962631),(u:$3FEFFFC4D2C6CA51),(u:$3FEFE3C8219054C3),(u:$3FEE99FD53791BCF),
-    (u:$3FEFFFFC5DDD0738),(u:$3FEFFFF84B21C731),(u:$3FEFFF2270422604),(u:$3FEE55A7FA9A24C4));
-  cSinpiDbD:  array[0..7] of Tb64u64 = (
-    (u:$3C80000000000000),(u:$3C80000000000000),(u:$3C80000000000000),(u:QWord($BC80000000000000)),
-    (u:$3C80000000000000),(u:$3C80000000000000),(u:QWord($BC80000000000000)),(u:QWord($BC80000000000000)));
+  // Database for as_sinpi_refine exceptions. Pillar B (Phase 6.3): lifted to
+  // named scalars; the for i := 0 to 7 loop in CospiSinpiRefine is unrolled.
+  cSinpiDbIq_0: Int32 = 903;
+  cSinpiDbIq_1: Int32 = 1029;
+  cSinpiDbIq_2: Int32 = 1078;
+  cSinpiDbIq_3: Int32 = 1217;
+  cSinpiDbIq_4: Int32 = 1025;
+  cSinpiDbIq_5: Int32 = 1026;
+  cSinpiDbIq_6: Int32 = 1033;
+  cSinpiDbIq_7: Int32 = 1235;
+  cSinpiDbX_0: Tb64u64 = (u:QWord($BFDBDD02D1AD6000));
+  cSinpiDbX_1: Tb64u64 = (u:QWord($BFCA4AD070549D00));
+  cSinpiDbX_2: Tb64u64 = (u:$3FCFBDB79CA3DA00);
+  cSinpiDbX_3: Tb64u64 = (u:$3FEC0CCEE4ADA200);
+  cSinpiDbX_4: Tb64u64 = (u:$3FDB536647B1FE98);
+  cSinpiDbX_5: Tb64u64 = (u:QWord($BFDDC93EAAD12A18));
+  cSinpiDbX_6: Tb64u64 = (u:$3FEE78F0E592B360);
+  cSinpiDbX_7: Tb64u64 = (u:$3FDF13412A48D800);
+  cSinpiDbR_0: Tb64u64 = (u:$3FEF72C906962631);
+  cSinpiDbR_1: Tb64u64 = (u:$3FEFFFC4D2C6CA51);
+  cSinpiDbR_2: Tb64u64 = (u:$3FEFE3C8219054C3);
+  cSinpiDbR_3: Tb64u64 = (u:$3FEE99FD53791BCF);
+  cSinpiDbR_4: Tb64u64 = (u:$3FEFFFFC5DDD0738);
+  cSinpiDbR_5: Tb64u64 = (u:$3FEFFFF84B21C731);
+  cSinpiDbR_6: Tb64u64 = (u:$3FEFFF2270422604);
+  cSinpiDbR_7: Tb64u64 = (u:$3FEE55A7FA9A24C4);
+  cSinpiDbD_0: Tb64u64 = (u:$3C80000000000000);
+  cSinpiDbD_1: Tb64u64 = (u:$3C80000000000000);
+  cSinpiDbD_2: Tb64u64 = (u:$3C80000000000000);
+  cSinpiDbD_3: Tb64u64 = (u:QWord($BC80000000000000));
+  cSinpiDbD_4: Tb64u64 = (u:$3C80000000000000);
+  cSinpiDbD_5: Tb64u64 = (u:$3C80000000000000);
+  cSinpiDbD_6: Tb64u64 = (u:QWord($BC80000000000000));
+  cSinpiDbD_7: Tb64u64 = (u:QWord($BC80000000000000));
 
   // sincosn tables (fast-path)
   cSincosN1_Sn: array[0..32, 0..1] of Tb64u64 = (
@@ -2377,17 +2510,17 @@ begin
   x2  := x * x;
   dx2 := pcr_fma(x, x, -x2);
 
-  fl := x2 * (cCospiZeroCl[0].f + x2 * cCospiZeroCl[1].f);
+  fl := x2 * (cCospiZeroCl_0.f + x2 * cCospiZeroCl_1.f);
 
   // polydd(x2, dx2, 2, ch, &fl) seeded
-  chp := cCospiZeroCh[1,0].f + fl;
-  clp := ((cCospiZeroCh[1,0].f - chp) + fl) + cCospiZeroCh[1,1].f;
+  chp := cCospiZeroCh_1_0.f + fl;
+  clp := ((cCospiZeroCh_1_0.f - chp) + fl) + cCospiZeroCh_1_1.f;
   // i = 0
   chp := pcr_muldd(x2, dx2, chp, clp, clp);
-  thp := chp + cCospiZeroCh[0,0].f;
-  tlp := (cCospiZeroCh[0,0].f - thp) + chp;
+  thp := chp + cCospiZeroCh_0_0.f;
+  tlp := (cCospiZeroCh_0_0.f - thp) + chp;
   chp := thp;
-  clp := clp + tlp + cCospiZeroCh[0,1].f;
+  clp := clp + tlp + cCospiZeroCh_0_1.f;
 
   fh := chp; fl := clp;
   fh := pcr_muldd(x2, dx2, fh, fl, fl);
@@ -2426,7 +2559,6 @@ var
   tsh, tsl, tsl2: Double;
   iqm: Int32;
   sgn, dbx: Double;
-  i: Int32;
   t_u: Tb64u64;
 begin
   x   := z * cSinpiRefScale.f;              // x = z * 2^-63
@@ -2437,20 +2569,20 @@ begin
   sll := cSinpiRefSllK.f * x2;
 
   // polydd(x2, dx2, 3, sh, &sll) seeded
-  chp := cSinpiRefSh[2,0].f + sll;
-  clp := ((cSinpiRefSh[2,0].f - chp) + sll) + cSinpiRefSh[2,1].f;
+  chp := cSinpiRefSh_2_0.f + sll;
+  clp := ((cSinpiRefSh_2_0.f - chp) + sll) + cSinpiRefSh_2_1.f;
   // i = 1
   chp := pcr_muldd(x2, dx2, chp, clp, clp);
-  thp := chp + cSinpiRefSh[1,0].f;
-  tlp := (cSinpiRefSh[1,0].f - thp) + chp;
+  thp := chp + cSinpiRefSh_1_0.f;
+  tlp := (cSinpiRefSh_1_0.f - thp) + chp;
   chp := thp;
-  clp := clp + tlp + cSinpiRefSh[1,1].f;
+  clp := clp + tlp + cSinpiRefSh_1_1.f;
   // i = 0
   chp := pcr_muldd(x2, dx2, chp, clp, clp);
-  thp := chp + cSinpiRefSh[0,0].f;
-  tlp := (cSinpiRefSh[0,0].f - thp) + chp;
+  thp := chp + cSinpiRefSh_0_0.f;
+  tlp := (cSinpiRefSh_0_0.f - thp) + chp;
   chp := thp;
-  clp := clp + tlp + cSinpiRefSh[0,1].f;
+  clp := clp + tlp + cSinpiRefSh_0_1.f;
   slh := chp; sll := clp;
 
   // slh = mulddd(slh, sll, x*0x1p-12, &sll)
@@ -2460,14 +2592,14 @@ begin
   cll := x2 * (cSinpiRefCll0.f + cSinpiRefCll1.f * x2);
 
   // polydd(x2, dx2, 2, ch, &cll) seeded
-  chp := cSinpiRefCh[1,0].f + cll;
-  clp := ((cSinpiRefCh[1,0].f - chp) + cll) + cSinpiRefCh[1,1].f;
+  chp := cSinpiRefCh_1_0.f + cll;
+  clp := ((cSinpiRefCh_1_0.f - chp) + cll) + cSinpiRefCh_1_1.f;
   // i = 0
   chp := pcr_muldd(x2, dx2, chp, clp, clp);
-  thp := chp + cSinpiRefCh[0,0].f;
-  tlp := (cSinpiRefCh[0,0].f - thp) + chp;
+  thp := chp + cSinpiRefCh_0_0.f;
+  tlp := (cSinpiRefCh_0_0.f - thp) + chp;
   chp := thp;
-  clp := clp + tlp + cSinpiRefCh[0,1].f;
+  clp := clp + tlp + cSinpiRefCh_0_1.f;
   clh := chp; cll := clp;
 
   // clh = muldd_acc(clh, cll, x2, dx2, &cll)
@@ -2494,15 +2626,54 @@ begin
   begin
     if iq > 2048 then sgn := -Double(1.0) else sgn := Double(1.0);
     iqm := iq and $7FF;
-    for i := 0 to 7 do
+    // Pillar A (Phase 6.3): for i := 0 to 7 unrolled.
+    dbx := cSinpiDbX_0.f;
+    if ((x = dbx) and (iqm = cSinpiDbIq_0))
+       or ((x = -dbx) and (iqm = 2048 - cSinpiDbIq_0)) then
     begin
-      dbx := cSinpiDbX[i].f;
-      if ((x = dbx) and (iqm = cSinpiDbIq[i]))
-         or ((x = -dbx) and (iqm = 2048 - cSinpiDbIq[i])) then
-      begin
-        Result := sgn * cSinpiDbR[i].f + sgn * cSinpiDbD[i].f;
-        Exit;
-      end;
+      Result := sgn * cSinpiDbR_0.f + sgn * cSinpiDbD_0.f; Exit;
+    end;
+    dbx := cSinpiDbX_1.f;
+    if ((x = dbx) and (iqm = cSinpiDbIq_1))
+       or ((x = -dbx) and (iqm = 2048 - cSinpiDbIq_1)) then
+    begin
+      Result := sgn * cSinpiDbR_1.f + sgn * cSinpiDbD_1.f; Exit;
+    end;
+    dbx := cSinpiDbX_2.f;
+    if ((x = dbx) and (iqm = cSinpiDbIq_2))
+       or ((x = -dbx) and (iqm = 2048 - cSinpiDbIq_2)) then
+    begin
+      Result := sgn * cSinpiDbR_2.f + sgn * cSinpiDbD_2.f; Exit;
+    end;
+    dbx := cSinpiDbX_3.f;
+    if ((x = dbx) and (iqm = cSinpiDbIq_3))
+       or ((x = -dbx) and (iqm = 2048 - cSinpiDbIq_3)) then
+    begin
+      Result := sgn * cSinpiDbR_3.f + sgn * cSinpiDbD_3.f; Exit;
+    end;
+    dbx := cSinpiDbX_4.f;
+    if ((x = dbx) and (iqm = cSinpiDbIq_4))
+       or ((x = -dbx) and (iqm = 2048 - cSinpiDbIq_4)) then
+    begin
+      Result := sgn * cSinpiDbR_4.f + sgn * cSinpiDbD_4.f; Exit;
+    end;
+    dbx := cSinpiDbX_5.f;
+    if ((x = dbx) and (iqm = cSinpiDbIq_5))
+       or ((x = -dbx) and (iqm = 2048 - cSinpiDbIq_5)) then
+    begin
+      Result := sgn * cSinpiDbR_5.f + sgn * cSinpiDbD_5.f; Exit;
+    end;
+    dbx := cSinpiDbX_6.f;
+    if ((x = dbx) and (iqm = cSinpiDbIq_6))
+       or ((x = -dbx) and (iqm = 2048 - cSinpiDbIq_6)) then
+    begin
+      Result := sgn * cSinpiDbR_6.f + sgn * cSinpiDbD_6.f; Exit;
+    end;
+    dbx := cSinpiDbX_7.f;
+    if ((x = dbx) and (iqm = cSinpiDbIq_7))
+       or ((x = -dbx) and (iqm = 2048 - cSinpiDbIq_7)) then
+    begin
+      Result := sgn * cSinpiDbR_7.f + sgn * cSinpiDbD_7.f; Exit;
     end;
   end;
   Result := tsh + tsl;
@@ -2565,8 +2736,8 @@ begin
     end;
     x2 := x * x; x4 := x2 * x2;
     eps := x2 * cCospiEpsFast.f;
-    p := x2 * ((cCospiFastC[0].f + x2 * cCospiFastC[1].f)
-               + x4 * (cCospiFastC[2].f + x2 * cCospiFastC[3].f));
+    p := x2 * ((cCospiFastC_0.f + x2 * cCospiFastC_1.f)
+               + x4 * (cCospiFastC_2.f + x2 * cCospiFastC_3.f));
     lb := (p - eps) + Double(1.0);
     ub := (p + eps) + Double(1.0);
     if lb = ub then begin Result := lb; Exit; end;
@@ -2589,8 +2760,8 @@ begin
 
   k := Int64(UInt64(m) shl (e - 1000));
   z := k; z2 := z * z;
-  fs := cCospiSn[0].f + z2 * (cCospiSn[1].f + z2 * cCospiSn[2].f);
-  fc := cCospiCn[0].f + z2 * cCospiCn[1].f;
+  fs := cCospiSn_0.f + z2 * (cCospiSn_1.f + z2 * cCospiSn_2.f);
+  fc := cCospiCn_0.f + z2 * cCospiCn_1.f;
   CospiSincosN(iq, sh, sl, ch_, cl_);
   er := z * cSinpiRefEr.f;  // z * 2^-123
   r  := sl + sh * (z2 * fc) + ch_ * (z * fs);
@@ -2724,22 +2895,22 @@ begin
   v  := v  * sgn;
   dv := dv * sgn;
 
-  fl := v2 * (cAcosCt[0].f + v2 * (cAcosCt[1].f + v2 * cAcosCt[2].f));
+  fl := v2 * (cAcosCt_0.f + v2 * (cAcosCt_1.f + v2 * cAcosCt_2.f));
   // fh = polydd(v2, dv2, 5, c, &fl) with incoming *l = fl (seeded variant)
-  pcr_fasttwosum(chp, fl, cAcosCHi[4].f, fl);
-  clp := cAcosCLo[4].f + fl;
+  pcr_fasttwosum(chp, fl, cAcosCHi_4.f, fl);
+  clp := cAcosCLo_4.f + fl;
   chp := pcr_muldd(v2, dv2, chp, clp, clp);
-  pcr_fasttwosum(th, tl, cAcosCHi[3].f, chp);
-  chp := th;  clp := (cAcosCLo[3].f + clp) + tl;
+  pcr_fasttwosum(th, tl, cAcosCHi_3.f, chp);
+  chp := th;  clp := (cAcosCLo_3.f + clp) + tl;
   chp := pcr_muldd(v2, dv2, chp, clp, clp);
-  pcr_fasttwosum(th, tl, cAcosCHi[2].f, chp);
-  chp := th;  clp := (cAcosCLo[2].f + clp) + tl;
+  pcr_fasttwosum(th, tl, cAcosCHi_2.f, chp);
+  chp := th;  clp := (cAcosCLo_2.f + clp) + tl;
   chp := pcr_muldd(v2, dv2, chp, clp, clp);
-  pcr_fasttwosum(th, tl, cAcosCHi[1].f, chp);
-  chp := th;  clp := (cAcosCLo[1].f + clp) + tl;
+  pcr_fasttwosum(th, tl, cAcosCHi_1.f, chp);
+  chp := th;  clp := (cAcosCLo_1.f + clp) + tl;
   chp := pcr_muldd(v2, dv2, chp, clp, clp);
-  pcr_fasttwosum(th, tl, cAcosCHi[0].f, chp);
-  chp := th;  clp := (cAcosCLo[0].f + clp) + tl;
+  pcr_fasttwosum(th, tl, cAcosCHi_0.f, chp);
+  chp := th;  clp := (cAcosCLo_0.f + clp) + tl;
   fh := chp;  fl := clp;
 
   fh := pcr_muldd(v, dv, fh, fl, fl);
@@ -2876,14 +3047,22 @@ const
   cExpTinyMul:    Tb64u64 = (u:$0010000000000000); // 0x1p-1022
 
   // Accurate-path polynomial ch[7][2] (hi, lo)
-  cExpAccCh: array[0..6, 0..1] of Tb64u64 = (
-    ((u:$3FF0000000000000),(u:$0000000000000000)),
-    ((u:$3FE0000000000000),(u:$39C712F72ECEC2CF)),
-    ((u:$3FC5555555555555),(u:$3C65555555554D07)),
-    ((u:$3FA5555555555555),(u:$3C455194D28275DA)),
-    ((u:$3F81111111111111),(u:$3C012FAA0E1C0F7B)),
-    ((u:$3F56C16C16DA6973),(u:QWord($BBF4BA45AB25D2A3))),
-    ((u:$3F2A01A019EB7F31),(u:QWord($BBC9091D845ECD36))));
+  // cExpAccCh ch[7][2] — Phase 6.1 Pillar B: lifted to named scalars.
+  // Used in ExpRefine and ExpM1AccLarge.
+  cExpAccCh_0_0: Tb64u64 = (u:$3FF0000000000000);             //  0x1p0
+  cExpAccCh_0_1: Tb64u64 = (u:$0000000000000000);             //  0x0p0
+  cExpAccCh_1_0: Tb64u64 = (u:$3FE0000000000000);             //  0x1p-1
+  cExpAccCh_1_1: Tb64u64 = (u:$39C712F72ECEC2CF);             //  0x1.712f72ecec2cfp-99
+  cExpAccCh_2_0: Tb64u64 = (u:$3FC5555555555555);             //  0x1.5555555555555p-3
+  cExpAccCh_2_1: Tb64u64 = (u:$3C65555555554D07);             //  0x1.5555555554d07p-57
+  cExpAccCh_3_0: Tb64u64 = (u:$3FA5555555555555);             //  0x1.5555555555555p-5
+  cExpAccCh_3_1: Tb64u64 = (u:$3C455194D28275DA);             //  0x1.55194d28275dap-59
+  cExpAccCh_4_0: Tb64u64 = (u:$3F81111111111111);             //  0x1.1111111111111p-7
+  cExpAccCh_4_1: Tb64u64 = (u:$3C012FAA0E1C0F7B);             //  0x1.12faa0e1c0f7bp-63
+  cExpAccCh_5_0: Tb64u64 = (u:$3F56C16C16DA6973);             //  0x1.6c16c16da6973p-10
+  cExpAccCh_5_1: Tb64u64 = (u:QWord($BBF4BA45AB25D2A3));      // -0x1.4ba45ab25d2a3p-64
+  cExpAccCh_6_0: Tb64u64 = (u:$3F2A01A019EB7F31);             //  0x1.a01a019eb7f31p-13
+  cExpAccCh_6_1: Tb64u64 = (u:QWord($BBC9091D845ECD36));      // -0x1.9091d845ecd36p-67
 
   // 51-entry exception database (sorted by ix.u of x).
   cExpDb: array[0..50] of UInt64 = (
@@ -2972,7 +3151,6 @@ var
   th, tl, t0h, t0l, t1h, t1l: Double;
   jt, i0, i1, ie: Int64;
   ch_v, cl_v: Double;
-  i: Int32;
   v: Tb64u64;
 begin
   ix.f := x;
@@ -2996,17 +3174,44 @@ begin
   dxh  := dx + dxl;
   dxl  := (dx - dxh) + dxl + dxll;
 
-  // opolydd unrolled (n=7, in/out l in cl_v)
-  ch_v := cExpAccCh[6, 0].f;  cl_v := cExpAccCh[6, 1].f;
-  for i := 5 downto 0 do
-  begin
-    ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
-    // th_p = ch + c[i][0]; tl_p = (c[i][0] - th_p) + ch
-    fh := ch_v + cExpAccCh[i, 0].f;
-    fl := (cExpAccCh[i, 0].f - fh) + ch_v;
-    ch_v := fh;
-    cl_v := cl_v + fl + cExpAccCh[i, 1].f;
-  end;
+  // opolydd unrolled (n=7, in/out l in cl_v) — Phase 6.1 Pillar A
+  ch_v := cExpAccCh_6_0.f;  cl_v := cExpAccCh_6_1.f;
+  // i = 5
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh := ch_v + cExpAccCh_5_0.f;
+  fl := (cExpAccCh_5_0.f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExpAccCh_5_1.f;
+  // i = 4
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh := ch_v + cExpAccCh_4_0.f;
+  fl := (cExpAccCh_4_0.f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExpAccCh_4_1.f;
+  // i = 3
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh := ch_v + cExpAccCh_3_0.f;
+  fl := (cExpAccCh_3_0.f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExpAccCh_3_1.f;
+  // i = 2
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh := ch_v + cExpAccCh_2_0.f;
+  fl := (cExpAccCh_2_0.f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExpAccCh_2_1.f;
+  // i = 1
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh := ch_v + cExpAccCh_1_0.f;
+  fl := (cExpAccCh_1_0.f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExpAccCh_1_1.f;
+  // i = 0
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh := ch_v + cExpAccCh_0_0.f;
+  fl := (cExpAccCh_0_0.f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExpAccCh_0_1.f;
   fh := ch_v;  fl := cl_v;
 
   fh := pcr_muldd(dxh, dxl, fh, fl, fl);
@@ -3133,17 +3338,25 @@ end;
 // ---------------------------------------------------------------------------
 
 const
-  cExp2Cd: array[0..5, 0..1] of Tb64u64 = (
-    ((u:$3F262E42FEFA39EF),(u:$3BBABC9E3B39873E)),
-    ((u:$3E4EBFBDFF82C58F),(u:QWord($BAE5E43A53E44950))),
-    ((u:$3D6C6B08D704A0C0),(u:QWord($BA0D3A15710D3D83))),
-    ((u:$3C83B2AB6FBA4E77),(u:$3914DD5D2A5E025A)),
-    ((u:$3B95D87FE7A66459),(u:QWord($B83DC47E47BEB9DD))),
-    ((u:$3AA430912F9FB79D),(u:QWord($B744FCD51FCB7640))));
+  // cExp2Cd cd[6][2] — Phase 6.1 Pillar B
+  cExp2Cd_0_0: Tb64u64 = (u:$3F262E42FEFA39EF);
+  cExp2Cd_0_1: Tb64u64 = (u:$3BBABC9E3B39873E);
+  cExp2Cd_1_0: Tb64u64 = (u:$3E4EBFBDFF82C58F);
+  cExp2Cd_1_1: Tb64u64 = (u:QWord($BAE5E43A53E44950));
+  cExp2Cd_2_0: Tb64u64 = (u:$3D6C6B08D704A0C0);
+  cExp2Cd_2_1: Tb64u64 = (u:QWord($BA0D3A15710D3D83));
+  cExp2Cd_3_0: Tb64u64 = (u:$3C83B2AB6FBA4E77);
+  cExp2Cd_3_1: Tb64u64 = (u:$3914DD5D2A5E025A);
+  cExp2Cd_4_0: Tb64u64 = (u:$3B95D87FE7A66459);
+  cExp2Cd_4_1: Tb64u64 = (u:QWord($B83DC47E47BEB9DD));
+  cExp2Cd_5_0: Tb64u64 = (u:$3AA430912F9FB79D);
+  cExp2Cd_5_1: Tb64u64 = (u:QWord($B744FCD51FCB7640));
 
-  cExp2FastC: array[0..3] of Tb64u64 = (
-    (u:$3F262E42FEFA39EF),(u:$3E4EBFBDFF82C58F),
-    (u:$3D6C6B08D73B3E01),(u:$3C83B2AB6FDDA001));
+  // cExp2FastC c[4] — Phase 6.1 Pillar B
+  cExp2FastC_0: Tb64u64 = (u:$3F262E42FEFA39EF);
+  cExp2FastC_1: Tb64u64 = (u:$3E4EBFBDFF82C58F);
+  cExp2FastC_2: Tb64u64 = (u:$3D6C6B08D73B3E01);
+  cExp2FastC_3: Tb64u64 = (u:$3C83B2AB6FDDA001);
 
   cExp2Db: array[0..42] of UInt64 = (
     UInt64($3F5E4596526BF94D), UInt64($3F5E76049073067F), UInt64($3F6755AA6FA428CD),
@@ -3214,7 +3427,6 @@ var
   ix, ixs, v: Tb64u64;
  sx, fx, z, th, tl, t0h, t0l, t1h, t1l, fh, fl, e, ch_v, cl_v: Double;
   k, i0, i1, ie: Int64;
-  i: Int32;
 begin
   ix.f := x;
   sx := Double(4096.0) * x;
@@ -3228,16 +3440,38 @@ begin
   t1h := cExpT1[i1, 1].f;  t1l := cExpT1[i1, 0].f;
   th := pcr_muldd(t0h, t0l, t1h, t1l, tl);
 
-  // polydd(z, 6, cd, &fl): scalar*dd polynomial
-  ch_v := cExp2Cd[5, 0].f;  cl_v := cExp2Cd[5, 1].f;
-  for i := 4 downto 0 do
-  begin
-    ch_v := pcr_mulddd_pd(ch_v, cl_v, z, cl_v);
-    fh := ch_v + cExp2Cd[i, 0].f;
-    fl := (cExp2Cd[i, 0].f - fh) + ch_v;
-    ch_v := fh;
-    cl_v := cl_v + fl + cExp2Cd[i, 1].f;
-  end;
+  // polydd(z, 6, cd, &fl): scalar*dd polynomial — Phase 6.1 Pillar A
+  ch_v := cExp2Cd_5_0.f;  cl_v := cExp2Cd_5_1.f;
+  // i = 4
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, z, cl_v);
+  fh := ch_v + cExp2Cd_4_0.f;
+  fl := (cExp2Cd_4_0.f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExp2Cd_4_1.f;
+  // i = 3
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, z, cl_v);
+  fh := ch_v + cExp2Cd_3_0.f;
+  fl := (cExp2Cd_3_0.f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExp2Cd_3_1.f;
+  // i = 2
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, z, cl_v);
+  fh := ch_v + cExp2Cd_2_0.f;
+  fl := (cExp2Cd_2_0.f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExp2Cd_2_1.f;
+  // i = 1
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, z, cl_v);
+  fh := ch_v + cExp2Cd_1_0.f;
+  fl := (cExp2Cd_1_0.f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExp2Cd_1_1.f;
+  // i = 0
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, z, cl_v);
+  fh := ch_v + cExp2Cd_0_0.f;
+  fl := (cExp2Cd_0_0.f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExp2Cd_0_1.f;
   fh := ch_v; fl := cl_v;
   fh := pcr_mulddd_pd(fh, fl, z, fl);
 
@@ -3348,8 +3582,8 @@ begin
 
   tz := th * z;
   fh := th;
-  fl := tz * ((cExp2FastC[0].f + z * cExp2FastC[1].f)
-              + z2 * (cExp2FastC[2].f + z * cExp2FastC[3].f)) + tl;
+  fl := tz * ((cExp2FastC_0.f + z * cExp2FastC_1.f)
+              + z2 * (cExp2FastC_2.f + z * cExp2FastC_3.f)) + tl;
   eps := cExpEpsFast;
 
   if ix.u <= cExp2SubIxU then
@@ -3383,17 +3617,25 @@ end;
 // ---------------------------------------------------------------------------
 
 const
-  cExp10AccC: array[0..5, 0..1] of Tb64u64 = (
-    ((u:$40026BB1BBB55516),(u:QWord($BCAF48AD494EA102))),
-    ((u:$40053524C73CEA69),(u:QWord($BCAE2BFAB318D399))),
-    ((u:$4000470591DE2CA4),(u:$3CA81F50779E162B)),
-    ((u:$3FF2BD7609FD98C4),(u:$3C931A5CC5D3D313)),
-    ((u:$3FE1429FFD336AA3),(u:$3C8910DE8C68A0C2)),
-    ((u:$3FCA7ED7086882B4),(u:QWord($BC605E703D496537))));
+  // cExp10AccC c[6][2] — Phase 6.1 Pillar B
+  cExp10AccC_0_0: Tb64u64 = (u:$40026BB1BBB55516);
+  cExp10AccC_0_1: Tb64u64 = (u:QWord($BCAF48AD494EA102));
+  cExp10AccC_1_0: Tb64u64 = (u:$40053524C73CEA69);
+  cExp10AccC_1_1: Tb64u64 = (u:QWord($BCAE2BFAB318D399));
+  cExp10AccC_2_0: Tb64u64 = (u:$4000470591DE2CA4);
+  cExp10AccC_2_1: Tb64u64 = (u:$3CA81F50779E162B);
+  cExp10AccC_3_0: Tb64u64 = (u:$3FF2BD7609FD98C4);
+  cExp10AccC_3_1: Tb64u64 = (u:$3C931A5CC5D3D313);
+  cExp10AccC_4_0: Tb64u64 = (u:$3FE1429FFD336AA3);
+  cExp10AccC_4_1: Tb64u64 = (u:$3C8910DE8C68A0C2);
+  cExp10AccC_5_0: Tb64u64 = (u:$3FCA7ED7086882B4);
+  cExp10AccC_5_1: Tb64u64 = (u:QWord($BC605E703D496537));
 
-  cExp10FastCh: array[0..3] of Tb64u64 = (
-    (u:$40026BB1BBB55516),(u:$40053524C73CEA69),
-    (u:$4000470591FD74E1),(u:$3FF2BD760A1F32A5));
+  // cExp10FastCh ch[4] — Phase 6.1 Pillar B
+  cExp10FastCh_0: Tb64u64 = (u:$40026BB1BBB55516);
+  cExp10FastCh_1: Tb64u64 = (u:$40053524C73CEA69);
+  cExp10FastCh_2: Tb64u64 = (u:$4000470591FD74E1);
+  cExp10FastCh_3: Tb64u64 = (u:$3FF2BD760A1F32A5);
 
   cExp10Scale: Tb64u64 = (u:$40CA934F0979A371); // 0x1.a934f0979a371p+13
   cExp10L0:    Tb64u64 = (u:$3F13441350800000); // 0x1.34413508p-14
@@ -3476,7 +3718,6 @@ var
   ix, v, l: Tb64u64;
   t, dx, dxl, dxll, dxh, th, tl, t0h, t0l, t1h, t1l, fh, fl, ch_v, cl_v: Double;
   jt, i0, i1, ie: Int64;
-  i: Int32;
   sfh_differ: Boolean;
   delta: UInt64;
 begin
@@ -3497,16 +3738,38 @@ begin
   dxh  := dx + dxl;
   dxl  := ((dx - dxh) + dxl) + dxll;
 
-  // opolydd(dxh, dxl, 6, c, &fl)
-  ch_v := cExp10AccC[5, 0].f;  cl_v := cExp10AccC[5, 1].f;
-  for i := 4 downto 0 do
-  begin
-    ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
-    fh := ch_v + cExp10AccC[i, 0].f;
-    fl := (cExp10AccC[i, 0].f - fh) + ch_v;
-    ch_v := fh;
-    cl_v := cl_v + fl + cExp10AccC[i, 1].f;
-  end;
+  // opolydd(dxh, dxl, 6, c, &fl) — Phase 6.1 Pillar A
+  ch_v := cExp10AccC_5_0.f;  cl_v := cExp10AccC_5_1.f;
+  // i = 4
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh := ch_v + cExp10AccC_4_0.f;
+  fl := (cExp10AccC_4_0.f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExp10AccC_4_1.f;
+  // i = 3
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh := ch_v + cExp10AccC_3_0.f;
+  fl := (cExp10AccC_3_0.f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExp10AccC_3_1.f;
+  // i = 2
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh := ch_v + cExp10AccC_2_0.f;
+  fl := (cExp10AccC_2_0.f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExp10AccC_2_1.f;
+  // i = 1
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh := ch_v + cExp10AccC_1_0.f;
+  fl := (cExp10AccC_1_0.f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExp10AccC_1_1.f;
+  // i = 0
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh := ch_v + cExp10AccC_0_0.f;
+  fl := (cExp10AccC_0_0.f - fh) + ch_v;
+  ch_v := fh;
+  cl_v := cl_v + fl + cExp10AccC_0_1.f;
   fh := ch_v; fl := cl_v;
   fh := pcr_muldd(dxh, dxl, fh, fl, fl);
 
@@ -3597,8 +3860,8 @@ begin
 
   dx  := (x - cExp10L0.f * t) - cExp10L1.f * t;
   dx2 := dx * dx;
-  p   := (cExp10FastCh[0].f + dx * cExp10FastCh[1].f)
-       + dx2 * (cExp10FastCh[2].f + dx * cExp10FastCh[3].f);
+  p   := (cExp10FastCh_0.f + dx * cExp10FastCh_1.f)
+       + dx2 * (cExp10FastCh_2.f + dx * cExp10FastCh_3.f);
   fh := th;
   fx_poly := th * dx;
   fl := tl + fx_poly * p;
@@ -3701,30 +3964,45 @@ const
     ((u:QWord($BC789843C4964554)),(u:$3FD22D78F0FA061A)));
 
   // Fast path small-x c[6]
-  cExpm1FastC: array[0..5] of Tb64u64 = (
-    (u:$3F80000000000000),(u:$3F00000000000000),
-    (u:$3E755555555551AD),(u:$3DE555555555599C),
-    (u:$3D511111AD1AD69D),(u:$3CB6C16C168B1FB5));
+  // cExpm1FastC c[6] — Phase 6.1 Pillar B
+  cExpm1FastC_0: Tb64u64 = (u:$3F80000000000000);
+  cExpm1FastC_1: Tb64u64 = (u:$3F00000000000000);
+  cExpm1FastC_2: Tb64u64 = (u:$3E755555555551AD);
+  cExpm1FastC_3: Tb64u64 = (u:$3DE555555555599C);
+  cExpm1FastC_4: Tb64u64 = (u:$3D511111AD1AD69D);
+  cExpm1FastC_5: Tb64u64 = (u:$3CB6C16C168B1FB5);
 
-  // Accurate small-x cl[6]
-  cExpm1AccCl: array[0..5] of Tb64u64 = (
-    (u:$3DA93974A8CA5354),(u:$3D6AE7F3E71E4908),
-    (u:$3D2AE7F357341648),(u:$3CE952C7F96664CB),
-    (u:$3CA686F8CE633AAE),(u:$3C62F49B2FBFB5B6));
+  // cExpm1AccCl cl[6] — Phase 6.1 Pillar B
+  cExpm1AccCl_0: Tb64u64 = (u:$3DA93974A8CA5354);
+  cExpm1AccCl_1: Tb64u64 = (u:$3D6AE7F3E71E4908);
+  cExpm1AccCl_2: Tb64u64 = (u:$3D2AE7F357341648);
+  cExpm1AccCl_3: Tb64u64 = (u:$3CE952C7F96664CB);
+  cExpm1AccCl_4: Tb64u64 = (u:$3CA686F8CE633AAE);
+  cExpm1AccCl_5: Tb64u64 = (u:$3C62F49B2FBFB5B6);
 
-  // Accurate small-x ch[11][2]
-  cExpm1AccCh: array[0..10, 0..1] of Tb64u64 = (
-    ((u:$3FC5555555555555),(u:$3C65555555555554)),
-    ((u:$3FA5555555555555),(u:$3C45555555555123)),
-    ((u:$3F81111111111111),(u:$3C01111111118167)),
-    ((u:$3F56C16C16C16C17),(u:QWord($BBEF49F49E220CEA))),
-    ((u:$3F2A01A01A01A01A),(u:$3B6A019EFF6F919C)),
-    ((u:$3EFA01A01A01A01A),(u:$3B39FCFF48A75B41)),
-    ((u:$3EC71DE3A556C734),(u:QWord($BB6C14F73758CD7F))),
-    ((u:$3E927E4FB7789F5C),(u:$3B3DFCE97931018F)),
-    ((u:$3E5AE64567F544E3),(u:$3AFC513DA9E4C9C5)),
-    ((u:$3E21EED8EFF8D831),(u:$3ACCA00AF84F2B60)),
-    ((u:$3DE6124613A86E8F),(u:$3A8F27AC6000898F)));
+  // cExpm1AccCh ch[11][2] — Phase 6.1 Pillar B
+  cExpm1AccCh_0_0:  Tb64u64 = (u:$3FC5555555555555);
+  cExpm1AccCh_0_1:  Tb64u64 = (u:$3C65555555555554);
+  cExpm1AccCh_1_0:  Tb64u64 = (u:$3FA5555555555555);
+  cExpm1AccCh_1_1:  Tb64u64 = (u:$3C45555555555123);
+  cExpm1AccCh_2_0:  Tb64u64 = (u:$3F81111111111111);
+  cExpm1AccCh_2_1:  Tb64u64 = (u:$3C01111111118167);
+  cExpm1AccCh_3_0:  Tb64u64 = (u:$3F56C16C16C16C17);
+  cExpm1AccCh_3_1:  Tb64u64 = (u:QWord($BBEF49F49E220CEA));
+  cExpm1AccCh_4_0:  Tb64u64 = (u:$3F2A01A01A01A01A);
+  cExpm1AccCh_4_1:  Tb64u64 = (u:$3B6A019EFF6F919C);
+  cExpm1AccCh_5_0:  Tb64u64 = (u:$3EFA01A01A01A01A);
+  cExpm1AccCh_5_1:  Tb64u64 = (u:$3B39FCFF48A75B41);
+  cExpm1AccCh_6_0:  Tb64u64 = (u:$3EC71DE3A556C734);
+  cExpm1AccCh_6_1:  Tb64u64 = (u:QWord($BB6C14F73758CD7F));
+  cExpm1AccCh_7_0:  Tb64u64 = (u:$3E927E4FB7789F5C);
+  cExpm1AccCh_7_1:  Tb64u64 = (u:$3B3DFCE97931018F);
+  cExpm1AccCh_8_0:  Tb64u64 = (u:$3E5AE64567F544E3);
+  cExpm1AccCh_8_1:  Tb64u64 = (u:$3AFC513DA9E4C9C5);
+  cExpm1AccCh_9_0:  Tb64u64 = (u:$3E21EED8EFF8D831);
+  cExpm1AccCh_9_1:  Tb64u64 = (u:$3ACCA00AF84F2B60);
+  cExpm1AccCh_10_0: Tb64u64 = (u:$3DE6124613A86E8F);
+  cExpm1AccCh_10_1: Tb64u64 = (u:$3A8F27AC6000898F);
 
   cExpm1Db: array[0..37] of UInt64 = (
     UInt64($3FBE923C188EA79B), UInt64($3FD1A0408712E00A), UInt64($3FD1C38132777B26),
@@ -3799,25 +4077,66 @@ function Expm1RefineSmall(x: Double): Double;
 var
   fl, fh, hx, x2h, x2l, v0, v1, v2: Double;
   ch_v, cl_v, fh_t, fl_t: Double;
-  i: Int32;
   v_u, v2_u: Tb64u64;
   delta: UInt64;
 begin
   // fl seed = polynomial in cl[6]
-  fl := x*(cExpm1AccCl[0].f + x*(cExpm1AccCl[1].f + x*(cExpm1AccCl[2].f
-       + x*(cExpm1AccCl[3].f + x*(cExpm1AccCl[4].f + x*cExpm1AccCl[5].f)))));
+  fl := x*(cExpm1AccCl_0.f + x*(cExpm1AccCl_1.f + x*(cExpm1AccCl_2.f
+       + x*(cExpm1AccCl_3.f + x*(cExpm1AccCl_4.f + x*cExpm1AccCl_5.f)))));
 
-  // opolyddd(x, 11, ch, &fl)
-  pcr_fasttwosum(ch_v, fl, cExpm1AccCh[10, 0].f, fl);
-  cl_v := cExpm1AccCh[10, 1].f + fl;
-  for i := 9 downto 0 do
-  begin
-    ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
-    // fastsum(c[i][0], c[i][1], ch, cl, &cl)
-    pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh[i, 0].f, ch_v);
-    cl_v := (cExpm1AccCh[i, 1].f + cl_v) + fl_t;
-    ch_v := fh_t;
-  end;
+  // opolyddd(x, 11, ch, &fl) — Phase 6.1 Pillar A
+  pcr_fasttwosum(ch_v, fl, cExpm1AccCh_10_0.f, fl);
+  cl_v := cExpm1AccCh_10_1.f + fl;
+  // i = 9
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh_9_0.f, ch_v);
+  cl_v := (cExpm1AccCh_9_1.f + cl_v) + fl_t;
+  ch_v := fh_t;
+  // i = 8
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh_8_0.f, ch_v);
+  cl_v := (cExpm1AccCh_8_1.f + cl_v) + fl_t;
+  ch_v := fh_t;
+  // i = 7
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh_7_0.f, ch_v);
+  cl_v := (cExpm1AccCh_7_1.f + cl_v) + fl_t;
+  ch_v := fh_t;
+  // i = 6
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh_6_0.f, ch_v);
+  cl_v := (cExpm1AccCh_6_1.f + cl_v) + fl_t;
+  ch_v := fh_t;
+  // i = 5
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh_5_0.f, ch_v);
+  cl_v := (cExpm1AccCh_5_1.f + cl_v) + fl_t;
+  ch_v := fh_t;
+  // i = 4
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh_4_0.f, ch_v);
+  cl_v := (cExpm1AccCh_4_1.f + cl_v) + fl_t;
+  ch_v := fh_t;
+  // i = 3
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh_3_0.f, ch_v);
+  cl_v := (cExpm1AccCh_3_1.f + cl_v) + fl_t;
+  ch_v := fh_t;
+  // i = 2
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh_2_0.f, ch_v);
+  cl_v := (cExpm1AccCh_2_1.f + cl_v) + fl_t;
+  ch_v := fh_t;
+  // i = 1
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh_1_0.f, ch_v);
+  cl_v := (cExpm1AccCh_1_1.f + cl_v) + fl_t;
+  ch_v := fh_t;
+  // i = 0
+  ch_v := pcr_mulddd_pd(ch_v, cl_v, x, cl_v);
+  pcr_fasttwosum(fh_t, fl_t, cExpm1AccCh_0_0.f, ch_v);
+  cl_v := (cExpm1AccCh_0_1.f + cl_v) + fl_t;
+  ch_v := fh_t;
   fl := cl_v;
   fh := pcr_mulddd_pd(ch_v, fl, x, fl);
   fh := pcr_mulddd_pd(fh, fl, x, fl);
@@ -3861,7 +4180,6 @@ var
   t, dx, dxl, dxll, dxh, fh, fl, e, th, tl, t0h, t0l, t1h, t1l: Double;
   ch_v, cl_v, fh_t, fl_t: Double;
   jt, i0, i1, ie: Int64;
-  i: Int32;
 begin
   t  := pcr_roundeven(x * cExpS.f);
   jt := Trunc(t);
@@ -3878,15 +4196,44 @@ begin
   dxh  := dx + dxl;
   dxl  := (dx - dxh) + dxl + dxll;
 
-  ch_v := cExpAccCh[6, 0].f;  cl_v := cExpAccCh[6, 1].f;
-  for i := 5 downto 0 do
-  begin
-    ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
-    fh_t := ch_v + cExpAccCh[i, 0].f;
-    fl_t := (cExpAccCh[i, 0].f - fh_t) + ch_v;
-    ch_v := fh_t;
-    cl_v := cl_v + fl_t + cExpAccCh[i, 1].f;
-  end;
+  // opolydd unrolled (n=7) — Phase 6.1 Pillar A
+  ch_v := cExpAccCh_6_0.f;  cl_v := cExpAccCh_6_1.f;
+  // i = 5
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh_t := ch_v + cExpAccCh_5_0.f;
+  fl_t := (cExpAccCh_5_0.f - fh_t) + ch_v;
+  ch_v := fh_t;
+  cl_v := cl_v + fl_t + cExpAccCh_5_1.f;
+  // i = 4
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh_t := ch_v + cExpAccCh_4_0.f;
+  fl_t := (cExpAccCh_4_0.f - fh_t) + ch_v;
+  ch_v := fh_t;
+  cl_v := cl_v + fl_t + cExpAccCh_4_1.f;
+  // i = 3
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh_t := ch_v + cExpAccCh_3_0.f;
+  fl_t := (cExpAccCh_3_0.f - fh_t) + ch_v;
+  ch_v := fh_t;
+  cl_v := cl_v + fl_t + cExpAccCh_3_1.f;
+  // i = 2
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh_t := ch_v + cExpAccCh_2_0.f;
+  fl_t := (cExpAccCh_2_0.f - fh_t) + ch_v;
+  ch_v := fh_t;
+  cl_v := cl_v + fl_t + cExpAccCh_2_1.f;
+  // i = 1
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh_t := ch_v + cExpAccCh_1_0.f;
+  fl_t := (cExpAccCh_1_0.f - fh_t) + ch_v;
+  ch_v := fh_t;
+  cl_v := cl_v + fl_t + cExpAccCh_1_1.f;
+  // i = 0
+  ch_v := pcr_muldd(dxh, dxl, ch_v, cl_v, cl_v);
+  fh_t := ch_v + cExpAccCh_0_0.f;
+  fl_t := (cExpAccCh_0_0.f - fh_t) + ch_v;
+  ch_v := fh_t;
+  cl_v := cl_v + fl_t + cExpAccCh_0_1.f;
   fh := ch_v; fl := cl_v;
   fh := pcr_muldd(dxh, dxl, fh, fl, fl);
   fh := pcr_muldd(fh, fl, th, tl, fl);
@@ -3951,9 +4298,9 @@ begin
     i_idx := Trunc(fx);
     th := cExpm1Tz[i_idx + 32, 1].f;
     tl := cExpm1Tz[i_idx + 32, 0].f;
-    fh := z * cExpm1FastC[0].f;
-    fl := z2 * ((cExpm1FastC[1].f + z * cExpm1FastC[2].f)
-              + z2 * (cExpm1FastC[3].f + z * (cExpm1FastC[4].f + z * cExpm1FastC[5].f)));
+    fh := z * cExpm1FastC_0.f;
+    fl := z2 * ((cExpm1FastC_1.f + z * cExpm1FastC_2.f)
+              + z2 * (cExpm1FastC_3.f + z * (cExpm1FastC_4.f + z * cExpm1FastC_5.f)));
     e0 := cExpm1Eps0.f;
     eps := z2 * e0 + cExpm1EpsAdd.f;
     pcr_fasttwosum(rh, rl, th, fh);

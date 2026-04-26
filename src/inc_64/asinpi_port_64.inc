@@ -187,7 +187,7 @@ begin
   twoM600N := -kTwoM600.f;
   t.f := x;
   au := t.u and UInt64($7FFFFFFFFFFFFFFF);
-  if x = 0.0 then Exit(x);
+  if x = Double(0.0) then Exit(x);
 
   if (au shl 12) = UInt64($59AF9A1194EFE000) then begin
     e := Int32((t.u shr 52) and $7FF);
@@ -240,14 +240,50 @@ end;
 // ---------------------------------------------------------------------------
 function Asinpi_Small(x: Double): Double;
 var
-  i: Int32;
   h, l, hh, ll: Double;
 begin
-  for i := 0 to 17 do begin
-    if x = cAsinpi_SmallExcX[i].f then
-      Exit(cAsinpi_SmallExcH[i].f + cAsinpi_SmallExcL[i].f);
-    if x = -cAsinpi_SmallExcX[i].f then
-      Exit(-cAsinpi_SmallExcH[i].f - cAsinpi_SmallExcL[i].f);
+  // Phase 6.4/A+B: branch-on-sign-first + literal-indexed unroll of the
+  // 18-entry exception scan (x = ±cAsinpi_SmallExcX_<i>). Doubles code
+  // size vs the original loop but every read is now literal-indexed so
+  // FPC can constant-fold the comparisons; cf. atanpi (Phase 6.3).
+  if x >= 0 then begin
+    if x = cAsinpi_SmallExcX_00.f then Exit(cAsinpi_SmallExcH_00.f + cAsinpi_SmallExcL_00.f);
+    if x = cAsinpi_SmallExcX_01.f then Exit(cAsinpi_SmallExcH_01.f + cAsinpi_SmallExcL_01.f);
+    if x = cAsinpi_SmallExcX_02.f then Exit(cAsinpi_SmallExcH_02.f + cAsinpi_SmallExcL_02.f);
+    if x = cAsinpi_SmallExcX_03.f then Exit(cAsinpi_SmallExcH_03.f + cAsinpi_SmallExcL_03.f);
+    if x = cAsinpi_SmallExcX_04.f then Exit(cAsinpi_SmallExcH_04.f + cAsinpi_SmallExcL_04.f);
+    if x = cAsinpi_SmallExcX_05.f then Exit(cAsinpi_SmallExcH_05.f + cAsinpi_SmallExcL_05.f);
+    if x = cAsinpi_SmallExcX_06.f then Exit(cAsinpi_SmallExcH_06.f + cAsinpi_SmallExcL_06.f);
+    if x = cAsinpi_SmallExcX_07.f then Exit(cAsinpi_SmallExcH_07.f + cAsinpi_SmallExcL_07.f);
+    if x = cAsinpi_SmallExcX_08.f then Exit(cAsinpi_SmallExcH_08.f + cAsinpi_SmallExcL_08.f);
+    if x = cAsinpi_SmallExcX_09.f then Exit(cAsinpi_SmallExcH_09.f + cAsinpi_SmallExcL_09.f);
+    if x = cAsinpi_SmallExcX_10.f then Exit(cAsinpi_SmallExcH_10.f + cAsinpi_SmallExcL_10.f);
+    if x = cAsinpi_SmallExcX_11.f then Exit(cAsinpi_SmallExcH_11.f + cAsinpi_SmallExcL_11.f);
+    if x = cAsinpi_SmallExcX_12.f then Exit(cAsinpi_SmallExcH_12.f + cAsinpi_SmallExcL_12.f);
+    if x = cAsinpi_SmallExcX_13.f then Exit(cAsinpi_SmallExcH_13.f + cAsinpi_SmallExcL_13.f);
+    if x = cAsinpi_SmallExcX_14.f then Exit(cAsinpi_SmallExcH_14.f + cAsinpi_SmallExcL_14.f);
+    if x = cAsinpi_SmallExcX_15.f then Exit(cAsinpi_SmallExcH_15.f + cAsinpi_SmallExcL_15.f);
+    if x = cAsinpi_SmallExcX_16.f then Exit(cAsinpi_SmallExcH_16.f + cAsinpi_SmallExcL_16.f);
+    if x = cAsinpi_SmallExcX_17.f then Exit(cAsinpi_SmallExcH_17.f + cAsinpi_SmallExcL_17.f);
+  end else begin
+    if x = -cAsinpi_SmallExcX_00.f then Exit(-cAsinpi_SmallExcH_00.f - cAsinpi_SmallExcL_00.f);
+    if x = -cAsinpi_SmallExcX_01.f then Exit(-cAsinpi_SmallExcH_01.f - cAsinpi_SmallExcL_01.f);
+    if x = -cAsinpi_SmallExcX_02.f then Exit(-cAsinpi_SmallExcH_02.f - cAsinpi_SmallExcL_02.f);
+    if x = -cAsinpi_SmallExcX_03.f then Exit(-cAsinpi_SmallExcH_03.f - cAsinpi_SmallExcL_03.f);
+    if x = -cAsinpi_SmallExcX_04.f then Exit(-cAsinpi_SmallExcH_04.f - cAsinpi_SmallExcL_04.f);
+    if x = -cAsinpi_SmallExcX_05.f then Exit(-cAsinpi_SmallExcH_05.f - cAsinpi_SmallExcL_05.f);
+    if x = -cAsinpi_SmallExcX_06.f then Exit(-cAsinpi_SmallExcH_06.f - cAsinpi_SmallExcL_06.f);
+    if x = -cAsinpi_SmallExcX_07.f then Exit(-cAsinpi_SmallExcH_07.f - cAsinpi_SmallExcL_07.f);
+    if x = -cAsinpi_SmallExcX_08.f then Exit(-cAsinpi_SmallExcH_08.f - cAsinpi_SmallExcL_08.f);
+    if x = -cAsinpi_SmallExcX_09.f then Exit(-cAsinpi_SmallExcH_09.f - cAsinpi_SmallExcL_09.f);
+    if x = -cAsinpi_SmallExcX_10.f then Exit(-cAsinpi_SmallExcH_10.f - cAsinpi_SmallExcL_10.f);
+    if x = -cAsinpi_SmallExcX_11.f then Exit(-cAsinpi_SmallExcH_11.f - cAsinpi_SmallExcL_11.f);
+    if x = -cAsinpi_SmallExcX_12.f then Exit(-cAsinpi_SmallExcH_12.f - cAsinpi_SmallExcL_12.f);
+    if x = -cAsinpi_SmallExcX_13.f then Exit(-cAsinpi_SmallExcH_13.f - cAsinpi_SmallExcL_13.f);
+    if x = -cAsinpi_SmallExcX_14.f then Exit(-cAsinpi_SmallExcH_14.f - cAsinpi_SmallExcL_14.f);
+    if x = -cAsinpi_SmallExcX_15.f then Exit(-cAsinpi_SmallExcH_15.f - cAsinpi_SmallExcL_15.f);
+    if x = -cAsinpi_SmallExcX_16.f then Exit(-cAsinpi_SmallExcH_16.f - cAsinpi_SmallExcL_16.f);
+    if x = -cAsinpi_SmallExcX_17.f then Exit(-cAsinpi_SmallExcH_17.f - cAsinpi_SmallExcL_17.f);
   end;
   h := cAsinpi_Small_C1H.f;
   l := pcr_fma(cAsinpi_Small_C3.f, x * x, cAsinpi_Small_C1L.f);
@@ -314,8 +350,8 @@ begin
     c.f   := Sqrt(xx);
     ixx.f := ixx.f * c.f;
     x2 := x * x;
-    c0 := cAsinpi_MainCh[0].f + ax * cAsinpi_MainCh[1].f;
-    c2 := cAsinpi_MainCh[2].f + ax * cAsinpi_MainCh[3].f;
+    c0 := cAsinpi_MainCh_0.f + ax * cAsinpi_MainCh_1.f;
+    c2 := cAsinpi_MainCh_2.f + ax * cAsinpi_MainCh_3.f;
     c0 := c0 + x2 * c2;
     ic.f := c0 * c.f + Double(64.0);
     indx := Int32((((ic.u and (UInt64(not 0) shr 12)) + (Int64(1) shl (52 - 7))) shr (52 - 6)));
@@ -440,7 +476,7 @@ begin
     if (e = 0) and (m = 0) then Exit(x * Double(0.5));
     if (e = $400) and (m <> 0) then Exit(x + x);
     pcr_feraiseexcept_invalid;
-    Result := 0.0 / 0.0;
+    Result := Double(0.0) / Double(0.0);
     Exit;
   end;
 
@@ -481,8 +517,8 @@ begin
     ixx.f := ixx.f * c.f;
     ax := Abs(x);
     x2 := x * x;
-    c0 := cAsinpi_MainCh[0].f + ax * cAsinpi_MainCh[1].f;
-    c2 := cAsinpi_MainCh[2].f + ax * cAsinpi_MainCh[3].f;
+    c0 := cAsinpi_MainCh_0.f + ax * cAsinpi_MainCh_1.f;
+    c2 := cAsinpi_MainCh_2.f + ax * cAsinpi_MainCh_3.f;
     c0 := c0 + x2 * c2;
     c0 := c0 * c.f;
     c0 := c0 + Double(64.0);

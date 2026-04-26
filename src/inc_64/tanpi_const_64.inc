@@ -34,43 +34,42 @@
     ((u:QWord($BC7B6E6B4DE0CD24)),(u:$40345AFFED201B55))
   );
 
-  cTanpiC: array[0..3] of Tb64u64 = (
-    (u:$3304ABBCE625BE51),
-    (u:$2A6466BC6776A9B1),
-    (u:$21C45FFF6EB26045),
-    (u:$1924627663861052)
-  );
+  // Pillar B (Phase 6.3): cTanpiC lifted to named scalars.
+  cTanpiC_0: Tb64u64 = (u:$3304ABBCE625BE51);
+  cTanpiC_1: Tb64u64 = (u:$2A6466BC6776A9B1);
+  cTanpiC_2: Tb64u64 = (u:$21C45FFF6EB26045);
+  cTanpiC_3: Tb64u64 = (u:$1924627663861052);
 
   cTanpiPh: Tb64u64 = (u:$3BA921FB54442D18);
   cTanpiPl: Tb64u64 = (u:$3841A62633145C07);
 
-  cTanpiRefCh: array[0..4, 0..1] of Tb64u64 = (
-    ((u:$3F9921FB54442D18),(u:$3C31A62633145C07)),
-    ((u:$3ED4ABBCE625BE53),(u:QWord($BB705511C6842515))),
-    ((u:$3E1466BC6775AAE2),(u:QWord($BAA6DC0D93FB2ECE))),
-    ((u:$3D545FFF9B48E95E),(u:$39DB226B250D2CC3)),
-    ((u:$3C945F472E3AF011),(u:$39190612A0755449))
-  );
-  cTanpiRefCl: array[0..2] of Tb64u64 = (
-    (u:$3BD45F32F25DAB7F),
-    (u:$3B145F3030C82AF4),
-    (u:$3A5464490600A978)
-  );
+  // Pillar B (Phase 6.3): polynomial arrays lifted to named scalars; the
+  // associated polydd loops are unrolled in tanpi_port_64.inc.
+  cTanpiRefCh_0_0: Tb64u64 = (u:$3F9921FB54442D18);
+  cTanpiRefCh_0_1: Tb64u64 = (u:$3C31A62633145C07);
+  cTanpiRefCh_1_0: Tb64u64 = (u:$3ED4ABBCE625BE53);
+  cTanpiRefCh_1_1: Tb64u64 = (u:QWord($BB705511C6842515));
+  cTanpiRefCh_2_0: Tb64u64 = (u:$3E1466BC6775AAE2);
+  cTanpiRefCh_2_1: Tb64u64 = (u:QWord($BAA6DC0D93FB2ECE));
+  cTanpiRefCh_3_0: Tb64u64 = (u:$3D545FFF9B48E95E);
+  cTanpiRefCh_3_1: Tb64u64 = (u:$39DB226B250D2CC3);
+  cTanpiRefCh_4_0: Tb64u64 = (u:$3C945F472E3AF011);
+  cTanpiRefCh_4_1: Tb64u64 = (u:$39190612A0755449);
+  cTanpiRefCl_0:   Tb64u64 = (u:$3BD45F32F25DAB7F);
+  cTanpiRefCl_1:   Tb64u64 = (u:$3B145F3030C82AF4);
+  cTanpiRefCl_2:   Tb64u64 = (u:$3A5464490600A978);
 
-  cTanpiSmallC: array[0..2] of Tb64u64 = (
-    (u:$4024ABBCE625BE53),
-    (u:$404466BC6775AA2A),
-    (u:$40646000158496C2)
-  );
-  cTanpiSmRefCh: array[0..2, 0..1] of Tb64u64 = (
-    ((u:$4024ABBCE625BE53),(u:QWord($BCC05511C68476A8))),
-    ((u:$404466BC6775AAE2),(u:QWord($BCD6DC0CBDDC0E69))),
-    ((u:$40645FFF9B48E95E),(u:$3CEA5047910AE0EF))
-  );
-  cTanpiSmRefCl: array[0..1] of Tb64u64 = (
-    (u:$40845F472E3AED7D),
-    (u:$40A45F33BE0E9598)
-  );
+  cTanpiSmallC_0: Tb64u64 = (u:$4024ABBCE625BE53);
+  cTanpiSmallC_1: Tb64u64 = (u:$404466BC6775AA2A);
+  cTanpiSmallC_2: Tb64u64 = (u:$40646000158496C2);
+  cTanpiSmRefCh_0_0: Tb64u64 = (u:$4024ABBCE625BE53);
+  cTanpiSmRefCh_0_1: Tb64u64 = (u:QWord($BCC05511C68476A8));
+  cTanpiSmRefCh_1_0: Tb64u64 = (u:$404466BC6775AAE2);
+  cTanpiSmRefCh_1_1: Tb64u64 = (u:QWord($BCD6DC0CBDDC0E69));
+  cTanpiSmRefCh_2_0: Tb64u64 = (u:$40645FFF9B48E95E);
+  cTanpiSmRefCh_2_1: Tb64u64 = (u:$3CEA5047910AE0EF);
+  cTanpiSmRefCl_0:   Tb64u64 = (u:$40845F472E3AED7D);
+  cTanpiSmRefCl_1:   Tb64u64 = (u:$40A45F33BE0E9598);
 
   cTanpiPi0: Tb64u64 = (u:$400921FB54442D18);
   cTanpiPi1: Tb64u64 = (u:$3CA1A62633145C07);

@@ -81,7 +81,7 @@ procedure TanFastDiv(out h, l: Double; bh, bl, ah, al: Double);
 var
   y, eh, el: Double;
 begin
-  y := 1.0 / ah;
+  y := Double(1.0) / ah;
   h := bh * y;
   eh := pcr_fma(ah, -h, bh);
   el := pcr_fma(al, -h, bl);
@@ -134,7 +134,7 @@ begin
 
   // Defer to slow path: i=0 and h < 2^-37
   if (i = 0) and (h < cTan2pm37.f) then begin
-    Result := 1.0; // sentinel: force slow path
+    Result := Double(1.0); // sentinel: force slow path
     Exit;
   end;
 
@@ -266,18 +266,14 @@ end;
 const
   cTanErr: UInt64 = 86;
 
-  cTanExceptionsX: array[0..1] of Tb64u64 = (
-    (u:$3E8DFFFFFFFFFF1F), // 0x1.dffffffffff1fp-22
-    (u:$3EADFFFFFFFFFC7C)  // 0x1.dfffffffffc7cp-21
-  );
-  cTanExceptionsH: array[0..1] of Tb64u64 = (
-    (u:$3E8E000000000151), // 0x1.e000000000151p-22
-    (u:$3EAE000000000546)  // 0x1.e000000000546p-21
-  );
-  cTanExceptionsL: array[0..1] of Tb64u64 = (
-    (u:$3B3FFFFFFFFFFFFF), // 0x1.fffffffffffffp-76
-    (u:QWord($B74658BCEDB6E1D4))  // -0x1.658bcedb6e1d4p-147
-  );
+  // Pillar B (Phase 6.3): array form replaced with named Tb64u64 scalars; the
+  // original `for k := 0 to 1` loop is unrolled at the call site (Pillar A).
+  cTanExceptionsX_0: Tb64u64 = (u:$3E8DFFFFFFFFFF1F);             // 0x1.dffffffffff1fp-22
+  cTanExceptionsX_1: Tb64u64 = (u:$3EADFFFFFFFFFC7C);             // 0x1.dfffffffffc7cp-21
+  cTanExceptionsH_0: Tb64u64 = (u:$3E8E000000000151);             // 0x1.e000000000151p-22
+  cTanExceptionsH_1: Tb64u64 = (u:$3EAE000000000546);             // 0x1.e000000000546p-21
+  cTanExceptionsL_0: Tb64u64 = (u:$3B3FFFFFFFFFFFFF);             // 0x1.fffffffffffffp-76
+  cTanExceptionsL_1: Tb64u64 = (u:QWord($B74658BCEDB6E1D4));      // -0x1.658bcedb6e1d4p-147
 
 function TanAccurate(x: Double): Double;
 var
@@ -285,7 +281,6 @@ var
   i: Int32;
   neg, is_tan: Boolean;
   err, hi0, hi1, lo0, lo1: UInt64;
-  k: Int32;
   ax, absx, hi, lo: Double;
 begin
   neg := x < 0;
@@ -336,14 +331,21 @@ begin
   hi1 := U.hi + UInt64(Ord(lo1 < U.lo));
   if (hi0 shr 10) <> (hi1 shr 10) then begin
     ax := Abs(x);
-    for k := 0 to 1 do
-      if ax = cTanExceptionsX[k].f then begin
-        hi := cTanExceptionsH[k].f;
-        lo := cTanExceptionsL[k].f;
-        if x > 0 then Result := hi + lo
-        else Result := -hi - lo;
-        Exit;
-      end;
+    // Pillar A (Phase 6.3): for k := 0 to 1 unrolled.
+    if ax = cTanExceptionsX_0.f then begin
+      hi := cTanExceptionsH_0.f;
+      lo := cTanExceptionsL_0.f;
+      if x > 0 then Result := hi + lo
+      else Result := -hi - lo;
+      Exit;
+    end;
+    if ax = cTanExceptionsX_1.f then begin
+      hi := cTanExceptionsH_1.f;
+      lo := cTanExceptionsL_1.f;
+      if x > 0 then Result := hi + lo
+      else Result := -hi - lo;
+      Exit;
+    end;
   end;
 
   if neg then U.sgn := 1 - U.sgn;
@@ -366,7 +368,7 @@ begin
 
   if e = $7FF then begin
     if (t.u shl 1) = (UInt64($7FF) shl 53) then begin
-      Result := 0.0 / 0.0; // Inf -> qNaN
+      Result := Double(0.0) / Double(0.0); // Inf -> qNaN
       Exit;
     end;
     Result := x + x;

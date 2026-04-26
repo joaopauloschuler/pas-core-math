@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-"""Generate src/erfc_const.inc by extracting tables from core-math erfc.c.
+"""Generate src/inc_64/erfc_const_64.inc by extracting tables from core-math erfc.c.
 
 Tables extracted:
-- T[6][13]            : asympt fast-path polynomials (cErfcT)
-- Tacc[10][30]        : asympt accurate-path polynomials (cErfcTacc, padded to 30 cols)
-- E2[28]              : degree-19 accurate exp polynomial (cErfcE2)
-- exceptions in erfc_asympt_accurate (22 triples) (cErfcAsymptEx)
-- exceptions in cr_erfc_accurate negative branch (17 triples) (cErfcAccNegEx)
-- exceptions in cr_erfc_accurate positive branch (29 triples) (cErfcAccPosEx)
+- T[6][13]            : asympt fast-path polynomials (cErfcT) — runtime-indexed; array.
+- Tacc[10][30]        : asympt accurate-path polynomials (cErfcTacc) — runtime-indexed; array.
+- E2[28]              : degree-19 accurate exp polynomial (cErfcE2) — array (used by polydd loops).
+- exceptions in erfc_asympt_accurate (22 triples) — Phase 6.6 Pillar B
+  named scalars cErfcAsymptEx_<i>_<j> (loop unrolled in port).
+- exceptions in cr_erfc_accurate negative branch (17 triples) — Pillar B
+  cErfcAccNegEx_<i>_<j> (loop unrolled).
+- exceptions in cr_erfc_accurate positive branch (29 triples) — Pillar B
+  cErfcAccPosEx_<i>_<j> (loop unrolled).
 
 All hex floats are decoded with float.fromhex() and re-encoded as Tb64u64
 records via struct.pack to avoid hand-typing bit patterns.
@@ -16,7 +19,8 @@ import re, struct, os
 
 SRC = os.path.join(os.path.dirname(__file__), '..', '..', 'core-math', 'src',
                    'binary64', 'erfc', 'erfc.c')
-OUT = os.path.join(os.path.dirname(__file__), '..', 'src', 'erfc_const.inc')
+OUT = os.path.join(os.path.dirname(__file__), '..', 'src', 'inc_64',
+                   'erfc_const_64.inc')
 
 with open(SRC) as f:
     text = f.read()
@@ -28,7 +32,12 @@ def to_u64(s):
     b = struct.pack('<d', v)
     return struct.unpack('<Q', b)[0], v
 
-# ---- T[6][13] (in erfc.c, NOT erf.c) ----
+def fu(u):
+    if u >> 63:
+        return f"QWord(${u:016X})"
+    return f"${u:016X}"
+
+# ---- T[6][13] ----
 m = re.search(r'static const double T\[6\]\[13\] = \{(.*?)\n\};', text, re.S)
 assert m, 'T'
 T_rows = re.findall(r'\{([^{}]*)\}', m.group(1))
@@ -47,12 +56,11 @@ assert len(Tacc_rows) == 10
 Tacc = []
 for row in Tacc_rows:
     nums = HEX.findall(row)
-    # pad to 30 with literal "0x0p+0"
     while len(nums) < 30:
         nums.append('0x0p+0')
     Tacc.append(nums)
 
-# ---- E2[] degree-19 exp accurate polynomial (8 dd + 12 single = 28 entries) ----
+# ---- E2[] ----
 m = re.search(r'static const double E2\[\] = \{(.*?)\n\};', text, re.S)
 assert m, 'E2'
 E2_nums = HEX.findall(m.group(1))
@@ -73,13 +81,10 @@ def extract_after(marker_func_name, count, dim=3):
         out.append(nums)
     return out
 
-# erfc_asympt_accurate has 22-entry exceptions table
 ex_asympt = extract_after('erfc_asympt_accurate', 22)
 
-# cr_erfc_accurate first occurrence (after definition); look for two exceptions blocks
 cra_idx = text.index('cr_erfc_accurate (double x)')
 sub = text[cra_idx:]
-# negative-branch exceptions: 17 entries
 m1 = re.search(r'static const double exceptions\[\]\[3\] = \{(.*?)\n\s*\}\s*;', sub, re.S)
 assert m1
 rows = re.findall(r'\{([^{}]+)\}', m1.group(1))
@@ -90,7 +95,6 @@ for r in rows:
     assert len(nums) == 3
     ex_neg.append(nums)
 
-# positive-branch exceptions: 29 entries (after first block)
 sub2 = sub[m1.end():]
 m2 = re.search(r'static const double exceptions\[\]\[3\] = \{(.*?)\n\s*\}\s*;', sub2, re.S)
 assert m2
@@ -112,7 +116,7 @@ def emit_array1(name, nums, comment=''):
     for i, n in enumerate(nums):
         u, _ = to_u64(n)
         sep = ',' if i < len(nums)-1 else ''
-        lines.append(f"    (u:${u:016X}){sep}  // {n}")
+        lines.append(f"    (u:{fu(u)}){sep}  // {n}")
     lines.append("  );")
     lines.append("")
 
@@ -121,21 +125,28 @@ def emit_array2(name, rows, dim_comment=''):
     lines.append(f"  // {name}{(' ' + dim_comment) if dim_comment else ''}")
     lines.append(f"  {name}: array[0..{R-1},0..{C-1}] of Tb64u64 = (")
     for i, row in enumerate(rows):
-        ents = []
-        for n in row:
-            u, _ = to_u64(n)
-            ents.append(f"(u:${u:016X})")
+        ents = [f"(u:{fu(to_u64(n)[0])})" for n in row]
         sep = ',' if i < R-1 else ''
         lines.append(f"    ({', '.join(ents)}){sep}  // i={i}")
     lines.append("  );")
     lines.append("")
 
+def emit_named_2d(prefix, rows, comment=''):
+    if comment:
+        lines.append(f"  // {prefix}_<i>_<j>{(' ' + comment) if comment else ''}")
+    for i, row in enumerate(rows):
+        for j, n in enumerate(row):
+            u, _ = to_u64(n)
+            lines.append(f"  {prefix}_{i}_{j}: Tb64u64 = (u:{fu(u)});  // {n}")
+    lines.append("")
+
 emit_array2('cErfcT',     T,        '[6][13] asympt-fast polynomials (degree 23, odd coeffs)')
 emit_array2('cErfcTacc',  Tacc,     '[10][30] asympt-accurate polynomials (zero-padded)')
 emit_array1('cErfcE2',    E2_nums,  '(degree-19 exp_accurate poly, 8 dd + 12 single)')
-emit_array2('cErfcAsymptEx',  ex_asympt, '[22][3] asympt-accurate exception triples')
-emit_array2('cErfcAccNegEx',  ex_neg,    '[17][3] cr_erfc_accurate negative-x exception triples')
-emit_array2('cErfcAccPosEx',  ex_pos,    '[29][3] cr_erfc_accurate positive-x exception triples')
+# Phase 6.6 Pillar B: exception tables become literal-indexed after Pillar A unroll.
+emit_named_2d('cErfcAsymptEx',  ex_asympt, '(22 asympt-accurate exception triples)')
+emit_named_2d('cErfcAccNegEx',  ex_neg,    '(17 cr_erfc_accurate negative-x exception triples)')
+emit_named_2d('cErfcAccPosEx',  ex_pos,    '(29 cr_erfc_accurate positive-x exception triples)')
 
 with open(OUT, 'w') as f:
     f.write('\n'.join(lines) + '\n')

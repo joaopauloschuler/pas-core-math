@@ -99,8 +99,8 @@ begin
   rm  := UInt64(tm) shr 1;
   underflow := rm < $0010000000000000;  // < 2^52
   if rb or sb then begin
-    op := 1.0 + cHyp1pM54.f;
-    om := 1.0 - cHyp1pM54.f;
+    op := Double(1.0) + cHyp1pM54.f;
+    om := Double(1.0) - cHyp1pM54.f;
     if op = om then begin // round-to-nearest
       if sb then begin
         if rb then Inc(rm);
@@ -109,7 +109,7 @@ begin
         // sticky=0, round=1: round-half-to-even
         if (rm and 1) <> 0 then Inc(rm);
       end;
-    end else if op > 1.0 then begin // round upwards
+    end else if op > Double(1.0) then begin // round upwards
       Inc(rm);
       if ((rm shr 52) <> 0) and ((tm and 1) <> 0) then underflow := False;
     end;
@@ -139,8 +139,8 @@ var
   be, le, re, de, ls, k, i: Int32;
   D, e: Int64;
 begin
-  op := 1.0 + cHyp1pM54.f;
-  om := 1.0 - cHyp1pM54.f;
+  op := Double(1.0) + cHyp1pM54.f;
+  om := Double(1.0) - cHyp1pM54.f;
   xi_.f := x;  yi_.f := y;
   bm := (xi_.u and (UInt64($FFFFFFFFFFFFFFFF) shr 12)) or (UInt64(1) shl 52);
   lm := (yi_.u and (UInt64($FFFFFFFFFFFFFFFF) shr 12)) or (UInt64(1) shl 52);
@@ -213,7 +213,7 @@ begin
         rm := rm and (not UInt64(1));  // rm -= rm & 1
       end;
     end else begin
-      if op = 1.0 then begin
+      if op = Double(1.0) then begin
         if rm > cHypTwo53 then Dec(rm, 2) else Dec(rm);
       end;
     end;
@@ -284,7 +284,7 @@ begin
     if yd.u = 0 then begin Result := xd.f; Exit; end;
     ex := xd.u;
     if (ex shr 52) = 0 then begin
-      if ex = 0 then begin Result := 0.0; Exit; end;
+      if ex = 0 then begin Result := Double(0.0); Exit; end;
       Result := HypotDenorm(ex, ey);
       Exit;
     end;
@@ -309,7 +309,7 @@ begin
   x2  := x*x;   dx2 := pcr_fma(x, x, -x2);
   y2  := y*y;   dy2 := pcr_fma(y, y, -y2);
   r2  := x2 + y2;
-  ir2 := 0.5 / r2;
+  ir2 := Double(0.5) / r2;
   dr2 := ((x2 - r2) + y2) + (dx2 + dy2);
   th  := Sqrt(r2);
   rsqrt := th * ir2;

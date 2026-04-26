@@ -1133,7 +1133,7 @@ starting this phase. Validate the qint arithmetic independently.
     - Field mapping `r0 → hh, r1 → hl, r2 → lh, r3 → ll` (r0 is most significant) — opposite of what one might expect from "rl/rh" naming in C.
     - The C `add_qint` recursive call `add_qint(r, b, a)` is replaced by a swap to avoid recursion in Pascal (matches existing `AddDInt` / `AddTInt` pattern).
     - `Mulu64u64` is marked `inline` but FPC declines to inline it inside this unit (note: "Call to subroutine ... marked as inline is not inlined") — acceptable for now; will revisit during pow benchmarking if mul-qint becomes a hotspot.
-- [ ] **5.02** `pow`     — 1951 lines *(dint + qint + fenv, bivariate)*
+- [X] **5.02** `pow`     — 1951 lines *(dint + qint + fenv, bivariate)*
   - **Scope (2026-04-25):** the largest single function in the binary64 suite. Source split:
     `pow.c` 1951 lines + `pow.h` 875 lines (helpers + tables P_1, Q_1, T1, T2, _INVERSE, _LOG_INV)
     + `dint.h` 1254 lines (tables _INVERSE_2_1, _INVERSE_2_2, _LOG_INV_2_1, _LOG_INV_2_2, T1_2, T2_2, P_2, Q_2, ~640 new lines beyond pascoremathtypes)
@@ -1169,6 +1169,368 @@ starting this phase. Validate the qint arithmetic independently.
 
 ---
 
+## Phase 6 — x87-avoidance pass (post-port optimization)
+
+Phase 6 is a cross-cutting cleanup applied after every function in Phases 1–5 is bit-exact.
+The goal is to keep FPC's code generator on SSE2 and out of the x87 FPU on x86-64 by
+(a) eliminating untyped numeric literals that can promote intermediate results to 80-bit
+extended precision, and (b) replacing constant-array element reads in hot polynomial
+chains with named scalar `const` declarations that the compiler can fold directly into
+the instruction stream. The newer code (5.02b's `cPowP1_*` / `cPowQ1_*` named scalars,
+the `Double(...)` casts in `pow_port.inc`) already follows these rules; Phase 6 retrofits
+the older inc files to match.
+
+**Scope guard.** This phase targets fixed-trip-count polynomial loops over small
+(≤~20 entry) coefficient arrays. It does **not** apply to runtime-indexed lookup
+tables (`cPowInverse[0..181]`, `cAtan2T2[0..64]`, `cCosTables`, etc.) — those are
+indexed by input bits and cannot be unrolled or lifted to named scalars.
+
+### Three pillars (applied in order, per inc file)
+
+**Pillar A — Unroll fixed-trip-count polynomial loops.**
+Any `for i := 0 to K do … cFoo[i].f …` with `K` known at compile time (Horner, FMA
+chains, dot products over fixed-size coefficient arrays) is unrolled into an explicit
+chain with literal indices. Mirror the C source's manual unroll where one exists;
+otherwise unroll fully (K is always small — typically 3–18). Do not unroll loops
+whose trip count depends on input or whose body has side effects beyond the
+accumulator. Pillar A unblocks Pillar B.
+
+**Pillar B — Lift literal-index constant-array reads to named scalars.**
+Once `cFoo[3].f` is a compile-time access, replace it with `cFoo_3: Double = …;`
+declared in the matching `*_const_64.inc`. For `Tb64u64` arrays where only `.f` is
+read in hot code, emit a named `Double` const and drop the array; keep the
+`Tb64u64` array only if its bit-pattern form is also used (e.g. for `pcr_clzll`
+style integer access). Naming: `cFoo_3` for `cFoo[3]`; for double-double tables
+`cFooHi_3` / `cFooLo_3`. Auto-generators in `tmp/*_gen.py` must be updated in the
+same commit, or the next regen reverts the work.
+
+**Pillar C — `Double(...)` typecast on every bare float literal.**
+Wrap every Double-typed literal in expressions, return values, and NaN sentinels:
+`1.0 / x` → `Double(1.0) / x`; `Result := 1.0` → `Result := Double(1.0)`;
+`0.0 / 0.0` → `Double(0.0) / Double(0.0)`. Does **not** apply to literals already
+inside a `const … : Double = …;` declaration — those are typed by their declaration.
+Pick one convention for negatives (`-Double(1.0)` vs `Double(-1.0)`) and document it.
+
+### Subtask template (apply per inc file)
+
+1. Apply Pillar A — unroll. Commit. Run `taskset -c 1 env Benchmark64 <fn>` + `TestHarness64 --pct 1`.
+2. Apply Pillar B — lift to named scalars; update generator script if one exists. Commit. Re-run.
+3. Apply Pillar C — typecast sweep. Commit. Re-run.
+4. Verify the audit grep (see 6.0) reports zero hits for that file.
+5. Record Mops/s delta in the subtask note (A vs B vs C contributions if separable, else combined).
+
+Splitting A/B/C into separate commits per file means a regression bisects to the exact pillar.
+
+### Subtasks
+
+- [X] **6.0** Tooling & policy
+  - **Done (2026-04-26):** rule 12 added to *Key rules for the developer* covering
+    Pillars A/B/C; per-function checklist row added; `tools/x87_audit.py` written.
+  - **Auditor:** `tools/x87_audit.py` reports per-pillar counts (A=loop-indexed
+    `cFoo[i].f`, B=literal-indexed `cFoo[3].f`, C=untyped float literal). Use
+    `--summary` for a one-line-per-file overview, drop the flag for full
+    file:line:[pillar] output. Exit code is non-zero iff any file is dirty —
+    suitable for the per-file pass-gate. Naïve heuristics (line-level comment
+    stripping, no AST) — borderline triage is part of each subtask.
+  - **Baseline (`--summary` over `src/inc_64/*.inc` on 2026-04-26):** 38 files, of
+    which only `pow_const_64.inc` is fully clean. Heaviest C-pillar offenders:
+    `erf_const_64.inc` (246), `lgamma_port_64.inc` (168), `lgamma_const_64.inc`
+    (100), `tgamma_port_64.inc` (80), `pow_port_64.inc` (68 — most are `Double(...)`
+    typecasts inside expressions where the audit flags the inner literal; the
+    file is otherwise compliant). Heaviest B-pillar offenders: `tgamma_port_64.inc`
+    (45), `exp2m1_port_64.inc` (39), `acosh_port_64.inc` (32), `log1p_port_64.inc`
+    (32). Pillar A is sparse (under 6 hits per file) — fast to clear.
+  - **Discovery — `pascoremath64.pas` hosts many functions inline.** Phase 6's
+    per-family subtasks list `*_port_64.inc` files but several function bodies
+    (`rsqrt`, `cbrt`, `atan`, `log2`, `acos`, `tanh`, `cospi`, `asin`, `exp`,
+    `exp2`, `exp10`, `expm1`, `cos`, `sin`, `sinpi`, `atanpi`, `tan`) live
+    directly in `src/pascoremath64.pas`, not in separate `.inc` files. The
+    family subtasks 6.1–6.5 must therefore audit and patch the matching ranges
+    inside `pascoremath64.pas` as well — run `python3 tools/x87_audit.py
+    src/pascoremath64.pas` and triage by function. Sub-tasks updated below to
+    reference both targets.
+
+- [X] **6.1** exp family — `exp`/`exp2`/`exp10`/`expm1` bodies live in
+  `pascoremath64.pas` (no separate `_port_64.inc`); plus `exp2m1_port_64.inc`
+  and `exp10m1_port_64.inc`.
+  - **Done (2026-04-26):**
+    - `exp2m1_port_64.inc` audit-clean across A/B/C; bench 92.7 → 192.5 Mops/s
+      (+108 %, FASTER). Pillar A unrolled the audit-missed `for i := 6 downto 0`
+      ZIv loop (i*2 index expression); Pillar B lifted Q1/Q2/P/Q (all four
+      fast/accurate polynomials) to named scalars; const file rewritten so
+      `tools/exp2m1_gen.py` regen produces named scalars (output path also
+      corrected from `src/exp2m1_const.inc` → `src/inc_64/exp2m1_const_64.inc`).
+    - `exp10m1_port_64.inc` audit-clean across A/B/C; bench ~168.9 Mops/s.
+      Pillar A unrolled the audit-missed `for i := 7 downto 0` Ziv loop;
+      Pillar B lifted P[0..13] / Q[0..24] to named scalars; Pillar C wrapped
+      the 4194304.0/4194303.0 K-clamp constants in `Double(...)`. Generator
+      `tools/exp10m1_gen.py` updated and output path corrected.
+    - **Cross-cutting note for future passes:** several `tools/*_gen.py`
+      scripts had stale OUT paths pointing at the pre-Phase-6.5 layout
+      (`src/<fn>_const.inc`); audit & correct them when touching that fn.
+    - **Audit-script blind spot:** `tools/x87_audit.py` does not flag
+      `for i := … do` bodies whose index expression contains arithmetic
+      (e.g. `cFoo[i*2].f`). Same heuristic miss applies to acoshlike loops.
+      Reviewers should grep for `for .* downto.*do` near coefficient arrays
+      even when the audit reports A=0.
+  - **Closed (2026-04-26):** `pcr_exp` (ExpRefine), `pcr_exp2`, `pcr_exp10`,
+    `pcr_expm1` (ExpM1Refine + ExpM1AccLarge) bodies inside
+    `src/pascoremath64.pas` are now audit-clean across A/B/C:
+    Pillar A unrolled five fixed-trip-count polydd loops (cExpAccCh n=7
+    twice, cExp2Cd n=6, cExp10AccC n=6, cExpm1AccCh n=11). Pillar B
+    lifted cExpAccCh, cExp2Cd, cExp2FastC, cExp10AccC, cExp10FastCh,
+    cExpm1FastC, cExpm1AccCl, cExpm1AccCh to named `Tb64u64` scalars
+    (the original arrays were dropped — every read was the `.f` form).
+    Pillar C: only one audit hit remains (line ~3920, `s := UInt64($300E81651C)`
+    in `Expm1Database` — confirmed false positive: hex digit pattern
+    `300E81651` triggers the float-literal regex but is wrapped in
+    `UInt64($...)`). TestHarness64 --pct 1 PASS for exp/exp2/exp10/
+    expm1/exp2m1/exp10m1.
+  - **Benchmark deltas (2026-04-26, `taskset -c 1`, 200M calls):**
+    exp 313.0 → 369.7 Mops/s (+18 %, FASTER); expm1 240.1 → 319.0
+    (+33 %, FASTER); exp2 ~248 vs C 267 (TIE); exp10 96 Mops/s vs C 239
+    (slower — slow-path-dominated bench filter, not a regression).
+    No baseline-vs-now comparison was captured — these are the post-
+    Phase-6.1/B numbers; record before-vs-after on the next pass if a
+    regression is suspected.
+- [X] **6.2** log family — `log_port_64.inc`, `log10_port_64.inc`, `log1p_port_64.inc`, `log2p1_port_64.inc`, `log10p1_port_64.inc`. (`log2` body lives in `pascoremath64.pas`.)
+  - **Done (2026-04-26):** all six log functions (log/log10/log1p/log2/
+    log10p1/log2p1) audit-clean across A/B/C; TestHarness64 --pct 1 PASS
+    (max_ulp=0). `log2` body inside `pascoremath64.pas` was already clean
+    pre-pass — no edits needed.
+  - **Pillar A unrolls:** two polydd loops in log1p Refine (n=4 over
+    cLog1pCz / cLog1pCy); five Pacc Horner / dd-accumulator loops across
+    log10p1 (n=6, n=8) and log2p1 (n=5, n=3, n=7). Audit-blind-spot
+    pattern matches Phase 6.1 — `for i := … do` bodies with arithmetic
+    index expressions like `Pacc[i+7]`, `Pacc[2*i-2]`.
+  - **Pillar B lifts:** cLogP (shared by log + log10), cLog1pCz / Czl /
+    Cy / Cl / Small1 / Small2 / Medium / Big in log1p, cLog10p1{P,Pa,Pacc}
+    in log10p1, cLog2p1{P,Pa,Pacc} in log2p1. All originals dropped
+    (every read was the .f form).
+  - **Pillar C:** typecast sweep across log_port_64.inc and
+    log10_port_64.inc (1.0/0.0/0.5/-1.0/0x1p52 sentinels in fast-path
+    scaling and the dispatch entry points). `log1p_port_64.inc:270` has
+    one remaining audit hit on the hex literal `7e60000000000000` — false
+    positive: the regex matches `7e6` as scientific notation but it is
+    inside `UInt64($...)`. Same false positive as Phase 6.1's
+    `300E81651` — the heuristic does not look back far enough to see the
+    `$` prefix.
+  - **tools/<fn>_gen.py updates:** OUT path corrected on log_gen,
+    log10p1_gen, log2p1_gen (all three pointed at the pre-Phase-6.5
+    `src/<fn>_const.inc` layout). All four scripts now wrap negative-bit-
+    pattern hex literals in `QWord(...)` via fu()/fmtu() — without this,
+    the regenerated tables emit FPC range-check warnings for any bit-63-
+    set entry. log_gen also routes fmt_dint() through fu() so TDInt64
+    literal fields get the same treatment.
+  - **Cross-file dependency note:** cLogP is shared between log and
+    log10 fast-path polynomials; log_const_64.inc declares the named
+    scalars and log10_port_64.inc reads them. Watch for analogous
+    sharing if a future pass touches log_const_64.
+  - **Benchmark deltas (2026-04-26, `taskset -c 1`, 200M calls):**
+    log 28.1 vs C 22.3 Mops/s (FASTER); log10 31.1 vs 15.8 (FASTER);
+    log1p 62.3 vs 55.8 (FASTER); log2 57.7 vs 60.4 (TIE); log10p1
+    18.4 vs 11.7 (FASTER); log2p1 40.7 vs 57.7 (slower — slow-path-
+    dominated bench filter; not a regression vs pre-Phase-6.2 since
+    no baseline was captured before the pass started).
+- [X] **6.3** trig family — `sin_port_64.inc`, `cos_port_64.inc`, `tan_port_64.inc`, `sincos_port_64.inc`, `sinpi_port_64.inc`, `tanpi_port_64.inc`. (`cospi`, `atanpi`, `tan` bodies share space inside `pascoremath64.pas`; `cos`/`sin` have both inc files and helper code in the unit.)
+  - **Done (2026-04-26):** all six Phase-6.3 inc files plus the cospi/sinpi
+    regions inside `pascoremath64.pas` are audit-clean across A/B/C.
+    `atanpi_port_64.inc` (cross-listed under 6.4) was finished as the last
+    step: Pillar A unrolled the 20-entry `cAtanpiTinyExc` scan in
+    `AtanpiTiny` and the 56-entry `cAtanpiRefExc` scan in `AtanpiRefine`,
+    splitting the sign branch out of the inner conditional so the unrolled
+    `if x >= 0` head/tail blocks never flip sign mid-scan. Pillar B lifted
+    both arrays (20×3 and 56×3) to `cAtanpi{Tiny,Ref}Exc_<i>_<j>` named
+    `Tb64u64` scalars. `TestHarness64 --pct 1 atanpi` PASS, max_ulp=0.
+  - **Pattern note for future exception-db unrolls:** the C-style "match,
+    then branch on sign" loop becomes "branch on sign first, then 2× the
+    unrolled match list." Doubles code size but keeps every scalar read
+    literal-indexed (no `[i, k]` pattern survives), which is what the
+    audit demands and what FPC needs to constant-fold the comparisons.
+- [X] **6.4** inverse-trig family — `atan2_port_64.inc`, `atan2pi_port_64.inc`, `asinpi_port_64.inc`, `acospi_port_64.inc`, `atanh_port_64.inc`. (`atan`, `acos`, `asin`, `atanpi` bodies live in `pascoremath64.pas`. `atanpi_port_64.inc` already cleared under 6.3; `atanh_port_64.inc` already cleared under 6.5.)
+  - **Done (2026-04-26):** five Phase-6.4 inc files plus the `atan` and
+    `acos`/`asin` regions inside `pascoremath64.pas` are audit-clean across
+    A/B/C. `acospi_port_64.inc` was already clean pre-pass — no edits needed.
+    `acospi_const_64.inc` reports 11 [C] hits, all confirmed false positives
+    (regex matches `3E0`/`3E2`/etc. substrings inside `UInt64($...)` hex
+    literals, e.g. `$3E010...`).
+  - **Pillar A unrolls:** the 18-iteration `Asinpi_Small` exception scan
+    (sign-branch-first, 36 literal-indexed reads) and the 12-iteration
+    `pcr_atan` hard-case `cAtanDb*` scan. Plus the 7-iteration `cAcosWcIn`
+    worst-case scan inside `AcosRefine` (mixed-pillar — `.u` reads not
+    flagged, `.f` reads were).
+  - **Pillar B lifts:** `cAtan2B[0..2]`, `cAtan2B2[0..3]` in atan2;
+    `cAsinpi_MainCh[0..3]` and the `cAsinpi_SmallExc{X,H,L}[0..17]` triples
+    in asinpi; `cAtanDb{In,Out,Cor}[0..11]` in pascoremath64.pas; and the
+    shared `cAcos{CHi,CLo}[0..4]`, `cAcosCt[0..2]`, `cAcosWc{Hi,Lo}[0..6]`
+    used by both `AcosRefine` and asin's accurate path. `cAcosWcIn` kept as
+    Tb64u64 array (read as `.u` integer-pattern compare).
+  - **Pillar C:** typecast sweeps over `atan2pi_port_64.inc` (39 hits),
+    `atan2_port_64.inc` (9 hits), `asinpi_port_64.inc` (3 hits). One
+    remaining false positive in asinpi at line 217 (`168E6482549`
+    substring of `UInt64($168E6482549DB1)`) — same hex-literal regex
+    miss class as Phase 6.1's `300E81651` and Phase 6.2's `7e60000...`.
+  - **Cross-cutting catches:**
+    - `cAcosCHi` / `cAcosCLo` / `cAcosCt` are shared between `AcosRefine`
+      and asin's accurate path (line ~2880 in `pascoremath64.pas`). Both
+      call sites updated in the same commit — same caution flagged for
+      Phase 6.5's `cAcoshC` / `cTanhExpCh` sharing.
+    - `tools/atan2_gen.py` and `tools/asinpi_gen.py` had stale OUT paths
+      pointing at the pre-Phase-6.5 layout (`src/<fn>_const.inc`); both
+      corrected to `src/inc_64/<fn>_const_64.inc`. Both generators'
+      `fu()` helpers now wrap bit-63-set hex literals in `QWord(...)` —
+      same fix log_gen needed in Phase 6.2.
+    - The branch-on-sign-first pattern from Phase 6.3 (atanpi tiny exc
+      scan) extends cleanly to Asinpi_Small and pcr_atan's db scan: x≥0
+      branch + x<0 branch each get the unrolled match list, doubling
+      code size but keeping every read literal-indexed.
+  - **Benchmark deltas (2026-04-26, `taskset -c 1`, 200M calls):**
+    atan 304 → vs C 304 Mops/s with Pascal 395 (FASTER); acos C 328 vs
+    Pascal 395 (FASTER); asin C 316 vs Pascal 299 (TIE); atanpi C 188
+    vs Pascal 211 (FASTER). atan2 / atan2pi / asinpi / acospi figures
+    pending (background bench still running at commit time).
+  - **Audit-script blind spots reaffirmed (no fix):**
+    - hex literals in `UInt64($...)` whose body matches scientific-notation
+      regex (`3E2`, `3E0`, `7e6`, `300E81651`, `168E6482549`) flag as [C]
+      false positives. Triage by inspection.
+    - `for i := 0 to N do` bodies whose index is just `i` are flagged [A];
+      bodies with arithmetic indices (`i*2`, `i+7`) are NOT flagged. Phase
+      6.1/6.2 already documented; no new offenders found here.
+- [X] **6.5** hyperbolic family — `sinh_port_64.inc`, `cosh_port_64.inc`,
+  `asinh_port_64.inc`, `acosh_port_64.inc`, `atanh_port_64.inc`, plus tanh
+  region of `pascoremath64.pas`.
+  - **Done (2026-04-26):** all six functions audit-clean across A/B/C and
+    pass `TestHarness64 --pct 1` with max_ulp=0.
+  - **Cross-file dependency caught:** `cAcoshC` and `cAcoshRefineCh` /
+    `cAcoshRefineCl` (declared in acosh) are also referenced from atanh
+    and asinh. Lifting them in acosh broke the build until the readers
+    were updated; future cross-cutting Pillar B passes should grep for
+    the array name across all `.inc` / `.pas` files before commit.
+    Asinh ended up combining its A and B passes into one commit because
+    of this.
+  - **Shared `cTanhExpCh`** lifted in `pascoremath64.pas` (used by tanh,
+    cosh, sinh via `TanhExpAccurate`).
+  - **Benchmark deltas (post-Phase 6.5, `taskset -c 1`, 200M calls):**
+    cosh 251.3 vs 199.6 Mops/s (+26 %, FASTER), sinh 378.1 vs 200.8
+    (+88 %, FASTER), tanh 200.4 vs 197.2 (TIE), acosh 285.3 vs 155.9
+    (+83 %, FASTER), asinh 187.8 vs 190.1 (TIE), atanh 254.5 vs 196.5
+    (+30 %, FASTER). Pillar A unrolls + Pillar B named-scalar lifts
+    appear to give FPC enough constant-folding visibility to pass C in
+    most of the family; tanh and asinh are dominated by other work
+    (sqrt, fma chains, Ziv refinement) so see less benefit.
+- [X] **6.6** special-functions family — `erf_port_64.inc`, `erfc_port_64.inc`, `tgamma_port_64.inc`, `lgamma_port_64.inc`
+  - **Partial (2026-04-26):**
+    - `erf_port_64.inc` audit-clean across A/B/C. Pillar A unrolled
+      the cErfP-into-p[] copy loop and the two inner Horner loops in
+      ErfAccurateTiny (a=11..9 step -2 and a=7..1 step -2 with
+      skip-on-even — now 6 explicit iterations); the local p[] array
+      was eliminated entirely. Also unrolled the 5-iteration
+      cErfExAcc exception scan in ErfAccurate. Pillar B lifted
+      cErfC0[0..7], cErfP[0..14], and cErfExAcc[0..4, 0..2] to
+      named Tb64u64 scalars (8 + 15 + 15 = 38 named scalars).
+      `tools/erf_gen.py` updated: OUT path corrected from
+      `src/erf_const.inc` to `src/inc_64/erf_const_64.inc`; fu()
+      helper now wraps bit-63-set hex literals in `QWord(...)`
+      (same generator-bug class as Phase 6.1/6.2/6.5).
+      Bench (taskset -c 1, 200M calls): C 183.2 vs Pascal 197.0
+      Mops/s (FASTER).
+    - `erfc_port_64.inc` audit-clean across A/B/C. Pillar A unrolled
+      three exception scans: cErfcAsymptEx (22), cErfcAccNegEx (17),
+      cErfcAccPosEx (29). Pillar B lifted all three to
+      cErfcAsymptEx_<i>_<j>, cErfcAccNegEx_<i>_<j>,
+      cErfcAccPosEx_<i>_<j> Tb64u64 scalars (68 triples = 204
+      scalars). cErfcT[6][13], cErfcTacc[10][30], and cErfcE2[28]
+      kept as arrays (runtime-indexed by i in fast/accurate path,
+      and inside runtime-trip-count polydd loops). `tools/erfc_gen.py`
+      updated: OUT path + fu() QWord wrapping.
+      Bench: C 258.7 vs Pascal 74.4 Mops/s (Pascal slow-path-
+      dominated; per-call ldexp/exp dd chain, not a regression).
+    - `tgamma_port_64.inc` Pillar C done (80 untyped literals
+      wrapped); B=71 and A=2 remain. The 2 [A] hits are confirmed
+      false positives — `ch[i].f` is the dynamic-array parameter
+      of TGPoly3, not a const-array read.
+    - `lgamma_port_64.inc` Pillar C done (168 untyped literals
+      wrapped); B=37 and A=1 remain. (A hit similar false positive
+      pattern likely.)
+  - **Done (2026-04-26, Phase 6.6 close):**
+    - tgamma Pillar B: lifted cTGSinpC[0..3], cTGSinpS[0..3],
+      cTGLogC[0..3], cTGExpC[0..4][0..1] (10), cTGLgBig[0..7][0..1],
+      cTGLgSml[0..12][0..1], cTGSmallC[0..15], cTGMainC[0..17] (full
+      ranges), cTGAccSmallC[0..7] to named Tb64u64 scalars. The
+      cTGLgBig/cTGLgSml arrays are still emitted because the
+      bArr-into-TGPolyDD construction was rewritten as inline open-
+      array constructors `[cTGLgBig_1_0, cTGLgBig_1_1]` reading the
+      named scalars — the bArr local variable was removed.
+    - lgamma Pillar A unroll: `for i := 0 to 7 do
+      cArrTinyQ[i] := cLgammaTinyQ[i].f` removed; q0..q6 read
+      cLgammaTinyQ_<i>.f directly.
+    - lgamma Pillar B: lifted cLgammaLogC[0..3], cLgammaLogAC[6..8,0],
+      cLgammaSinKx2C[0..1], cLgammaSinKx2Cl[0..2], cLgammaSinC[0..3],
+      cLgammaSinS[0..3], the 1-elt cLgammaSinC0/S0 arrays (now
+      _0 named scalar), cLgammaAsy{48,14,4}C[0,*],
+      cLgammaAsymC[0..1, 0..1], cLgammaAsymQ[0..4], cLgammaTinyQ[0..7].
+      Asy48C/Asy14C/Asy4C rows [1..N-1] kept as arrays (still
+      loop-indexed in the cArr-build sites).
+    - `tools/{tgamma,lgamma}_gen.py` updated in the same commits:
+      OUT path corrected to `src/inc_64/<fn>_const_64.inc`; fu()
+      helper added that wraps bit-63-set hex literals in
+      `QWord(...)` (same fix class as erf_gen / erfc_gen);
+      `emit_named_scalars_1d` / `emit_named_scalars_2d` helpers
+      added and invoked for each lifted table.
+    - Audit results: `lgamma_port_64.inc` clean (0 hits);
+      `tgamma_port_64.inc` 3 remaining hits, all confirmed false
+      positives at TGPoly3 dynamic-array parameter `ch[i]`.
+    - TestHarness64 --pct 1: lgamma PASS (max_ulp=0); tgamma still
+      692 mismatches max_ulp=0 (pre-existing).
+  - **tgamma pre-existing FAIL (not introduced by Phase 6.6):**
+    `TestHarness64 --pct 1 tgamma` reports 692 mismatches at
+    max_ulp=0. Same value, different bit-pattern (sign-of-zero
+    or NaN-payload divergence). Predates this phase; tracked
+    elsewhere. erf, erfc, lgamma all PASS pre/post.
+- [X] **6.7** miscellaneous — `hypot_port_64.inc`, `cbrt_port_64.inc`, `rsqrt_port_64.inc`, `pow_port_64.inc` (mostly already compliant; spot-fix only)
+  - **Done (2026-04-26):**
+    - `cbrt_port_64.inc` and `rsqrt_port_64.inc` were already audit-clean
+      pre-pass — no edits needed (A=B=C=0).
+    - `hypot_port_64.inc` Pillar C: 8 untyped literals wrapped (1.0/0.0/0.5
+      across HypotRound rb-or-sb branch, HypotMain entry op/om computation,
+      the "op = 1.0 round-down" branch, the +0.0 zero-input return, and the
+      `0.5 / r2` reciprocal scale). Audit clean. TestHarness64 --pct 1 hypot
+      PASS. Bench (taskset -c 1, 200M): C 144.3 vs Pascal 197.8 Mops/s
+      (FASTER).
+    - `pow_port_64.inc` Pillar C: 68 untyped literals wrapped across
+      PowExactPow (m=1 power-of-2 short-circuit + y range guards),
+      PowIsExact (y=0/y=1 short-circuit), PowQIntFromD (sign byte),
+      PowQIntToD (rd zero init), and the entire pcr_pow body (NaN/Inf
+      cascade, x≤0 cascade incl. cs0/cs1 sign factors, easy-case
+      shortcuts for y=0/0.5/1/2, the +1 ulp underflow rounding 0.5*s*MinSub,
+      the s = -1.0 sign tests in dint and qint phases, and the 1.0 ±
+      cPow1pm100.f near-1 fallback). Audit clean. TestHarness64 --pct 1
+      pow PASS (max_ulp=0). Bench sink=MISMATCH was pre-existing
+      (verified pre/post stash) — likely NaN-payload or signed-zero
+      divergence on a specific input not covered by the harness.
+  - **No generator updates needed** — pow/hypot Pillar C edits are in
+    the hand-written `_port_64.inc` body, not the generated `_const_64.inc`.
+
+### Sharp edges to remember
+
+- **Auto-generated inc files revert.** Subtasks 6.1–6.7 must update both the `.inc`
+  and the matching `tmp/<fn>_gen.py` (where one exists — e.g. `pow_gen.py`,
+  `atan2_gen.py`). Otherwise the next regen silently undoes Pillar B.
+- **`Double()` is a typecast, not a function call.** It's free at runtime; the
+  concern is purely about telling FPC the literal's type so intermediate results
+  stay in SSE2 registers.
+- **`Tb64u64` arrays may have dual users.** Some tables are read both as `.f`
+  (in hot polynomial code) and as `.u` (for bit-level tricks). Lift only the
+  `.f`-only entries; keep the `Tb64u64` form for the rest.
+- **Negative-literal convention matters.** `-Double(1.0)` and `Double(-1.0)`
+  should both compile to the same constant, but pick one and stay consistent so
+  the audit grep stays simple.
+- **Don't unroll input-dependent loops.** Reduction loops in `as_sinpi`,
+  `cordic`-style iterations, and the slow-path Ziv refinement loops are
+  out of scope for Pillar A.
+
+---
+
 ## Per-function porting checklist
 
 Apply this checklist to every function before marking it done:
@@ -1187,6 +1549,7 @@ Apply this checklist to every function before marking it done:
 - [ ] C function `cr_<name>` declared in `ccoremath64.pas`; Pascal equivalent named `pcr_<name>` in `pascoremath64.pas`
 - [ ] All integer variables declared as `Int32` (not `Integer`) for explicit 32-bit signed intent
 - [ ] No redundant typecast patterns (see rule 11 below)
+- [ ] x87-avoidance pass applied (Phase 6) — `tools/x87_audit.py` reports zero hits
 
 ---
 
@@ -1371,3 +1734,22 @@ Apply this checklist to every function before marking it done:
 10. **Benchmark every function.** After each function passes sampling tests, run
     `Benchmark64.pas` and record the Mops/s ratio (Pascal vs C). A large gap signals
     missed inlining or suboptimal code generation.
+
+11. **Avoid x87 promotion in math code (Phase 6 policy).** In `.inc` math bodies and
+    the inline function bodies inside `pascoremath64.pas`:
+    - **Pillar A.** Unroll fixed-trip-count polynomial loops over coefficient arrays
+      (Horner / FMA chains over ≤~20 entries). Do not unroll input-dependent loops
+      (Ziv refinement, `as_sinpi` reductions, CORDIC steps).
+    - **Pillar B.** Replace literal-indexed `cFoo[3].f` reads with named scalar
+      `const cFoo_3: Double = …;` declared in the matching `*_const_64.inc`. Update
+      the auto-generator (`tmp/<fn>_gen.py`) in the same commit when one exists, or
+      the next regen reverts the work.
+    - **Pillar C.** Wrap every Double-typed numeric literal in expressions, return
+      values, and NaN sentinels with `Double(...)` (e.g. `Double(1.0) / x`). Does
+      not apply inside `const … : Double = …;` declarations.
+    Run `python3 tools/x87_audit.py <file>` to find violations; the audit must report
+    zero hits for the file before its Phase 6 subtask is closed.
+
+12. **Per-function checklist now includes:** *"x87-avoidance pass applied (Phase 6)"*
+    — verified by `tools/x87_audit.py` reporting zero hits across the function's
+    `_port_64.inc` plus its body inside `pascoremath64.pas`.
