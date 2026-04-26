@@ -1332,8 +1332,22 @@ Splitting A/B/C into separate commits per file means a regression bisects to the
     18.4 vs 11.7 (FASTER); log2p1 40.7 vs 57.7 (slower — slow-path-
     dominated bench filter; not a regression vs pre-Phase-6.2 since
     no baseline was captured before the pass started).
-- [ ] **6.3** trig family — `sin_port_64.inc`, `cos_port_64.inc`, `tan_port_64.inc`, `sincos_port_64.inc`, `sinpi_port_64.inc`, `tanpi_port_64.inc`. (`cospi`, `atanpi`, `tan` bodies share space inside `pascoremath64.pas`; `cos`/`sin` have both inc files and helper code in the unit.)
-- [ ] **6.4** inverse-trig family — `atan2_port_64.inc`, `atan2pi_port_64.inc`, `asinpi_port_64.inc`, `acospi_port_64.inc`, `atanh_port_64.inc`. (`atan`, `acos`, `asin`, `atanpi` bodies live in `pascoremath64.pas`.)
+- [X] **6.3** trig family — `sin_port_64.inc`, `cos_port_64.inc`, `tan_port_64.inc`, `sincos_port_64.inc`, `sinpi_port_64.inc`, `tanpi_port_64.inc`. (`cospi`, `atanpi`, `tan` bodies share space inside `pascoremath64.pas`; `cos`/`sin` have both inc files and helper code in the unit.)
+  - **Done (2026-04-26):** all six Phase-6.3 inc files plus the cospi/sinpi
+    regions inside `pascoremath64.pas` are audit-clean across A/B/C.
+    `atanpi_port_64.inc` (cross-listed under 6.4) was finished as the last
+    step: Pillar A unrolled the 20-entry `cAtanpiTinyExc` scan in
+    `AtanpiTiny` and the 56-entry `cAtanpiRefExc` scan in `AtanpiRefine`,
+    splitting the sign branch out of the inner conditional so the unrolled
+    `if x >= 0` head/tail blocks never flip sign mid-scan. Pillar B lifted
+    both arrays (20×3 and 56×3) to `cAtanpi{Tiny,Ref}Exc_<i>_<j>` named
+    `Tb64u64` scalars. `TestHarness64 --pct 1 atanpi` PASS, max_ulp=0.
+  - **Pattern note for future exception-db unrolls:** the C-style "match,
+    then branch on sign" loop becomes "branch on sign first, then 2× the
+    unrolled match list." Doubles code size but keeps every scalar read
+    literal-indexed (no `[i, k]` pattern survives), which is what the
+    audit demands and what FPC needs to constant-fold the comparisons.
+- [ ] **6.4** inverse-trig family — `atan2_port_64.inc`, `atan2pi_port_64.inc`, `asinpi_port_64.inc`, `acospi_port_64.inc`, `atanh_port_64.inc`. (`atan`, `acos`, `asin`, `atanpi` bodies live in `pascoremath64.pas`. `atanpi_port_64.inc` already cleared under 6.3.)
 - [X] **6.5** hyperbolic family — `sinh_port_64.inc`, `cosh_port_64.inc`,
   `asinh_port_64.inc`, `acosh_port_64.inc`, `atanh_port_64.inc`, plus tanh
   region of `pascoremath64.pas`.
