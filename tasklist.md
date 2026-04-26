@@ -516,10 +516,17 @@ pass doesn't blanket-apply the 64-bit recipe:
     `pascoremathtypes.pas: A=0 B=0 C=30` after the change — no false
     positives on the 64-bit code-base.
 
-- [ ] **7.1** exp family — `expf`, `exp2f`, `exp10f`, `expm1f`, `exp2m1f`,
-  `exp10m1f` regions of `pascoremath32.pas`. Pillar B candidates:
-  `b_exp10`, `c_exp10`, `c_e10`, `cp4_e10`..`cp9_e10`, `b10`, `ch_e`,
-  `c_pf`, `ce_pf` and any small `b`/`c` Horner tables in scope.
+- [x] **7.1** exp family — `expf`, `exp2f`, `exp10f`, `expm1f`, `exp2m1f`,
+  `exp10m1f` regions of `pascoremath32.pas`. Pillar B done: lifted
+  `b`/`c` (exp2f), `c_fast`/`ch`/`b_small` (expm1f), `b_exp10`/`c_exp10`
+  (exp10f), `c_e10` and `cp4_e10`..`cp9_e10` (exp10m1f) to named scalars.
+  `expf` was already pre-lifted (`c_exp_*`/`b_exp_*`); `exp2m1f` already
+  uses inline `c0v`..`c7v` named scalars per the `c_table` regions.
+  Audit B count: 571 → 488 (-83 reads). Tests: all 42 functions pass at
+  `--pct 1`. Bench (taskset -c 1, AVX2): expf 232 / exp2f 163 / exp10f
+  144 / expm1f 138 / exp2m1f 239 / exp10m1f 209 Mops/s — all ≥ C
+  reference except expm1f (138 vs C 161 — still the largest gap, may
+  reward a future Pillar C pass).
 
 - [ ] **7.2** log family — `logf`, `log10f`, `log1pf`, `log2f`, `log10p1f`,
   `log2p1f` regions. Pillar B candidates: `c_aln`, `c_l10`, `c_l2p1`,
