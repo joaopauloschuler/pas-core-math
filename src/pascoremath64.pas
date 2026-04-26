@@ -2050,32 +2050,41 @@ end;
 // ---------------------------------------------------------------------------
 
 const
+  // Pillar B (Phase 6.3): shared sinpi/cospi polynomial arrays lifted to named
+  // Tb64u64 scalars. Read from sinpi_port_64.inc (SinpiRefine, pcr_sinpi main
+  // path) and pascoremath64.pas (CospiSinpiRefine, pcr_cospi main path).
   // Main path constants sn[3], cn[2]
-  cCospiSn: array[0..2] of Tb64u64 = (
-    (u:$3B5921FB54442D18),(u:QWord($B204ABBCE625BE51)),(u:$289466BC6044BA16));
-  cCospiCn: array[0..1] of Tb64u64 = (
-    (u:QWord($B6B3BD3CC9BE45DB)),(u:$2D503C1F00186416));
+  cCospiSn_0: Tb64u64 = (u:$3B5921FB54442D18);
+  cCospiSn_1: Tb64u64 = (u:QWord($B204ABBCE625BE51));
+  cCospiSn_2: Tb64u64 = (u:$289466BC6044BA16);
+  cCospiCn_0: Tb64u64 = (u:QWord($B6B3BD3CC9BE45DB));
+  cCospiCn_1: Tb64u64 = (u:$2D503C1F00186416);
 
   // as_cospi_zero tables
-  cCospiZeroCh: array[0..1, 0..1] of Tb64u64 = (
-    ((u:QWord($C013BD3CC9BE45DE)),(u:QWord($BCB692B71366CC04))),
-    ((u:$40103C1F081B5AC4),(u:QWord($BCB32B33FDA9113C))));
-  cCospiZeroCl: array[0..1] of Tb64u64 = (
-    (u:QWord($BFF55D3C7E3CBFF9)),(u:$3FCE1F50604FA0FF));
+  cCospiZeroCh_0_0: Tb64u64 = (u:QWord($C013BD3CC9BE45DE));
+  cCospiZeroCh_0_1: Tb64u64 = (u:QWord($BCB692B71366CC04));
+  cCospiZeroCh_1_0: Tb64u64 = (u:$40103C1F081B5AC4);
+  cCospiZeroCh_1_1: Tb64u64 = (u:QWord($BCB32B33FDA9113C));
+  cCospiZeroCl_0:   Tb64u64 = (u:QWord($BFF55D3C7E3CBFF9));
+  cCospiZeroCl_1:   Tb64u64 = (u:$3FCE1F50604FA0FF);
 
   // Fast-path polynomial c[0..3] for |x| <= 2^-12 branch
-  cCospiFastC: array[0..3] of Tb64u64 = (
-    (u:QWord($C013BD3CC9BE45DC)),(u:$40103C1F081B0833),
-    (u:QWord($BFF55D3C6FC9AF15)),(u:$3FCE1D3FF2AE3F9A));
+  cCospiFastC_0: Tb64u64 = (u:QWord($C013BD3CC9BE45DC));
+  cCospiFastC_1: Tb64u64 = (u:$40103C1F081B0833);
+  cCospiFastC_2: Tb64u64 = (u:QWord($BFF55D3C6FC9AF15));
+  cCospiFastC_3: Tb64u64 = (u:$3FCE1D3FF2AE3F9A);
 
   // as_sinpi_refine tables sh[3][2], ch[2][2]
-  cSinpiRefSh: array[0..2, 0..1] of Tb64u64 = (
-    ((u:$400921FB54442D18),(u:$3CA1A62633145C06)),
-    ((u:QWord($BE94ABBCE625BE53)),(u:$3B305511CBC65743)),
-    ((u:$3D0466BC6775AAE1),(u:QWord($B8D9C3C168D990A0))));
-  cSinpiRefCh: array[0..1, 0..1] of Tb64u64 = (
-    ((u:QWord($BE93BD3CC9BE45DE)),(u:QWord($BB3692B71366CC04))),
-    ((u:$3D103C1F081B5AC4),(u:QWord($B9B32B33FDA9113C))));
+  cSinpiRefSh_0_0: Tb64u64 = (u:$400921FB54442D18);
+  cSinpiRefSh_0_1: Tb64u64 = (u:$3CA1A62633145C06);
+  cSinpiRefSh_1_0: Tb64u64 = (u:QWord($BE94ABBCE625BE53));
+  cSinpiRefSh_1_1: Tb64u64 = (u:$3B305511CBC65743);
+  cSinpiRefSh_2_0: Tb64u64 = (u:$3D0466BC6775AAE1);
+  cSinpiRefSh_2_1: Tb64u64 = (u:QWord($B8D9C3C168D990A0));
+  cSinpiRefCh_0_0: Tb64u64 = (u:QWord($BE93BD3CC9BE45DE));
+  cSinpiRefCh_0_1: Tb64u64 = (u:QWord($BB3692B71366CC04));
+  cSinpiRefCh_1_0: Tb64u64 = (u:$3D103C1F081B5AC4);
+  cSinpiRefCh_1_1: Tb64u64 = (u:QWord($B9B32B33FDA9113C));
 
   // as_sinpi_refine scalar constants
   cSinpiRefSllK: Tb64u64 = (u:QWord($BB632D2CC920DCB4)); // -0x1.32d2cc920dcb4p-73
@@ -2416,17 +2425,17 @@ begin
   x2  := x * x;
   dx2 := pcr_fma(x, x, -x2);
 
-  fl := x2 * (cCospiZeroCl[0].f + x2 * cCospiZeroCl[1].f);
+  fl := x2 * (cCospiZeroCl_0.f + x2 * cCospiZeroCl_1.f);
 
   // polydd(x2, dx2, 2, ch, &fl) seeded
-  chp := cCospiZeroCh[1,0].f + fl;
-  clp := ((cCospiZeroCh[1,0].f - chp) + fl) + cCospiZeroCh[1,1].f;
+  chp := cCospiZeroCh_1_0.f + fl;
+  clp := ((cCospiZeroCh_1_0.f - chp) + fl) + cCospiZeroCh_1_1.f;
   // i = 0
   chp := pcr_muldd(x2, dx2, chp, clp, clp);
-  thp := chp + cCospiZeroCh[0,0].f;
-  tlp := (cCospiZeroCh[0,0].f - thp) + chp;
+  thp := chp + cCospiZeroCh_0_0.f;
+  tlp := (cCospiZeroCh_0_0.f - thp) + chp;
   chp := thp;
-  clp := clp + tlp + cCospiZeroCh[0,1].f;
+  clp := clp + tlp + cCospiZeroCh_0_1.f;
 
   fh := chp; fl := clp;
   fh := pcr_muldd(x2, dx2, fh, fl, fl);
@@ -2476,20 +2485,20 @@ begin
   sll := cSinpiRefSllK.f * x2;
 
   // polydd(x2, dx2, 3, sh, &sll) seeded
-  chp := cSinpiRefSh[2,0].f + sll;
-  clp := ((cSinpiRefSh[2,0].f - chp) + sll) + cSinpiRefSh[2,1].f;
+  chp := cSinpiRefSh_2_0.f + sll;
+  clp := ((cSinpiRefSh_2_0.f - chp) + sll) + cSinpiRefSh_2_1.f;
   // i = 1
   chp := pcr_muldd(x2, dx2, chp, clp, clp);
-  thp := chp + cSinpiRefSh[1,0].f;
-  tlp := (cSinpiRefSh[1,0].f - thp) + chp;
+  thp := chp + cSinpiRefSh_1_0.f;
+  tlp := (cSinpiRefSh_1_0.f - thp) + chp;
   chp := thp;
-  clp := clp + tlp + cSinpiRefSh[1,1].f;
+  clp := clp + tlp + cSinpiRefSh_1_1.f;
   // i = 0
   chp := pcr_muldd(x2, dx2, chp, clp, clp);
-  thp := chp + cSinpiRefSh[0,0].f;
-  tlp := (cSinpiRefSh[0,0].f - thp) + chp;
+  thp := chp + cSinpiRefSh_0_0.f;
+  tlp := (cSinpiRefSh_0_0.f - thp) + chp;
   chp := thp;
-  clp := clp + tlp + cSinpiRefSh[0,1].f;
+  clp := clp + tlp + cSinpiRefSh_0_1.f;
   slh := chp; sll := clp;
 
   // slh = mulddd(slh, sll, x*0x1p-12, &sll)
@@ -2499,14 +2508,14 @@ begin
   cll := x2 * (cSinpiRefCll0.f + cSinpiRefCll1.f * x2);
 
   // polydd(x2, dx2, 2, ch, &cll) seeded
-  chp := cSinpiRefCh[1,0].f + cll;
-  clp := ((cSinpiRefCh[1,0].f - chp) + cll) + cSinpiRefCh[1,1].f;
+  chp := cSinpiRefCh_1_0.f + cll;
+  clp := ((cSinpiRefCh_1_0.f - chp) + cll) + cSinpiRefCh_1_1.f;
   // i = 0
   chp := pcr_muldd(x2, dx2, chp, clp, clp);
-  thp := chp + cSinpiRefCh[0,0].f;
-  tlp := (cSinpiRefCh[0,0].f - thp) + chp;
+  thp := chp + cSinpiRefCh_0_0.f;
+  tlp := (cSinpiRefCh_0_0.f - thp) + chp;
   chp := thp;
-  clp := clp + tlp + cSinpiRefCh[0,1].f;
+  clp := clp + tlp + cSinpiRefCh_0_1.f;
   clh := chp; cll := clp;
 
   // clh = muldd_acc(clh, cll, x2, dx2, &cll)
@@ -2604,8 +2613,8 @@ begin
     end;
     x2 := x * x; x4 := x2 * x2;
     eps := x2 * cCospiEpsFast.f;
-    p := x2 * ((cCospiFastC[0].f + x2 * cCospiFastC[1].f)
-               + x4 * (cCospiFastC[2].f + x2 * cCospiFastC[3].f));
+    p := x2 * ((cCospiFastC_0.f + x2 * cCospiFastC_1.f)
+               + x4 * (cCospiFastC_2.f + x2 * cCospiFastC_3.f));
     lb := (p - eps) + Double(1.0);
     ub := (p + eps) + Double(1.0);
     if lb = ub then begin Result := lb; Exit; end;
@@ -2628,8 +2637,8 @@ begin
 
   k := Int64(UInt64(m) shl (e - 1000));
   z := k; z2 := z * z;
-  fs := cCospiSn[0].f + z2 * (cCospiSn[1].f + z2 * cCospiSn[2].f);
-  fc := cCospiCn[0].f + z2 * cCospiCn[1].f;
+  fs := cCospiSn_0.f + z2 * (cCospiSn_1.f + z2 * cCospiSn_2.f);
+  fc := cCospiCn_0.f + z2 * cCospiCn_1.f;
   CospiSincosN(iq, sh, sl, ch_, cl_);
   er := z * cSinpiRefEr.f;  // z * 2^-123
   r  := sl + sh * (z2 * fc) + ch_ * (z * fs);

@@ -19,13 +19,11 @@
 // ===========================================================================
 
 const
-  // Fast-path polynomial c[0..3] for |x| <= 0x1.2p-5 branch (sinpi.c:208)
-  cSinpiFastC: array[0..3] of Tb64u64 = (
-    (u:QWord($C014ABBCE625BE51)), //  -0x1.4abbce625be51p+2
-    (u:$400466BC67754B46), //   0x1.466bc67754b46p+1
-    (u:QWord($BFE32D2CC12A51F4)), //  -0x1.32d2cc12a51f4p-1
-    (u:$3FB5060540058476)  //   0x1.5060540058476p-4
-  );
+  // Pillar B (Phase 6.3): cSinpiFastC lifted to named scalars.
+  cSinpiFastC_0: Tb64u64 = (u:QWord($C014ABBCE625BE51)); //  -0x1.4abbce625be51p+2
+  cSinpiFastC_1: Tb64u64 = (u:$400466BC67754B46);        //   0x1.466bc67754b46p+1
+  cSinpiFastC_2: Tb64u64 = (u:QWord($BFE32D2CC12A51F4)); //  -0x1.32d2cc12a51f4p-1
+  cSinpiFastC_3: Tb64u64 = (u:$3FB5060540058476);        //   0x1.5060540058476p-4
 
   // ph/pl = 2*pi double-double (used by |x| <= 2^-5 path)
   cSinpiPh: Tb64u64 = (u: $400921FB54442D18); // 0x1.921fb54442d18p+1
@@ -43,18 +41,20 @@ const
   cSinpiFastEps2: Tb64u64 = (u: $3990000000000000); // 0x1p-102
   cSinpiFastEr:   Tb64u64 = (u: $3C244A9A66CDB0D6); // 5.5e-19
 
-  // as_sinpi_zero polynomial tables (sinpi.c:89-92). Different arity from cospi.
-  cSinpiZeroCh: array[0..3, 0..1] of Tb64u64 = (
-    ((u:QWord($C014ABBCE625BE53)),(u:$3CB05511C68477BE)),  // -0x1.4abbce625be53p+2, 0x1.05511c68477bep-52
-    ((u:$400466BC6775AAE2),(u:QWord($BC96DC0CBEFAE1DA))),  //  0x1.466bc6775aae2p+1, -0x1.6dc0cbefae1dap-54
-    ((u:QWord($BFE32D2CCE62BD86)),(u:$3C8066BD54973829)),  // -0x1.32d2cce62bd86p-1, 0x1.066bd54973829p-55
-    ((u:$3FB50783487EE781),(u:$3C5832989F39A743))   //  0x1.50783487ee781p-4, 0x1.832989f39a743p-58
-  );
-  cSinpiZeroCl: array[0..2] of Tb64u64 = (
-    (u:QWord($BF7E3074FDE861F0)), // -0x1.e3074fde861fp-8
-    (u:$3F3E8F4344534DA6), //  0x1.e8f4344534da6p-12
-    (u:QWord($BEF6F9CD7B8CB9DB))  // -0x1.6f9cd7b8cb9dbp-16
-  );
+  // as_sinpi_zero polynomial tables (sinpi.c:89-92). Pillar B (Phase 6.3):
+  // arrays lifted to named scalars; the polydd loop (i = 2 downto 0) is
+  // unrolled at the call site.
+  cSinpiZeroCh_0_0: Tb64u64 = (u:QWord($C014ABBCE625BE53)); // -0x1.4abbce625be53p+2
+  cSinpiZeroCh_0_1: Tb64u64 = (u:$3CB05511C68477BE);        //  0x1.05511c68477bep-52
+  cSinpiZeroCh_1_0: Tb64u64 = (u:$400466BC6775AAE2);        //  0x1.466bc6775aae2p+1
+  cSinpiZeroCh_1_1: Tb64u64 = (u:QWord($BC96DC0CBEFAE1DA)); // -0x1.6dc0cbefae1dap-54
+  cSinpiZeroCh_2_0: Tb64u64 = (u:QWord($BFE32D2CCE62BD86)); // -0x1.32d2cce62bd86p-1
+  cSinpiZeroCh_2_1: Tb64u64 = (u:$3C8066BD54973829);        //  0x1.066bd54973829p-55
+  cSinpiZeroCh_3_0: Tb64u64 = (u:$3FB50783487EE781);        //  0x1.50783487ee781p-4
+  cSinpiZeroCh_3_1: Tb64u64 = (u:$3C5832989F39A743);        //  0x1.832989f39a743p-58
+  cSinpiZeroCl_0:   Tb64u64 = (u:QWord($BF7E3074FDE861F0)); // -0x1.e3074fde861fp-8
+  cSinpiZeroCl_1:   Tb64u64 = (u:$3F3E8F4344534DA6);        //  0x1.e8f4344534da6p-12
+  cSinpiZeroCl_2:   Tb64u64 = (u:QWord($BEF6F9CD7B8CB9DB)); // -0x1.6f9cd7b8cb9dbp-16
 
   // as_sinpi_zero reduction constants (pi split into pi0 + pi1 + pi2, sinpi.c:96)
   cSinpiZeroPi0: Tb64u64 = (u: $4009200000000000); // 0x1.92p+1  (6.3125 exactly)
@@ -62,25 +62,24 @@ const
   cSinpiZeroPi2: Tb64u64 = (u: QWord($BBED9CCEBA3F91F2)); // -0x1.d9cceba3f91f2p-65
 
   // Sinpi-specific exception database (sinpi.c:140-145) — 4 entries only.
-  cSinpiDb4_Iq: array[0..3] of Int32 = (76, 108, 490, 903);
-  cSinpiDb4_X:  array[0..3] of Tb64u64 = (
-    (u:QWord($BFD276B3FEF46600)), // -0x1.276b3fef466p-2
-    (u:QWord($BFD33CAEA0F24C00)), // -0x1.33caea0f24cp-2
-    (u:QWord($BFE8A1E8A3E82C00)), // -0x1.8a1e8a3e82cp-1
-    (u:QWord($BFDBDD02D1AD6000))  // -0x1.bdd02d1ad60p-2
-  );
-  cSinpiDb4_R: array[0..3] of Tb64u64 = (
-    (u:$3FBDB8A79A80C3A0), // 0x1.db8a79a80c3a0p-4
-    (u:$3FC5146C0BC45BCE), // 0x1.5146c0bc45bcep-3
-    (u:$3FE5D6561936B699), // 0x1.5d6561936b699p-1
-    (u:$3FEF72C906962631)  // 0x1.f72c906962631p-1
-  );
-  cSinpiDb4_D: array[0..3] of Tb64u64 = (
-    (u:$3910000000000000), //  0x1p-110
-    (u:$3920000000000000), //  0x1p-109
-    (u:QWord($BC80000000000000)), // -0x1p-55
-    (u:$3C80000000000000)  //  0x1p-55
-  );
+  // Pillar B (Phase 6.3): arrays lifted to named scalars (Iq stays plain int
+  // const since it's not a Tb64u64).
+  cSinpiDb4_Iq_0: Int32 = 76;
+  cSinpiDb4_Iq_1: Int32 = 108;
+  cSinpiDb4_Iq_2: Int32 = 490;
+  cSinpiDb4_Iq_3: Int32 = 903;
+  cSinpiDb4_X_0: Tb64u64 = (u:QWord($BFD276B3FEF46600)); // -0x1.276b3fef466p-2
+  cSinpiDb4_X_1: Tb64u64 = (u:QWord($BFD33CAEA0F24C00)); // -0x1.33caea0f24cp-2
+  cSinpiDb4_X_2: Tb64u64 = (u:QWord($BFE8A1E8A3E82C00)); // -0x1.8a1e8a3e82cp-1
+  cSinpiDb4_X_3: Tb64u64 = (u:QWord($BFDBDD02D1AD6000)); // -0x1.bdd02d1ad60p-2
+  cSinpiDb4_R_0: Tb64u64 = (u:$3FBDB8A79A80C3A0);        // 0x1.db8a79a80c3a0p-4
+  cSinpiDb4_R_1: Tb64u64 = (u:$3FC5146C0BC45BCE);        // 0x1.5146c0bc45bcep-3
+  cSinpiDb4_R_2: Tb64u64 = (u:$3FE5D6561936B699);        // 0x1.5d6561936b699p-1
+  cSinpiDb4_R_3: Tb64u64 = (u:$3FEF72C906962631);        // 0x1.f72c906962631p-1
+  cSinpiDb4_D_0: Tb64u64 = (u:$3910000000000000);        //  0x1p-110
+  cSinpiDb4_D_1: Tb64u64 = (u:$3920000000000000);        //  0x1p-109
+  cSinpiDb4_D_2: Tb64u64 = (u:QWord($BC80000000000000)); // -0x1p-55
+  cSinpiDb4_D_3: Tb64u64 = (u:$3C80000000000000);        //  0x1p-55
 
 // ---------------------------------------------------------------------------
 // SinpiAsZero — small-|x| (|x| <= 0x1.2p-5) accurate refinement.
@@ -95,7 +94,6 @@ var
   y0, y0l, y1, y2: Double;
   b: Tb64u64;
   t, w: Tb64u64;
-  i: Int32;
   sA, dA, sB, dB: Double;
 begin
   x2  := x * x;
@@ -104,18 +102,30 @@ begin
   dx3 := pcr_fma(x2, x, -x3) + dx2 * x;
 
   // fl = x2*(cl[0] + x2*(cl[1] + x2*cl[2]))
-  fl := x2 * (cSinpiZeroCl[0].f + x2 * (cSinpiZeroCl[1].f + x2 * cSinpiZeroCl[2].f));
+  fl := x2 * (cSinpiZeroCl_0.f + x2 * (cSinpiZeroCl_1.f + x2 * cSinpiZeroCl_2.f));
 
-  // polydd(x2, dx2, 4, ch, &fl): unrolled 4-entry
-  chp := cSinpiZeroCh[3, 0].f + fl;
-  clp := ((cSinpiZeroCh[3, 0].f - chp) + fl) + cSinpiZeroCh[3, 1].f;
-  for i := 2 downto 0 do begin
-    chp := pcr_muldd(x2, dx2, chp, clp, clp);
-    thp := chp + cSinpiZeroCh[i, 0].f;
-    tlp := (cSinpiZeroCh[i, 0].f - thp) + chp;
-    chp := thp;
-    clp := clp + tlp + cSinpiZeroCh[i, 1].f;
-  end;
+  // polydd(x2, dx2, 4, ch, &fl): unrolled 4-entry.
+  // Pillar A (Phase 6.3): for i := 2 downto 0 unrolled.
+  chp := cSinpiZeroCh_3_0.f + fl;
+  clp := ((cSinpiZeroCh_3_0.f - chp) + fl) + cSinpiZeroCh_3_1.f;
+  // i = 2
+  chp := pcr_muldd(x2, dx2, chp, clp, clp);
+  thp := chp + cSinpiZeroCh_2_0.f;
+  tlp := (cSinpiZeroCh_2_0.f - thp) + chp;
+  chp := thp;
+  clp := clp + tlp + cSinpiZeroCh_2_1.f;
+  // i = 1
+  chp := pcr_muldd(x2, dx2, chp, clp, clp);
+  thp := chp + cSinpiZeroCh_1_0.f;
+  tlp := (cSinpiZeroCh_1_0.f - thp) + chp;
+  chp := thp;
+  clp := clp + tlp + cSinpiZeroCh_1_1.f;
+  // i = 0
+  chp := pcr_muldd(x2, dx2, chp, clp, clp);
+  thp := chp + cSinpiZeroCh_0_0.f;
+  tlp := (cSinpiZeroCh_0_0.f - thp) + chp;
+  chp := thp;
+  clp := clp + tlp + cSinpiZeroCh_0_1.f;
   fh := chp; fl := clp;
 
   // fh = muldd_acc(fh, fl, x3, dx3, &fl)
@@ -186,31 +196,31 @@ begin
   sll := cSinpiRefSllK.f * x2;
 
   // polydd(x2, dx2, 3, sh, &sll) seeded
-  chp := cSinpiRefSh[2,0].f + sll;
-  clp := ((cSinpiRefSh[2,0].f - chp) + sll) + cSinpiRefSh[2,1].f;
+  chp := cSinpiRefSh_2_0.f + sll;
+  clp := ((cSinpiRefSh_2_0.f - chp) + sll) + cSinpiRefSh_2_1.f;
   chp := pcr_muldd(x2, dx2, chp, clp, clp);
-  thp := chp + cSinpiRefSh[1,0].f;
-  tlp := (cSinpiRefSh[1,0].f - thp) + chp;
+  thp := chp + cSinpiRefSh_1_0.f;
+  tlp := (cSinpiRefSh_1_0.f - thp) + chp;
   chp := thp;
-  clp := clp + tlp + cSinpiRefSh[1,1].f;
+  clp := clp + tlp + cSinpiRefSh_1_1.f;
   chp := pcr_muldd(x2, dx2, chp, clp, clp);
-  thp := chp + cSinpiRefSh[0,0].f;
-  tlp := (cSinpiRefSh[0,0].f - thp) + chp;
+  thp := chp + cSinpiRefSh_0_0.f;
+  tlp := (cSinpiRefSh_0_0.f - thp) + chp;
   chp := thp;
-  clp := clp + tlp + cSinpiRefSh[0,1].f;
+  clp := clp + tlp + cSinpiRefSh_0_1.f;
   slh := chp; sll := clp;
 
   slh := pcr_mulddd_pd(slh, sll, x * cSinpiRefXlow.f, sll);
 
   cll := x2 * (cSinpiRefCll0.f + cSinpiRefCll1.f * x2);
 
-  chp := cSinpiRefCh[1,0].f + cll;
-  clp := ((cSinpiRefCh[1,0].f - chp) + cll) + cSinpiRefCh[1,1].f;
+  chp := cSinpiRefCh_1_0.f + cll;
+  clp := ((cSinpiRefCh_1_0.f - chp) + cll) + cSinpiRefCh_1_1.f;
   chp := pcr_muldd(x2, dx2, chp, clp, clp);
-  thp := chp + cSinpiRefCh[0,0].f;
-  tlp := (cSinpiRefCh[0,0].f - thp) + chp;
+  thp := chp + cSinpiRefCh_0_0.f;
+  tlp := (cSinpiRefCh_0_0.f - thp) + chp;
   chp := thp;
-  clp := clp + tlp + cSinpiRefCh[0,1].f;
+  clp := clp + tlp + cSinpiRefCh_0_1.f;
   clh := chp; cll := clp;
 
   clh := pcr_muldd(clh, cll, x2, dx2, cll);
@@ -232,15 +242,34 @@ begin
   begin
     if iq > 2048 then sgn := -Double(1.0) else sgn := Double(1.0);
     iqm := iq and $7FF;
-    for i := 0 to 3 do
+    // Pillar A (Phase 6.3): for i := 0 to 3 unrolled.
+    dbx := cSinpiDb4_X_0.f;
+    if ((x = dbx) and (iqm = cSinpiDb4_Iq_0))
+       or ((x = -dbx) and (iqm = 2048 - cSinpiDb4_Iq_0)) then
     begin
-      dbx := cSinpiDb4_X[i].f;
-      if ((x = dbx) and (iqm = cSinpiDb4_Iq[i]))
-         or ((x = -dbx) and (iqm = 2048 - cSinpiDb4_Iq[i])) then
-      begin
-        Result := sgn * cSinpiDb4_R[i].f + sgn * cSinpiDb4_D[i].f;
-        Exit;
-      end;
+      Result := sgn * cSinpiDb4_R_0.f + sgn * cSinpiDb4_D_0.f;
+      Exit;
+    end;
+    dbx := cSinpiDb4_X_1.f;
+    if ((x = dbx) and (iqm = cSinpiDb4_Iq_1))
+       or ((x = -dbx) and (iqm = 2048 - cSinpiDb4_Iq_1)) then
+    begin
+      Result := sgn * cSinpiDb4_R_1.f + sgn * cSinpiDb4_D_1.f;
+      Exit;
+    end;
+    dbx := cSinpiDb4_X_2.f;
+    if ((x = dbx) and (iqm = cSinpiDb4_Iq_2))
+       or ((x = -dbx) and (iqm = 2048 - cSinpiDb4_Iq_2)) then
+    begin
+      Result := sgn * cSinpiDb4_R_2.f + sgn * cSinpiDb4_D_2.f;
+      Exit;
+    end;
+    dbx := cSinpiDb4_X_3.f;
+    if ((x = dbx) and (iqm = cSinpiDb4_Iq_3))
+       or ((x = -dbx) and (iqm = 2048 - cSinpiDb4_Iq_3)) then
+    begin
+      Result := sgn * cSinpiDb4_R_3.f + sgn * cSinpiDb4_D_3.f;
+      Exit;
     end;
   end;
   Result := tsh + tsl;
@@ -359,8 +388,8 @@ begin
     x3 := x2 * x;
     x4 := x2 * x2;
     eps := x * (x2 * cSinpiFastEps1.f + cSinpiFastEps2.f);
-    zl := zl + x3 * ((cSinpiFastC[0].f + x2 * cSinpiFastC[1].f)
-                     + x4 * (cSinpiFastC[2].f + x2 * cSinpiFastC[3].f));
+    zl := zl + x3 * ((cSinpiFastC_0.f + x2 * cSinpiFastC_1.f)
+                     + x4 * (cSinpiFastC_2.f + x2 * cSinpiFastC_3.f));
     lb := (zl - eps) + zh;
     ub := (zl + eps) + zh;
     if lb = ub then begin Result := lb; Exit; end;
@@ -405,8 +434,8 @@ begin
   z2 := z * z;
 
   // sn[] and cn[] coefficients (same as cospi's cCospiSn / cCospiCn)
-  fs := cCospiSn[0].f + z2 * (cCospiSn[1].f + z2 * cCospiSn[2].f);
-  fc := cCospiCn[0].f + z2 * cCospiCn[1].f;
+  fs := cCospiSn_0.f + z2 * (cCospiSn_1.f + z2 * cCospiSn_2.f);
+  fc := cCospiCn_0.f + z2 * cCospiCn_1.f;
 
   CospiSincosN(iq, sh, sl, ch_, cl_);
 
