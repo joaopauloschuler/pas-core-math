@@ -177,24 +177,63 @@ var
   x2, x2l, y0, y1, y2: Double;
   ch, cl, th, tl, hh: Double;
   t, w: Tb64u64;
-  i: Int32;
 begin
   x2  := x * x;
   x2l := pcr_fma(x, x, -x2);
   y2  := x2 * (cAtanhZeroCl[0].f + x2 * (cAtanhZeroCl[1].f
       + x2 * (cAtanhZeroCl[2].f + x2 * (cAtanhZeroCl[3].f + x2 * cAtanhZeroCl[4].f))));
 
-  // Seeded polydd: n=13, seed *l = y2
+  // Seeded polydd: n=13, seed *l = y2 — Pillar A unroll of `for i := 11 downto 0`.
   ch := cAtanhZeroCh[12, 0].f + y2;
   cl := ((cAtanhZeroCh[12, 0].f - ch) + y2) + cAtanhZeroCh[12, 1].f;
-  for i := 11 downto 0 do
-  begin
-    ch := AtanhMuldd(x2, x2l, ch, cl, cl);
-    th := ch + cAtanhZeroCh[i, 0].f;
-    tl := (cAtanhZeroCh[i, 0].f - th) + ch;
-    ch := th;
-    cl := cl + tl + cAtanhZeroCh[i, 1].f;
-  end;
+
+  ch := AtanhMuldd(x2, x2l, ch, cl, cl);
+  th := ch + cAtanhZeroCh[11, 0].f; tl := (cAtanhZeroCh[11, 0].f - th) + ch;
+  ch := th; cl := cl + tl + cAtanhZeroCh[11, 1].f;
+
+  ch := AtanhMuldd(x2, x2l, ch, cl, cl);
+  th := ch + cAtanhZeroCh[10, 0].f; tl := (cAtanhZeroCh[10, 0].f - th) + ch;
+  ch := th; cl := cl + tl + cAtanhZeroCh[10, 1].f;
+
+  ch := AtanhMuldd(x2, x2l, ch, cl, cl);
+  th := ch + cAtanhZeroCh[9, 0].f; tl := (cAtanhZeroCh[9, 0].f - th) + ch;
+  ch := th; cl := cl + tl + cAtanhZeroCh[9, 1].f;
+
+  ch := AtanhMuldd(x2, x2l, ch, cl, cl);
+  th := ch + cAtanhZeroCh[8, 0].f; tl := (cAtanhZeroCh[8, 0].f - th) + ch;
+  ch := th; cl := cl + tl + cAtanhZeroCh[8, 1].f;
+
+  ch := AtanhMuldd(x2, x2l, ch, cl, cl);
+  th := ch + cAtanhZeroCh[7, 0].f; tl := (cAtanhZeroCh[7, 0].f - th) + ch;
+  ch := th; cl := cl + tl + cAtanhZeroCh[7, 1].f;
+
+  ch := AtanhMuldd(x2, x2l, ch, cl, cl);
+  th := ch + cAtanhZeroCh[6, 0].f; tl := (cAtanhZeroCh[6, 0].f - th) + ch;
+  ch := th; cl := cl + tl + cAtanhZeroCh[6, 1].f;
+
+  ch := AtanhMuldd(x2, x2l, ch, cl, cl);
+  th := ch + cAtanhZeroCh[5, 0].f; tl := (cAtanhZeroCh[5, 0].f - th) + ch;
+  ch := th; cl := cl + tl + cAtanhZeroCh[5, 1].f;
+
+  ch := AtanhMuldd(x2, x2l, ch, cl, cl);
+  th := ch + cAtanhZeroCh[4, 0].f; tl := (cAtanhZeroCh[4, 0].f - th) + ch;
+  ch := th; cl := cl + tl + cAtanhZeroCh[4, 1].f;
+
+  ch := AtanhMuldd(x2, x2l, ch, cl, cl);
+  th := ch + cAtanhZeroCh[3, 0].f; tl := (cAtanhZeroCh[3, 0].f - th) + ch;
+  ch := th; cl := cl + tl + cAtanhZeroCh[3, 1].f;
+
+  ch := AtanhMuldd(x2, x2l, ch, cl, cl);
+  th := ch + cAtanhZeroCh[2, 0].f; tl := (cAtanhZeroCh[2, 0].f - th) + ch;
+  ch := th; cl := cl + tl + cAtanhZeroCh[2, 1].f;
+
+  ch := AtanhMuldd(x2, x2l, ch, cl, cl);
+  th := ch + cAtanhZeroCh[1, 0].f; tl := (cAtanhZeroCh[1, 0].f - th) + ch;
+  ch := th; cl := cl + tl + cAtanhZeroCh[1, 1].f;
+
+  ch := AtanhMuldd(x2, x2l, ch, cl, cl);
+  th := ch + cAtanhZeroCh[0, 0].f; tl := (cAtanhZeroCh[0, 0].f - th) + ch;
+  ch := th; cl := cl + tl + cAtanhZeroCh[0, 1].f;
   y2 := cl;
   y1 := ch;
 
@@ -275,17 +314,21 @@ begin
   xh := AcoshAddDD(xh, xl, shm, slm, xl);
 
   sl2 := xh * (cAcoshRefineCl[0].f + xh * (cAcoshRefineCl[1].f + xh * cAcoshRefineCl[2].f));
-  // Seeded polydd: n=3, seed *l = sl2
+  // Seeded polydd: n=3, seed *l = sl2 — Pillar A unroll of `for i1 := 1 downto 0`.
   xh2 := cAcoshRefineCh[2, 0].f + sl2;
   sh2 := ((cAcoshRefineCh[2, 0].f - xh2) + sl2) + cAcoshRefineCh[2, 1].f;
-  for i1 := 1 downto 0 do
-  begin
-    xh2 := pcr_muldd(xh, xl, xh2, sh2, sh2);
-    th  := xh2 + cAcoshRefineCh[i1, 0].f;
-    tl  := (cAcoshRefineCh[i1, 0].f - th) + xh2;
-    xh2 := th;
-    sh2 := sh2 + tl + cAcoshRefineCh[i1, 1].f;
-  end;
+
+  xh2 := pcr_muldd(xh, xl, xh2, sh2, sh2);
+  th  := xh2 + cAcoshRefineCh[1, 0].f;
+  tl  := (cAcoshRefineCh[1, 0].f - th) + xh2;
+  xh2 := th;
+  sh2 := sh2 + tl + cAcoshRefineCh[1, 1].f;
+
+  xh2 := pcr_muldd(xh, xl, xh2, sh2, sh2);
+  th  := xh2 + cAcoshRefineCh[0, 0].f;
+  tl  := (cAcoshRefineCh[0, 0].f - th) + xh2;
+  xh2 := th;
+  sh2 := sh2 + tl + cAcoshRefineCh[0, 1].f;
   sh_ := pcr_muldd(xh, xl, xh2, sh2, sl2);
   sh_ := AcoshAddDD(sh_, sl2, el1, el2, sl2);
   sh_ := AcoshAddDD(sh_, sl2, L1, L2, sl2);
