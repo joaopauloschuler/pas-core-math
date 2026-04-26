@@ -1,28 +1,29 @@
 // pas-core-math - Pascal port of CORE-MATH
 // https://github.com/joaopauloschuler/pas-core-math
-//                                                                                                                                                                                                      
+//
 // Copyright (c) 2024-2026 Joao Paulo Schwarz Schuler and contributors.
 // Refer to the git commit history for individual authorship.
 // SPDX-License-Identifier: MIT
 {$I ../pascoremath.inc}
-program Benchmark32;
+program Benchmark64;
 
 uses
-  pascoremathtypes, pascoremath32, ccoremath32, SysUtils, Math, DateUtils, StrUtils;
+  pascoremathtypes, pascoremath64, ccoremath64, SysUtils, Math, DateUtils, StrUtils;
 
 type
-  TUniFuncC   = function(x: Single): Single; cdecl;
-  TUniFuncP   = function(x: Single): Single;
-  TBivarFuncC = function(x, y: Single): Single; cdecl;
-  TBivarFuncP = function(x, y: Single): Single;
+  TUniFuncC   = function(x: Double): Double; cdecl;
+  TUniFuncP   = function(x: Double): Double;
+  TBivarFuncC = function(x, y: Double): Double; cdecl;
+  TBivarFuncP = function(x, y: Double): Double;
 
 const
   BENCH_N        = 200000000;
-  STRIDE         = High(Cardinal) div BENCH_N;
+  // Stride across the UInt64 space: keep increment odd to visit many exponent classes
+  STRIDE: UInt64 = $7E3779B97F4A7C15;  // large odd increment to cover many exponent classes
   TIE_THRESHOLD  = 0.05;
 
 var
-  GlobalSink: UInt32 = 0;
+  GlobalSink: UInt64 = 0;
   PWins, CWins, PTies: Int32;
   TotalSpeedup: Double = 0.0;
   BenchCount: Int32 = 0;
@@ -31,13 +32,13 @@ var
 procedure BenchUni(const name: string; pfC: TUniFuncC; pfP: TUniFuncP);
 var
   i: Int32;
-  u: Cardinal;
-  v, r: Tb32u32;
-  sink: UInt32;
+  u: UInt64;
+  v, r: Tb64u64;
+  sink: UInt64;
   t0, t1: TDateTime;
   msC, msP: Int64;
   mopsC, mopsP: Double;
-  cSink, pSink: UInt32;
+  cSink, pSink: UInt64;
 begin
   if (Filter <> '') and (LowerCase(name) <> Filter) then Exit;
   // C version
@@ -93,19 +94,19 @@ end;
 procedure BenchBivar(const name: string; pfC: TBivarFuncC; pfP: TBivarFuncP);
 var
   i: Int32;
-  ux, uy: Cardinal;
-  vx, vy, r: Tb32u32;
-  sink: UInt32;
+  ux, uy: UInt64;
+  vx, vy, r: Tb64u64;
+  sink: UInt64;
   t0, t1: TDateTime;
   msC, msP: Int64;
   mopsC, mopsP: Double;
-  cSink, pSink: UInt32;
+  cSink, pSink: UInt64;
 begin
   if (Filter <> '') and (LowerCase(name) <> Filter) then Exit;
   // C version
   sink := 0;
   ux := 0;
-  uy := High(Cardinal) div 3;
+  uy := $5555555555555555;
   t0 := Now;
   for i := 1 to BENCH_N do
   begin
@@ -123,7 +124,7 @@ begin
   // Pascal version
   sink := 0;
   ux := 0;
-  uy := High(Cardinal) div 3;
+  uy := $5555555555555555;
   t0 := Now;
   for i := 1 to BENCH_N do
   begin
@@ -161,16 +162,16 @@ end;
 procedure BenchSinCos;
 var
   i: Int32;
-  u: Cardinal;
-  v, rs, rc: Tb32u32;
-  sink: UInt32;
+  u: UInt64;
+  v, rs, rc: Tb64u64;
+  sink: UInt64;
   t0, t1: TDateTime;
   msC, msP: Int64;
   mopsC, mopsP: Double;
-  cSink, pSink: UInt32;
-  ps, pc: Single;
+  cSink, pSink: UInt64;
+  ps, pc: Double;
 begin
-  if (Filter <> '') and (Filter <> 'sincosf') then Exit;
+  if (Filter <> '') and (Filter <> 'sincos') then Exit;
   // C version
   sink := 0;
   u := 0;
@@ -178,7 +179,7 @@ begin
   for i := 1 to BENCH_N do
   begin
     v.u := u;
-    cr_sincosf(v.f, @rs.f, @rc.f);
+    cr_sincos(v.f, @rs.f, @rc.f);
     sink := sink xor rs.u xor rc.u;
     Inc(u, STRIDE);
   end;
@@ -193,7 +194,7 @@ begin
   for i := 1 to BENCH_N do
   begin
     v.u := u;
-    pcr_sincosf(v.f, ps, pc);
+    pcr_sincos(v.f, ps, pc);
     rs.f := ps;
     rc.f := pc;
     sink := sink xor rs.u xor rc.u;
@@ -217,85 +218,81 @@ begin
     Inc(BenchCount);
   end;
   WriteLn(Format('%-16s  C: %6.1f Mops/s  Pascal: %6.1f Mops/s  sink=%s%s',
-    ['sincosf', mopsC, mopsP,
+    ['sincos', mopsC, mopsP,
      IfThen(cSink = pSink, 'MATCH', 'MISMATCH'),
      IfThen(mopsP > mopsC * (1.0 + TIE_THRESHOLD), '  FASTER! YAY!',
        IfThen(mopsC <= mopsP * (1.0 + TIE_THRESHOLD), '  TIE', ''))]));
 end;
 
 // cdecl wrappers for bivariate C functions
-function wrap_atan2_c(y, x: Single): Single; cdecl;    begin Result := cr_atan2f(y, x);     end;
-function wrap_atan2pi_c(y, x: Single): Single; cdecl;  begin Result := cr_atan2pif(y, x);   end;
-function wrap_hypot_c(x, y: Single): Single; cdecl;    begin Result := cr_hypotf(x, y);     end;
-function wrap_pow_c(x, y: Single): Single; cdecl;      begin Result := cr_powf(x, y);       end;
-function wrap_compound_c(x, y: Single): Single; cdecl; begin Result := cr_compoundf(x, y);  end;
+function wrap_atan2_c(y, x: Double): Double; cdecl;   begin Result := cr_atan2(y, x);    end;
+function wrap_atan2pi_c(y, x: Double): Double; cdecl; begin Result := cr_atan2pi(y, x);  end;
+function wrap_hypot_c(x, y: Double): Double; cdecl;   begin Result := cr_hypot(x, y);    end;
+function wrap_pow_c(x, y: Double): Double; cdecl;     begin Result := cr_pow(x, y);      end;
 
-// Pascal bivariate wrappers (register convention)
-function wrap_atan2_p(y, x: Single): Single;    begin Result := pcr_atan2f(y, x);    end;
-function wrap_atan2pi_p(y, x: Single): Single;  begin Result := pcr_atan2pif(y, x);  end;
-function wrap_hypot_p(x, y: Single): Single;    begin Result := pcr_hypotf(x, y);    end;
-function wrap_pow_p(x, y: Single): Single;      begin Result := pcr_powf(x, y);      end;
-function wrap_compound_p(x, y: Single): Single; begin Result := pcr_compoundf(x, y); end;
+// Pascal bivariate wrappers
+function wrap_atan2_p(y, x: Double): Double;   begin Result := pcr_atan2(y, x);   end;
+function wrap_atan2pi_p(y, x: Double): Double; begin Result := pcr_atan2pi(y, x); end;
+function wrap_hypot_p(x, y: Double): Double;   begin Result := pcr_hypot(x, y);   end;
+function wrap_pow_p(x, y: Double): Double;     begin Result := pcr_pow(x, y);     end;
 
 begin
   PWins := 0; CWins := 0; PTies := 0;
   {$IFDEF AVX2}
   WriteLn('Compiled with AVX2.');
   {$ENDIF}
-  // Mask all FP exceptions: we iterate over all bit patterns including NaN/Inf
   SetExceptionMask([exInvalidOp, exDenormalized, exZeroDivide,
                     exOverflow, exUnderflow, exPrecision]);
 
   if ParamCount >= 1 then Filter := LowerCase(ParamStr(1));
 
   if Filter = '' then
-    WriteLn(Format('=== Benchmark: %d calls per function ===', [BENCH_N]))
+    WriteLn(Format('=== Benchmark64: %d calls per function ===', [BENCH_N]))
   else
-    WriteLn(Format('=== Benchmark: %d calls per function (filter=%s) ===', [BENCH_N, Filter]));
+    WriteLn(Format('=== Benchmark64: %d calls per function (filter=%s) ===', [BENCH_N, Filter]));
   WriteLn;
 
-  BenchUni('acosf',    @cr_acosf,    @pcr_acosf);
-  BenchUni('acoshf',   @cr_acoshf,   @pcr_acoshf);
-  BenchUni('acospif',  @cr_acospif,  @pcr_acospif);
-  BenchUni('asinf',    @cr_asinf,    @pcr_asinf);
-  BenchUni('asinhf',   @cr_asinhf,   @pcr_asinhf);
-  BenchUni('asinpif',  @cr_asinpif,  @pcr_asinpif);
-  BenchUni('atanf',    @cr_atanf,    @pcr_atanf);
-  BenchUni('atanhf',   @cr_atanhf,   @pcr_atanhf);
-  BenchUni('atanpif',  @cr_atanpif,  @pcr_atanpif);
-  BenchUni('cbrtf',    @cr_cbrtf,    @pcr_cbrtf);
-  BenchUni('cosf',     @cr_cosf,     @pcr_cosf);
-  BenchUni('coshf',    @cr_coshf,    @pcr_coshf);
-  BenchUni('cospif',   @cr_cospif,   @pcr_cospif);
-  BenchUni('erff',     @cr_erff,     @pcr_erff);
-  BenchUni('erfcf',    @cr_erfcf,    @pcr_erfcf);
-  BenchUni('expf',     @cr_expf,     @pcr_expf);
-  BenchUni('exp10f',   @cr_exp10f,   @pcr_exp10f);
-  BenchUni('exp10m1f', @cr_exp10m1f, @pcr_exp10m1f);
-  BenchUni('exp2f',    @cr_exp2f,    @pcr_exp2f);
-  BenchUni('exp2m1f',  @cr_exp2m1f,  @pcr_exp2m1f);
-  BenchUni('expm1f',   @cr_expm1f,   @pcr_expm1f);
-  BenchUni('lgammaf',  @cr_lgammaf,  @pcr_lgammaf);
-  BenchUni('logf',     @cr_logf,     @pcr_logf);
-  BenchUni('log10f',   @cr_log10f,   @pcr_log10f);
-  BenchUni('log10p1f', @cr_log10p1f, @pcr_log10p1f);
-  BenchUni('log1pf',   @cr_log1pf,   @pcr_log1pf);
-  BenchUni('log2f',    @cr_log2f,    @pcr_log2f);
-  BenchUni('log2p1f',  @cr_log2p1f,  @pcr_log2p1f);
-  BenchUni('rsqrtf',   @cr_rsqrtf,   @pcr_rsqrtf);
-  BenchUni('sinf',     @cr_sinf,     @pcr_sinf);
-  BenchUni('sinhf',    @cr_sinhf,    @pcr_sinhf);
-  BenchUni('sinpif',   @cr_sinpif,   @pcr_sinpif);
-  BenchUni('tanf',     @cr_tanf,     @pcr_tanf);
-  BenchUni('tanhf',    @cr_tanhf,    @pcr_tanhf);
-  BenchUni('tanpif',   @cr_tanpif,   @pcr_tanpif);
-  BenchUni('tgammaf',  @cr_tgammaf,  @pcr_tgammaf);
+  BenchUni('acos',    @cr_acos,    @pcr_acos);
+  BenchUni('acosh',   @cr_acosh,   @pcr_acosh);
+  BenchUni('acospi',  @cr_acospi,  @pcr_acospi);
+  BenchUni('asin',    @cr_asin,    @pcr_asin);
+  BenchUni('asinh',   @cr_asinh,   @pcr_asinh);
+  BenchUni('asinpi',  @cr_asinpi,  @pcr_asinpi);
+  BenchUni('atan',    @cr_atan,    @pcr_atan);
+  BenchUni('atanh',   @cr_atanh,   @pcr_atanh);
+  BenchUni('atanpi',  @cr_atanpi,  @pcr_atanpi);
+  BenchUni('cbrt',    @cr_cbrt,    @pcr_cbrt);
+  BenchUni('cos',     @cr_cos,     @pcr_cos);
+  BenchUni('cosh',    @cr_cosh,    @pcr_cosh);
+  BenchUni('cospi',   @cr_cospi,   @pcr_cospi);
+  BenchUni('erf',     @cr_erf,     @pcr_erf);
+  BenchUni('erfc',    @cr_erfc,    @pcr_erfc);
+  BenchUni('exp',     @cr_exp,     @pcr_exp);
+  BenchUni('exp10',   @cr_exp10,   @pcr_exp10);
+  BenchUni('exp10m1', @cr_exp10m1, @pcr_exp10m1);
+  BenchUni('exp2',    @cr_exp2,    @pcr_exp2);
+  BenchUni('exp2m1',  @cr_exp2m1,  @pcr_exp2m1);
+  BenchUni('expm1',   @cr_expm1,   @pcr_expm1);
+  BenchUni('lgamma',  @cr_lgamma,  @pcr_lgamma);
+  BenchUni('log',     @cr_log,     @pcr_log);
+  BenchUni('log10',   @cr_log10,   @pcr_log10);
+  BenchUni('log10p1', @cr_log10p1, @pcr_log10p1);
+  BenchUni('log1p',   @cr_log1p,   @pcr_log1p);
+  BenchUni('log2',    @cr_log2,    @pcr_log2);
+  BenchUni('log2p1',  @cr_log2p1,  @pcr_log2p1);
+  BenchUni('rsqrt',   @cr_rsqrt,   @pcr_rsqrt);
+  BenchUni('sin',     @cr_sin,     @pcr_sin);
+  BenchUni('sinh',    @cr_sinh,    @pcr_sinh);
+  BenchUni('sinpi',   @cr_sinpi,   @pcr_sinpi);
+  BenchUni('tan',     @cr_tan,     @pcr_tan);
+  BenchUni('tanh',    @cr_tanh,    @pcr_tanh);
+  BenchUni('tanpi',   @cr_tanpi,   @pcr_tanpi);
+  BenchUni('tgamma',  @cr_tgamma,  @pcr_tgamma);
 
-  BenchBivar('atan2f',    @wrap_atan2_c,    @wrap_atan2_p);
-  BenchBivar('atan2pif',  @wrap_atan2pi_c,  @wrap_atan2pi_p);
-  BenchBivar('hypotf',    @wrap_hypot_c,    @wrap_hypot_p);
-  BenchBivar('powf',      @wrap_pow_c,      @wrap_pow_p);
-  BenchBivar('compoundf', @wrap_compound_c, @wrap_compound_p);
+  BenchBivar('atan2',   @wrap_atan2_c,   @wrap_atan2_p);
+  BenchBivar('atan2pi', @wrap_atan2pi_c, @wrap_atan2pi_p);
+  BenchBivar('hypot',   @wrap_hypot_c,   @wrap_hypot_p);
+  BenchBivar('pow',     @wrap_pow_c,     @wrap_pow_p);
 
   BenchSinCos;
 

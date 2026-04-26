@@ -56,24 +56,6 @@ function pcr_tanf(x: Single): Single; inline;
 
 implementation
 
-// Shared polynomial evaluator degree-12 (used by acosf, asinf)
-function pcr_poly12(z: Double; const c: array of Double): Double;
-var z2, z4, c0, c2, c4, c6, c8, c10: Double;
-begin
-  z2 := z * z; z4 := z2 * z2;
-  c0  := c[0]  + z * c[1];
-  c2  := c[2]  + z * c[3];
-  c4  := c[4]  + z * c[5];
-  c6  := c[6]  + z * c[7];
-  c8  := c[8]  + z * c[9];
-  c10 := c[10] + z * c[11];
-  c0 := c0 + c2 * z2;
-  c4 := c4 + c6 * z2;
-  c8 := c8 + z2 * c10;
-  c0 := c0 + z4 * (c4 + z4 * c8);
-  Result := c0;
-end;
-
 // Shared S[] table (sin(i*pi/64) for i=0..127) used by cospif and sinpif
 const
   S_TABLE: array[0..127] of Double = (
@@ -1212,9 +1194,6 @@ const
     0.6613984831766526, 0.6694306537388675, 0.6773988245230937, 0.6853040031279882,
     0.6931471805599103
   );
-  b: array[0..2] of Double = (
-    1.0000000014444432, -0.5000150201101822, 0.3332912677830366
-  );
   b0: Double = 1.0000000014444432;
   b1: Double = -0.5000150201101822;
   b2: Double = 0.3332912677830366;
@@ -2192,19 +2171,12 @@ const
     -0.90689052036605922, -0.918863297737195, -0.93073741817970457, -0.9425145590837678,
     -0.95419635338248709, -0.96578421613769971, -0.97727984019577085, -0.98868469214657217,
     -0.99999999999994849);
-  b_l2p1: array[0..2] of Double = (
-    1.4426950429726688, -0.72136918934353911, 0.48083766343529977);
   b_l2p1_0: Double = 1.4426950429726688;
   b_l2p1_1: Double = -0.72136918934353911;
   b_l2p1_2: Double = 0.48083766343529977;
   c_l2p1: array[0..5] of Double = (
     1.4426950408889683, -0.72134752044437966, 0.48089834631236422,
     -0.36067376567497511, 0.28856066993666346, -0.24038686635219694);
-  g_l2p1: array[0..7] of Double = (
-    1.9259629797116934e-08, -0.72134752044448125,
-    0.48089834696963674, -0.36067376023288011,
-    0.2885389476641852, -0.2404491020710918,
-    0.2062755131304331, -0.18051311004316711);
   g_l2p1_0: Double = 1.9259629797116934e-08;
   g_l2p1_1: Double = -0.72134752044448125;
   g_l2p1_2: Double = 0.48089834696963674;
@@ -2358,7 +2330,7 @@ const
 var
   tv_e: Tb32u32;
   ux_e: UInt32;
-  ss, zz_e, vf: Double;
+ ss, zz_e: Double;
   ax_f: Single;
   i_erf: Int32;
   z2_e, z4_e, z8_e, c0_e, c2_e, c4_e, c6_e: Double;
@@ -2490,10 +2462,6 @@ end;
 // ── 3.04 expf ────────────────────────────────────────────────────────────
 function pcr_expf(x: Single): Single;
 const
-  c_exp: array[0..5] of Double = (
-    Double(0.69314718055994529), Double(0.24022650695910072), Double(0.055504108664026088),
-    Double(0.0096181291075005358), Double(0.001333362331326638), Double(0.00015403602972146417));
-  b_exp: array[0..3] of Double = (Double(1), Double(0.69314718052023927), Double(0.2402288551437867), Double(0.055504596827996931));
   c_exp_0: Double = 0.69314718055994529;
   c_exp_1: Double = 0.24022650695910072;
   c_exp_2: Double = 0.055504108664026088;
@@ -2523,16 +2491,9 @@ const
     UInt64($3FFEA4AFA2A490DA), UInt64($3FFEFA1BEE615A27), UInt64($3FFF50765B6E4540), UInt64($3FFFA7C1819E90D8));
   k1_exp: Double = 1.4426950408889634;
   k2_exp: Double = 105553116266496;
-  k3_exp: Double = -103.972077077983;
-  k4_exp: Double = -88.3762626647959;
-  k5_exp: Double = 0.6931471805599453;
   k6_exp: Double = 1.4012984643248171e-45;
-  k7_exp: Double = 3.4028236692093846e38;
-  k8_exp: Double = 1.1920928955078125e-07;
-  k9_exp: Double = 0.16666666666666666;
   k10_exp: Double = 0.5;
   k11_exp: Double = 1.0;
-  k12_exp: Double = 0.5;
   k13_exp: Double = 0.0;
   k14_exp: Double = 103.27892990343184;
   k15_exp: Double = 1.0108231726433641e-45;
@@ -2876,7 +2837,6 @@ const
     0.26014595218693398, 0.26385790637563561, 0.26753839739443214, 0.27118794242299332,
     0.27480705007439105, 0.27839631709550916, 0.28195613352428522, 0.28548697269100148,
     0.28898939362644532, 0.29246373889003263, 0.29591053413566176, 0.29933018510220022);
-  b_l10: array[0..3] of Double = (0.43429448180522795, -0.21714724073915409, 0.14477135206183736, -0.1085812344983514);
   b_l10_0: Double = 0.43429448180522795;
   b_l10_1: Double = -0.21714724073915409;
   b_l10_2: Double = 0.14477135206183736;
@@ -3065,7 +3025,6 @@ var
   r_a: Tb64u64;
   c0_a, c2_a, c4_a: Double;
   Lh_a, Ll_a, hh_a: Double;
-  res_f: Single;
 begin
   tsi.f := x;
   tsi.u := tsi.u and $7FFFFFFF;  // clear sign
@@ -3618,71 +3577,6 @@ begin
   Result := r_lg;
 end;
 
-{ ── muldd / polydd: double-double helpers shared by pcr_atan2f and pcr_atan2pif ── }
-
-function muldd(xh, xl, ch, cl: Double; out l: Double): Double; inline;
-var
-  ahlh, alhh, ahhh, ahhl: Double;
-begin
-  ahlh := ch * xl;
-  alhh := cl * xh;
-  ahhh := ch * xh;
-  ahhl := pcr_fma(ch, xh, -ahhh);
-  ahhl := ahhl + alhh + ahlh;
-  ch := ahhh + ahhl;
-  l := (ahhh - ch) + ahhl;
-  Result := ch;
-end;
-
-{ c is flat: c[k*2]=c[k][0], c[k*2+1]=c[k][1] }
-function polydd(xh, xl: Double; n: Int32; const c: array of Double; out l: Double): Double; inline;
-var
-  i, i2: Int32;
-  ch, cl, th, tl: Double;
-begin
-  i := n - 1;
-  i2 := i * 2;
-  ch := c[i2];
-  cl := c[i2 + 1];
-  Dec(i2,2);
-  while i2 >= 8 do begin
-    ch := muldd(xh, xl, ch, cl, cl);
-    th := ch + c[i2];
-    tl := (c[i2] - th) + ch;
-    ch := th;
-    cl := cl + tl + c[i2 + 1];
-    Dec(i2,2);
-    ch := muldd(xh, xl, ch, cl, cl);
-    th := ch + c[i2];
-    tl := (c[i2] - th) + ch;
-    ch := th;
-    cl := cl + tl + c[i2 + 1];
-    Dec(i2,2);
-    ch := muldd(xh, xl, ch, cl, cl);
-    th := ch + c[i2];
-    tl := (c[i2] - th) + ch;
-    ch := th;
-    cl := cl + tl + c[i2 + 1];
-    Dec(i2,2);
-    ch := muldd(xh, xl, ch, cl, cl);
-    th := ch + c[i2];
-    tl := (c[i2] - th) + ch;
-    ch := th;
-    cl := cl + tl + c[i2 + 1];
-    Dec(i2,2);
-  end;
-  while i2 >= 0 do begin
-    ch := muldd(xh, xl, ch, cl, cl);
-    th := ch + c[i2];
-    tl := (c[i2] - th) + ch;
-    ch := th;
-    cl := cl + tl + c[i2 + 1];
-    Dec(i2,2);
-  end;
-  l := cl;
-  Result := ch;
-end;
-
 { ── pcr_hypotf ────────────────────────────────────────────────────────────── }
 
 function pcr_hypotf(x, y: Single): Single;
@@ -3900,13 +3794,13 @@ begin
       zh_a2 := Double(x) / Double(y);
       zl_a2 := pcr_fma(zh_a2, -Double(y), Double(x)) / Double(y);
     end;
-    z2h_a2 := muldd(zh_a2, zl_a2, zh_a2, zl_a2, z2l_a2);
-    ph_a2 := polydd(z2h_a2, z2l_a2, 32, c_a2, pl_a2);
+    z2h_a2 := pcr_muldd(zh_a2, zl_a2, zh_a2, zl_a2, z2l_a2);
+    ph_a2 := pcr_polydd(z2h_a2, z2l_a2, 32, c_a2, pl_a2);
     if gt_a2 <> 0 then begin
       zh_a2 := -zh_a2;
       zl_a2 := -zl_a2;
     end;
-    ph_a2 := muldd(zh_a2, zl_a2, ph_a2, pl_a2, pl_a2);
+    ph_a2 := pcr_muldd(zh_a2, zl_a2, ph_a2, pl_a2, pl_a2);
     sh_a2 := ph_a2 + off_a2[i_a2];
     sl_a2 := ((off_a2[i_a2] - sh_a2) + ph_a2) + pl_a2 + offl_a2[i_a2];
     rf_a2 := Single(sh_a2);
@@ -4072,11 +3966,11 @@ begin
         zh_a2p := zx_a2p / zy_a2p;
         zl_a2p := pcr_fma(zh_a2p, -zy_a2p, zx_a2p) / zy_a2p;
       end;
-      z2h_a2p := muldd(zh_a2p, zl_a2p, zh_a2p, zl_a2p, z2l_a2p);
-      ph_a2p := polydd(z2h_a2p, z2l_a2p, 32, c_a2p, pl_a2p);
+      z2h_a2p := pcr_muldd(zh_a2p, zl_a2p, zh_a2p, zl_a2p, z2l_a2p);
+      ph_a2p := pcr_polydd(z2h_a2p, z2l_a2p, 32, c_a2p, pl_a2p);
       zh_a2p := zh_a2p * sgn_a2p[gt_a2p];
       zl_a2p := zl_a2p * sgn_a2p[gt_a2p];
-      ph_a2p := muldd(zh_a2p, zl_a2p, ph_a2p, pl_a2p, pl_a2p);
+      ph_a2p := pcr_muldd(zh_a2p, zl_a2p, ph_a2p, pl_a2p, pl_a2p);
       sh_a2p := ph_a2p + off_a2p[i_a2p];
       sl_a2p := ((off_a2p[i_a2p] - sh_a2p) + ph_a2p) + pl_a2p;
       rf_a2p := Single(sh_a2p);
@@ -4320,9 +4214,9 @@ begin
   xp_a2 := x_a2 + o_a2[k_a2];
   zh_a2 := xm_a2 / xp_a2;
   zl_a2 := pcr_fma(zh_a2, -xp_a2, xm_a2) / xp_a2;
-  z2h_a2 := muldd(zh_a2, zl_a2, zh_a2, zl_a2, z2l_a2);
-  z2h_a2 := polydd(z2h_a2, z2l_a2, 13, ch_a2, z2l_a2);
-  zh_a2 := muldd(zh_a2, zl_a2, z2h_a2, z2l_a2, zl_a2);
+  z2h_a2 := pcr_muldd(zh_a2, zl_a2, zh_a2, zl_a2, z2l_a2);
+  z2h_a2 := pcr_polydd(z2h_a2, z2l_a2, 13, ch_a2, z2l_a2);
+  zh_a2 := pcr_muldd(zh_a2, zl_a2, z2h_a2, z2l_a2, zl_a2);
   zh_a2 := mulddd_pf(zh_a2, zl_a2, y_a2, zl_a2);
   ey_a2 := Double(e_a2) * y_a2;
   eh_a2 := ey_a2 + zh_a2;
@@ -4337,7 +4231,7 @@ begin
   ee_a2 := pcr_roundeven(eh_a2);
   {$ENDIF}
   eh_a2 := eh_a2 - ee_a2;
-  eh_a2 := polydd(eh_a2, el_a2, 18, ce_a2, el_a2);
+  eh_a2 := pcr_polydd(eh_a2, el_a2, 18, ce_a2, el_a2);
   r_a2.u := UInt64(Int64($3FF) + Int64(Trunc(ee_a2))) shl 52;
   { Check if y is an odd integer }
   ty_a2.f := y0;
@@ -4907,34 +4801,6 @@ const
     0, 16777215, 5791, 321, 75, 31, 17, 11, 7, 5, 5, 3, 3, 3, 3, 3
   );
 
-// ── MXCSR flag save/restore ───────────────────────────────────────────────────
-function cf_get_flag: DWord;
-{$IFDEF AVX2}
-var r: DWord;
-begin
-  asm
-    stmxcsr r
-  end;
-  Result := r;
-end;
-{$ELSE}
-begin
-  Result := 0;
-end;
-{$ENDIF}
-
-procedure cf_set_flag(flag: DWord);
-{$IFDEF AVX2}
-begin
-  asm
-    ldmxcsr flag
-  end;
-end;
-{$ELSE}
-begin
-end;
-{$ENDIF}
-
 // ── is_signalingf ─────────────────────────────────────────────────────────────
 function cf_is_signalingf(x: Single): Boolean; inline;
 var u_sig: Tb32u32;
@@ -4961,46 +4827,6 @@ begin
   Result := 0;
 end;
 
-// ── fast_two_sum ──────────────────────────────────────────────────────────────
-// All four primitives below write their var outputs LAST (after all value-param
-// reads) so that callers may safely alias value params with var params.
-
-procedure cf_fast_two_sum(var s, t: Double; a, b: Double); inline;
-var s_tmp: Double;
-begin
-  s_tmp := a + b;
-  t     := b - (s_tmp - a);
-  s     := s_tmp;
-end;
-
-// ── a_mul: hi+lo = a*b exactly ───────────────────────────────────────────────
-procedure cf_a_mul(var hi, lo: Double; a, b: Double); inline;
-var t_am: Double;
-begin
-  t_am := a * b;
-  lo   := pcr_fma(a, b, -t_am);
-  hi   := t_am;
-end;
-
-// ── s_mul: (hi+lo) = a*(bh+bl) ────────────────────────────────────────────────
-procedure cf_s_mul(var hi, lo: Double; a, bh, bl: Double); inline;
-var bl_sm: Double;
-begin
-  bl_sm := bl;             // save bl before cf_a_mul may overwrite lo
-  cf_a_mul(hi, lo, a, bh);
-  lo := pcr_fma(a, bl_sm, lo);
-end;
-
-// ── d_mul: (hi+lo) = (ah+al)*(bh+bl) ─────────────────────────────────────────
-procedure cf_d_mul(var hi, lo: Double; ah, al, bh, bl: Double); inline;
-var s_dm, t_dm, ah_dm: Double;
-begin
-  ah_dm := ah;             // save ah before cf_a_mul may overwrite hi
-  cf_a_mul(hi, s_dm, ah_dm, bh);
-  t_dm := pcr_fma(al, bh, s_dm);
-  lo   := pcr_fma(ah_dm, bl, t_dm);
-end;
-
 // ── p1: approximates log2(1+z) for |z|<=1/64 ─────────────────────────────────
 function cf_p1(z: Double): Double; inline;
 var z2_p1, z4_p1, c5_p1, c3_p1, c1_p1: Double;
@@ -5017,7 +4843,7 @@ begin
 end;
 
 // ── p2: double-double approx of log2(1+zh+zl) ────────────────────────────────
-procedure cf_p2(var h, l: Double; zh, zl: Double); inline;
+procedure cf_p2(out h, l: Double; zh, zl: Double); inline;
 var t_p2: Double;
 begin
   h := CF_P2C[17]; // degree 13
@@ -5027,25 +4853,25 @@ begin
   h := pcr_fma(h, zh, CF_P2C[13]);
   h := pcr_fma(h, zh, CF_P2C[12]);
   h := pcr_fma(h, zh, CF_P2C[11]);
-  cf_s_mul(h, l, h, zh, zl);
-  cf_fast_two_sum(h, t_p2, CF_P2C[10], h);
+  pcr_s_mul(h, l, h, zh, zl);
+  pcr_fasttwosum(h, t_p2, CF_P2C[10], h);
   l := l + t_p2;
-  cf_d_mul(h, l, h, l, zh, zl);
-  cf_fast_two_sum(h, t_p2, CF_P2C[8], h);
+  pcr_d_mul(h, l, h, l, zh, zl);
+  pcr_fasttwosum(h, t_p2, CF_P2C[8], h);
   l := l + t_p2 + CF_P2C[9];
-  cf_d_mul(h, l, h, l, zh, zl);
-  cf_fast_two_sum(h, t_p2, CF_P2C[6], h);
+  pcr_d_mul(h, l, h, l, zh, zl);
+  pcr_fasttwosum(h, t_p2, CF_P2C[6], h);
   l := l + t_p2 + CF_P2C[7];
-  cf_d_mul(h, l, h, l, zh, zl);
-  cf_fast_two_sum(h, t_p2, CF_P2C[4], h);
+  pcr_d_mul(h, l, h, l, zh, zl);
+  pcr_fasttwosum(h, t_p2, CF_P2C[4], h);
   l := l + t_p2 + CF_P2C[5];
-  cf_d_mul(h, l, h, l, zh, zl);
-  cf_fast_two_sum(h, t_p2, CF_P2C[2], h);
+  pcr_d_mul(h, l, h, l, zh, zl);
+  pcr_fasttwosum(h, t_p2, CF_P2C[2], h);
   l := l + t_p2 + CF_P2C[3];
-  cf_d_mul(h, l, h, l, zh, zl);
-  cf_fast_two_sum(h, t_p2, CF_P2C[0], h);
+  pcr_d_mul(h, l, h, l, zh, zl);
+  pcr_fasttwosum(h, t_p2, CF_P2C[0], h);
   l := l + t_p2 + CF_P2C[1];
-  cf_d_mul(h, l, h, l, zh, zl);
+  pcr_d_mul(h, l, h, l, zh, zl);
 end;
 
 // ── q1: approximates 2^z for |z|<=2^-6 ──────────────────────────────────────
@@ -5060,7 +4886,7 @@ begin
 end;
 
 // ── q2: double-double approx of 2^(h+l) ──────────────────────────────────────
-procedure cf_q2(var qh, ql: Double; h, l: Double); inline;
+procedure cf_q2(out qh, ql: Double; h, l: Double); inline;
 var h2_q2, c7_q2, c5_q2, t_q2: Double;
 begin
   h2_q2 := h * h;
@@ -5068,18 +4894,18 @@ begin
   c5_q2 := pcr_fma(CF_Q2C[9],  h, CF_Q2C[8]);
   c5_q2 := pcr_fma(c7_q2, h2_q2, c5_q2);
   qh := c5_q2 * h;
-  cf_fast_two_sum(qh, ql, CF_Q2C[7], qh);
-  cf_d_mul(qh, ql, qh, ql, h, l);
-  cf_fast_two_sum(qh, t_q2, CF_Q2C[5], qh);
+  pcr_fasttwosum(qh, ql, CF_Q2C[7], qh);
+  pcr_d_mul(qh, ql, qh, ql, h, l);
+  pcr_fasttwosum(qh, t_q2, CF_Q2C[5], qh);
   ql := ql + t_q2 + CF_Q2C[6];
-  cf_d_mul(qh, ql, qh, ql, h, l);
-  cf_fast_two_sum(qh, t_q2, CF_Q2C[3], qh);
+  pcr_d_mul(qh, ql, qh, ql, h, l);
+  pcr_fasttwosum(qh, t_q2, CF_Q2C[3], qh);
   ql := ql + t_q2 + CF_Q2C[4];
-  cf_d_mul(qh, ql, qh, ql, h, l);
-  cf_fast_two_sum(qh, t_q2, CF_Q2C[1], qh);
+  pcr_d_mul(qh, ql, qh, ql, h, l);
+  pcr_fasttwosum(qh, t_q2, CF_Q2C[1], qh);
   ql := ql + t_q2 + CF_Q2C[2];
-  cf_d_mul(qh, ql, qh, ql, h, l);
-  cf_fast_two_sum(qh, t_q2, CF_Q2C[0], qh);
+  pcr_d_mul(qh, ql, qh, ql, h, l);
+  pcr_fasttwosum(qh, t_q2, CF_Q2C[0], qh);
   ql := ql + t_q2;
 end;
 
@@ -5293,7 +5119,7 @@ var k_e22: Double;
     vtz_e22, wtz_e22: Int32;
 begin
   if y = 1.0 then begin
-    cf_set_flag(flag);
+    pcr_set_mxcsr(flag);
     Result := 1.0 + x;
     Exit;
   end;
@@ -5312,14 +5138,14 @@ begin
     Exit;
   end;
   r_e22 := h - k_e22;
-  cf_fast_two_sum(h, l, r_e22, l);
+  pcr_fasttwosum(h, l, r_e22, l);
   v_e22.f := Double(3.015625) + h;
   i_e22 := Int32(v_e22.u shr 46) - $10010;
   h := h - CF_EXP2T[i_e22];
-  cf_fast_two_sum(h, l, h, l);
+  pcr_fasttwosum(h, l, h, l);
   cf_q2(qh_e22, ql_e22, h, l);
-  cf_d_mul(qh_e22, ql_e22, CF_EXP2U[i_e22][0], CF_EXP2U[i_e22][1], qh_e22, ql_e22);
-  cf_fast_two_sum(qh_e22, ql_e22, qh_e22, ql_e22);
+  pcr_d_mul(qh_e22, ql_e22, CF_EXP2U[i_e22][0], CF_EXP2U[i_e22][1], qh_e22, ql_e22);
+  pcr_fasttwosum(qh_e22, ql_e22, qh_e22, ql_e22);
   // rounding test
   w_e22.f := qh_e22;
   if ((w_e22.u + 1) and UInt64($FFFFFFF) <= 2) then begin
@@ -5332,7 +5158,7 @@ begin
     if exact <> 0 then begin
       vtz_e22 := Int32(BsfQWord(v_e22.u));
       wtz_e22 := Int32(BsfQWord(w_e22.u));
-      cf_set_flag(flag);
+      pcr_set_mxcsr(flag);
       if vtz_e22 >= wtz_e22 then Result := Single(v_e22.f)
       else Result := Single(w_e22.f);
       Exit;
@@ -5353,7 +5179,7 @@ begin
 end;
 
 // ── log2p1_accurate: double-double approx of log2(1+x) ───────────────────────
-procedure cf_log2p1_accurate(var h, l: Double; x: Double); inline;
+procedure cf_log2p1_accurate(out h, l: Double; x: Double); inline;
 var v_la: Tb64u64;
     m_la: UInt64;
     e_la: Int64;
@@ -5362,13 +5188,13 @@ var v_la: Tb64u64;
 begin
   if 1.0 >= x then begin
     if pcr_fabs(x) >= Double(1.1102230246251565e-16) then // 2^-53
-      cf_fast_two_sum(h, l, 1.0, x)
+      pcr_fasttwosum(h, l, 1.0, x)
     else begin
       h := 1.0;
       l := x;
     end;
   end else
-    cf_fast_two_sum(h, l, x, 1.0);
+    pcr_fasttwosum(h, l, x, 1.0);
   v_la.f := h;
   m_la := v_la.u and UInt64($FFFFFFFFFFFFF);
   e_la := Int64(v_la.u shr 52) - $3FF;
@@ -5380,11 +5206,11 @@ begin
   r_la := CF_INV[i_la];
   zh_la := pcr_fma(r_la, h, -1.0);
   zl_la := r_la * l;
-  cf_fast_two_sum(zh_la, zl_la, zh_la, zl_la);
+  pcr_fasttwosum(zh_la, zl_la, zh_la, zl_la);
   cf_p2(ph_la, pl_la, zh_la, zl_la);
-  cf_fast_two_sum(h, l, Double(e_la), CF_LOG2INV[i_la][0]);
+  pcr_fasttwosum(h, l, Double(e_la), CF_LOG2INV[i_la][0]);
   l := l + CF_LOG2INV[i_la][1];
-  cf_fast_two_sum(h, t_la, h, ph_la);
+  pcr_fasttwosum(h, t_la, h, ph_la);
   l := l + t_la + pl_la;
 end;
 
@@ -5393,7 +5219,7 @@ function cf_accurate_path(x, y: Single; exact: Int32; flag: DWord): Single; inli
 var h_ap, l_ap: Double;
 begin
   cf_log2p1_accurate(h_ap, l_ap, Double(x));
-  cf_s_mul(h_ap, l_ap, Double(y), h_ap, l_ap);
+  pcr_s_mul(h_ap, l_ap, Double(y), h_ap, l_ap);
   Result := cf_exp2_2(h_ap, l_ap, x, y, exact, flag);
 end;
 
@@ -5494,7 +5320,7 @@ begin
   yd_cf := Double(n);
   tx_cf.f := xd_cf;
   ty_cf.f := yd_cf;
-  flag_cf := cf_get_flag;
+  flag_cf := pcr_get_mxcsr;
   if ax_cf < UInt32($62000000) then begin // |x| < 2^-29
     l_cf := CF_INVLOG2 * (xd_cf - (xd_cf * xd_cf) * 0.5);
   end else begin
@@ -5524,11 +5350,11 @@ begin
   res_cf := cf_exp2_1(t_cf.f);
   if res_cf <> -1.0 then begin
     if (exact_cf <> 0) and (midpoint_cf = 0) then
-      cf_set_flag(flag_cf);
+      pcr_set_mxcsr(flag_cf);
     Result := res_cf;
     Exit;
   end;
-  cf_set_flag(flag_cf);
+  pcr_set_mxcsr(flag_cf);
   Result := cf_accurate_path(x, n, exact_cf, flag_cf);
 end;
 
@@ -5539,18 +5365,6 @@ end;
 
 // ---- shared polynomial coefficients (same in sinf.c and cosf.c) -----------
 const
-  sincos_a: array[0..3] of Double = (
-     0.19634954084936204,     // 0x1.921fb54442d17p-3
-    -0.0012616486279372187,   // -0x1.4abbce6256a39p-10
-     2.432025854080733e-06,   // 0x1.466bc5a518c16p-19
-    -2.2318367225754577e-09   // -0x1.32bdc61074ff6p-29
-  );
-  sincos_b: array[0..3] of Double = (
-     0.019276571095877645,    // 0x1.3bd3cc9be45dcp-6
-    -6.193103220211784e-05,   // -0x1.03c1f081b0833p-14
-     7.958785981094399e-08,   // 0x1.55d3c6fc9ac1fp-24
-    -5.4777514393633976e-11   // -0x1.e1d3ff281b40dp-35
-  );
   sincos_a_0: Double = 0.19634954084936204;
   sincos_a_1: Double = -0.0012616486279372187;
   sincos_a_2: Double = 2.432025854080733e-06;
@@ -5630,12 +5444,6 @@ const
      0.9807852804032304
   );
   // 2/pi in fixed-point, little-endian 64-bit limbs
-  sincos_ipi: array[0..3] of UInt64 = (
-    UInt64($FE5163ABDEBBC562),
-    UInt64($DB6295993C439041),
-    UInt64($FC2757D1F534DDC0),
-    UInt64($A2F9836E4E441529)
-  );
   // Individual constants for direct use in asm (avoid stack-spill of ipi array)
   sincos_ipi_0: UInt64 = UInt64($FE5163ABDEBBC562);
   sincos_ipi_1: UInt64 = UInt64($DB6295993C439041);
@@ -6043,19 +5851,6 @@ end;
 // ---- tanf helpers (rbig uses k=e-127, different from sincos_rbig) ----------
 
 const
-  tanf_cn: array[0..3] of Double = (
-    1.5707963267948966,      // 0x1.921fb54442d18p+0
-   -0.49720165641032027,     // -0x1.fd226e573289fp-2
-    0.02683402276915988,     // 0x1.b7a60c8dac9f6p-6
-   -0.00017660096093977045   // -0x1.725beb40f33e5p-13
-  );
-  tanf_cd: array[0..3] of Double = (
-    1.0,                     // 0x1p+0
-   -1.1389954387488281,      // -0x1.2395347fb829dp+0
-    0.1421268437745497,      // 0x1.2313660f29c36p-3
-   -0.0031314039049681057    // -0x1.9a707ab98d1c1p-9
-  );
-
   tanf_cn_0: Double = 1.5707963267948966;
   tanf_cn_1: Double = -0.49720165641032027;
   tanf_cn_2: Double = 0.02683402276915988;

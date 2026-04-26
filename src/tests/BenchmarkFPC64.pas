@@ -5,22 +5,22 @@
 // Refer to the git commit history for individual authorship.
 // SPDX-License-Identifier: MIT
 {$I ../pascoremath.inc}
-program BenchmarkFPC32;
+program BenchmarkFPC64;
 
 uses
-  pascoremathtypes, pascoremath32, SysUtils, Math, DateUtils, StrUtils;
+  pascoremathtypes, pascoremath64, SysUtils, Math, DateUtils, StrUtils;
 
 type
-  TUniFuncP   = function(x: Single): Single;
-  TBivarFuncP = function(x, y: Single): Single;
+  TUniFuncP   = function(x: Double): Double;
+  TBivarFuncP = function(x, y: Double): Double;
 
 const
   BENCH_N        = 50000000;
-  STRIDE         = High(Cardinal) div BENCH_N;
+  STRIDE: UInt64 = $7E3779B97F4A7C15;
   TIE_THRESHOLD  = 0.05;
 
 var
-  GlobalSink: UInt32 = 0;
+  GlobalSink: UInt64 = 0;
   PCMWins, FPCWins, PTies: Int32;
   TotalSpeedup: Double = 0.0;
   BenchCount: Int32 = 0;
@@ -29,9 +29,9 @@ var
 procedure BenchUni(const name: string; pfFPC: TUniFuncP; pfPCM: TUniFuncP);
 var
   i: Int32;
-  u: Cardinal;
-  v, r: Tb32u32;
-  sink: UInt32;
+  u: UInt64;
+  v, r: Tb64u64;
+  sink: UInt64;
   t0, t1: TDateTime;
   msFPC, msPCM: Int64;
   mopsFPC, mopsPCM: Double;
@@ -87,9 +87,9 @@ end;
 procedure BenchBivar(const name: string; pfFPC: TBivarFuncP; pfPCM: TBivarFuncP);
 var
   i: Int32;
-  ux, uy: Cardinal;
-  vx, vy, r: Tb32u32;
-  sink: UInt32;
+  ux, uy: UInt64;
+  vx, vy, r: Tb64u64;
+  sink: UInt64;
   t0, t1: TDateTime;
   msFPC, msPCM: Int64;
   mopsFPC, mopsPCM: Double;
@@ -98,7 +98,7 @@ begin
   // FPC version
   sink := 0;
   ux := 0;
-  uy := High(Cardinal) div 3;
+  uy := $5555555555555555;
   t0 := Now;
   for i := 1 to BENCH_N do
   begin
@@ -116,7 +116,7 @@ begin
   // PCM version
   sink := 0;
   ux := 0;
-  uy := High(Cardinal) div 3;
+  uy := $5555555555555555;
   t0 := Now;
   for i := 1 to BENCH_N do
   begin
@@ -151,17 +151,17 @@ end;
 procedure BenchSinCos;
 var
   i: Int32;
-  u: Cardinal;
-  v, rs, rc: Tb32u32;
-  sink: UInt32;
+  u: UInt64;
+  v, rs, rc: Tb64u64;
+  sink: UInt64;
   t0, t1: TDateTime;
   msFPC, msPCM: Int64;
   mopsFPC, mopsPCM: Double;
-  ps, pc: Single;
+  ps, pc: Double;
   fs, fc: Double;
 begin
-  if (Filter <> '') and (Filter <> 'sincosf') then Exit;
-  // FPC version
+  if (Filter <> '') and (Filter <> 'sincos') then Exit;
+  // FPC version (SinCos from Math unit)
   sink := 0;
   u := 0;
   t0 := Now;
@@ -185,7 +185,7 @@ begin
   for i := 1 to BENCH_N do
   begin
     v.u := u;
-    pcr_sincosf(v.f, ps, pc);
+    pcr_sincos(v.f, ps, pc);
     rs.f := ps;
     rc.f := pc;
     sink := sink xor rs.u xor rc.u;
@@ -207,37 +207,36 @@ begin
     Inc(BenchCount);
   end;
   WriteLn(Format('%-16s  FPC: %6.1f Mops/s  PCM: %6.1f Mops/s%s',
-    ['sincosf', mopsFPC, mopsPCM,
+    ['sincos', mopsFPC, mopsPCM,
      IfThen(mopsPCM > mopsFPC * (1.0 + TIE_THRESHOLD), '  FASTER! YAY!',
        IfThen(mopsFPC <= mopsPCM * (1.0 + TIE_THRESHOLD), '  TIE', ''))]));
 end;
 
-// FPC wrappers (Single -> Double -> Single)
-function fpc_sinf(x: Single): Single;    begin Result := Sin(x);        end;
-function fpc_cosf(x: Single): Single;    begin Result := Cos(x);        end;
-function fpc_tanf(x: Single): Single;    begin Result := Tan(x);        end;
-function fpc_asinf(x: Single): Single;   begin Result := ArcSin(x);     end;
-function fpc_acosf(x: Single): Single;   begin Result := ArcCos(x);     end;
-function fpc_atanf(x: Single): Single;   begin Result := ArcTan(x);     end;
-function fpc_sinhf(x: Single): Single;   begin Result := Sinh(x);       end;
-function fpc_coshf(x: Single): Single;   begin Result := Cosh(x);       end;
-function fpc_tanhf(x: Single): Single;   begin Result := Tanh(x);       end;
-function fpc_asinhf(x: Single): Single;  begin Result := ArcSinh(x);    end;
-function fpc_acoshf(x: Single): Single;  begin Result := ArcCosh(x);    end;
-function fpc_atanhf(x: Single): Single;  begin Result := ArcTanh(x);    end;
-function fpc_expf(x: Single): Single;    begin Result := Exp(x);        end;
-function fpc_logf(x: Single): Single;    begin Result := Ln(x);         end;
-function fpc_log2f(x: Single): Single;   begin Result := Log2(x);       end;
-function fpc_log10f(x: Single): Single;  begin Result := Log10(x);      end;
+// FPC Double wrappers
+function fpc_sin(x: Double): Double;     begin Result := Sin(x);       end;
+function fpc_cos(x: Double): Double;     begin Result := Cos(x);       end;
+function fpc_tan(x: Double): Double;     begin Result := Tan(x);       end;
+function fpc_asin(x: Double): Double;    begin Result := ArcSin(x);    end;
+function fpc_acos(x: Double): Double;    begin Result := ArcCos(x);    end;
+function fpc_atan(x: Double): Double;    begin Result := ArcTan(x);    end;
+function fpc_sinh(x: Double): Double;    begin Result := Sinh(x);      end;
+function fpc_cosh(x: Double): Double;    begin Result := Cosh(x);      end;
+function fpc_tanh(x: Double): Double;    begin Result := Tanh(x);      end;
+function fpc_asinh(x: Double): Double;   begin Result := ArcSinh(x);   end;
+function fpc_acosh(x: Double): Double;   begin Result := ArcCosh(x);   end;
+function fpc_atanh(x: Double): Double;   begin Result := ArcTanh(x);   end;
+function fpc_exp(x: Double): Double;     begin Result := Exp(x);       end;
+function fpc_log(x: Double): Double;     begin Result := Ln(x);        end;
+function fpc_log2(x: Double): Double;    begin Result := Log2(x);      end;
+function fpc_log10(x: Double): Double;   begin Result := Log10(x);     end;
 // FPC bivariate wrappers
-function fpc_atan2f(y, x: Single): Single;  begin Result := ArcTan2(y, x);  end;
-function fpc_hypotf(x, y: Single): Single;  begin Result := Hypot(x, y);    end;
-function fpc_powf(x, y: Single): Single;    begin Result := Power(x, y);    end;
-
+function fpc_atan2(y, x: Double): Double;  begin Result := ArcTan2(y, x); end;
+function fpc_hypot(x, y: Double): Double;  begin Result := Hypot(x, y);   end;
+function fpc_pow(x, y: Double): Double;    begin Result := Power(x, y);   end;
 // PCM bivariate wrappers
-function pcm_atan2f(y, x: Single): Single;  begin Result := pcr_atan2f(y, x);  end;
-function pcm_hypotf(x, y: Single): Single;  begin Result := pcr_hypotf(x, y);  end;
-function pcm_powf(x, y: Single): Single;    begin Result := pcr_powf(x, y);    end;
+function pcm_atan2(y, x: Double): Double;  begin Result := pcr_atan2(y, x);  end;
+function pcm_hypot(x, y: Double): Double;  begin Result := pcr_hypot(x, y);  end;
+function pcm_pow(x, y: Double): Double;    begin Result := pcr_pow(x, y);    end;
 
 begin
   PCMWins := 0; FPCWins := 0; PTies := 0;
@@ -250,30 +249,31 @@ begin
   if ParamCount >= 1 then Filter := LowerCase(ParamStr(1));
 
   if Filter = '' then
-    WriteLn(Format('=== FPC vs Pascal CORE-MATH (PCM) Benchmark: %d calls per function ===', [BENCH_N]))
+    WriteLn(Format('=== FPC vs Pascal CORE-MATH (PCM) Benchmark64: %d calls per function ===', [BENCH_N]))
   else
-    WriteLn(Format('=== FPC vs Pascal CORE-MATH (PCM) Benchmark: %d calls per function (filter=%s) ===', [BENCH_N, Filter]));
+    WriteLn(Format('=== FPC vs PCM Benchmark64: %d calls (filter=%s) ===', [BENCH_N, Filter]));
   WriteLn;
 
-  BenchUni('sinf',    @fpc_sinf,    @pcr_sinf);
-  BenchUni('cosf',    @fpc_cosf,    @pcr_cosf);
-  BenchUni('tanf',    @fpc_tanf,    @pcr_tanf);
-  BenchUni('asinf',   @fpc_asinf,   @pcr_asinf);
-  BenchUni('acosf',   @fpc_acosf,   @pcr_acosf);
-  BenchUni('atanf',   @fpc_atanf,   @pcr_atanf);
-  BenchUni('sinhf',   @fpc_sinhf,   @pcr_sinhf);
-  BenchUni('coshf',   @fpc_coshf,   @pcr_coshf);
-  BenchUni('tanhf',   @fpc_tanhf,   @pcr_tanhf);
-  BenchUni('asinhf',  @fpc_asinhf,  @pcr_asinhf);
-  BenchUni('acoshf',  @fpc_acoshf,  @pcr_acoshf);
-  BenchUni('atanhf',  @fpc_atanhf,  @pcr_atanhf);
-  BenchUni('expf',    @fpc_expf,    @pcr_expf);
-  BenchUni('logf',    @fpc_logf,    @pcr_logf);
-  BenchUni('log2f',   @fpc_log2f,   @pcr_log2f);
-  BenchUni('log10f',  @fpc_log10f,  @pcr_log10f);
-  BenchBivar('atan2f',  @fpc_atan2f,  @pcm_atan2f);
-  BenchBivar('hypotf',  @fpc_hypotf,  @pcm_hypotf);
-  BenchBivar('powf',    @fpc_powf,    @pcm_powf);
+  BenchUni('sin',    @fpc_sin,    @pcr_sin);
+  BenchUni('cos',    @fpc_cos,    @pcr_cos);
+  BenchUni('tan',    @fpc_tan,    @pcr_tan);
+  BenchUni('asin',   @fpc_asin,   @pcr_asin);
+  BenchUni('acos',   @fpc_acos,   @pcr_acos);
+  BenchUni('atan',   @fpc_atan,   @pcr_atan);
+  BenchUni('sinh',   @fpc_sinh,   @pcr_sinh);
+  BenchUni('cosh',   @fpc_cosh,   @pcr_cosh);
+  BenchUni('tanh',   @fpc_tanh,   @pcr_tanh);
+  BenchUni('asinh',  @fpc_asinh,  @pcr_asinh);
+  BenchUni('acosh',  @fpc_acosh,  @pcr_acosh);
+  BenchUni('atanh',  @fpc_atanh,  @pcr_atanh);
+  BenchUni('exp',    @fpc_exp,    @pcr_exp);
+  BenchUni('log',    @fpc_log,    @pcr_log);
+  BenchUni('log2',   @fpc_log2,   @pcr_log2);
+  BenchUni('log10',  @fpc_log10,  @pcr_log10);
+
+  BenchBivar('atan2',  @fpc_atan2,  @pcm_atan2);
+  BenchBivar('hypot',  @fpc_hypot,  @pcm_hypot);
+  BenchBivar('pow',    @fpc_pow,    @pcm_pow);
 
   BenchSinCos;
 
@@ -284,8 +284,7 @@ begin
     WriteLn(Format('GlobalSink = %u', [GlobalSink]))
   else
   begin
-    WriteLn(Format('PCM won: %d  |  FPC won: %d  |  Ties (<%d%%): %d',
-      [PCMWins, FPCWins, Round(TIE_THRESHOLD * 100), PTies]));
+    WriteLn(Format('PCM won: %d  |  FPC won: %d  |  Ties (<%d%%): %d', [PCMWins, FPCWins, Round(TIE_THRESHOLD * 100), PTies]));
     if TotalSpeedup / BenchCount >= 1.0 then
       WriteLn(Format('On average, PCM is %.2fx faster than FPC (arithmetic mean over %d functions)',
         [TotalSpeedup / BenchCount, BenchCount]))
