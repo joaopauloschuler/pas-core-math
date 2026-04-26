@@ -554,19 +554,19 @@ const
     (hi:QWord($F0FA83448DD1E094); lo:$0E0603CE7044EEBA; ex:6; sgn:0),
     (hi:QWord($D368F6F4207CFE49); lo:$0EC63157807EBFFA; ex:5; sgn:1));
 
-  cCosPSfast: array[0..4] of Tb64u64 = (
-    (u:$401921FB54442D18),
-    (u:$3CB1A62645446203),
-    (u:QWord($C044ABBCE625BE53)),
-    (u:$405466BC678D8D63),
-    (u:QWord($C05331554CA19669)));
+  // Pillar B (Phase 6.3): cCosPSfast/cCosPCfast lifted from arrays to named
+  // Tb64u64 scalars; readers in cos_port_64.inc / sin_port_64.inc updated.
+  cCosPSfast_0: Tb64u64 = (u:$401921FB54442D18);
+  cCosPSfast_1: Tb64u64 = (u:$3CB1A62645446203);
+  cCosPSfast_2: Tb64u64 = (u:QWord($C044ABBCE625BE53));
+  cCosPSfast_3: Tb64u64 = (u:$405466BC678D8D63);
+  cCosPSfast_4: Tb64u64 = (u:QWord($C05331554CA19669));
 
-  cCosPCfast: array[0..4] of Tb64u64 = (
-    (u:$3FF0000000000000),
-    (u:QWord($BB2923015C000000)),
-    (u:QWord($C033BD3CC9BE45DE)),
-    (u:$40503C1F080AD892),
-    (u:QWord($C0555A5C590F9E6A)));
+  cCosPCfast_0: Tb64u64 = (u:$3FF0000000000000);
+  cCosPCfast_1: Tb64u64 = (u:QWord($BB2923015C000000));
+  cCosPCfast_2: Tb64u64 = (u:QWord($C033BD3CC9BE45DE));
+  cCosPCfast_3: Tb64u64 = (u:$40503C1F080AD892);
+  cCosPCfast_4: Tb64u64 = (u:QWord($C0555A5C590F9E6A));
 
   cCosSC: array[0..255, 0..2] of Tb64u64 = (
     ((u:$0000000000000000), (u:$0000000000000000), (u:$3FF0000000000000)),
