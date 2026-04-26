@@ -46,7 +46,7 @@ CORE-MATH is a research project from INRIA providing correctly-rounded implement
 | 4 (4)  | `hypot`, `atan2`, `atan2pi`, `pow` |
 | 5 (4)  | `sin`, `cos`, `sincos`, `tan` |
 
-`compound` is the only binary32 entry without a binary64 counterpart yet. A small number of binary64 functions still have edge-case mismatches (NaN sign and signed-zero corners; `max_ulp = 0` — i.e., they are correctly rounded for the numeric value); these are tracked and resolved as the port matures.
+A small number of binary64 functions still have edge-case mismatches (NaN sign and signed-zero corners; `max_ulp = 0` — i.e., they are correctly rounded for the numeric value).
 
 ## Functions Beyond FPC's Math Unit
 
