@@ -169,8 +169,8 @@ var
   t0, t1, t2, s0, s1, s2, fh, fl, sh, sl: Double;
   i: Int32;
 begin
-  t0 := 1.0; t1 := 0.0; t2 := 0.0;
-  s0 := ch[0].f; s1 := 0.0; s2 := 0.0;
+  t0 := Double(1.0); t1 := Double(0.0); t2 := Double(0.0);
+  s0 := ch[0].f; s1 := Double(0.0); s2 := Double(0.0);
   for i := 1 to imax - 1 do
   begin
     TGSprod(t0, t1, t2, d, t0, t1, t2);
@@ -179,7 +179,7 @@ begin
     TGSumDD(sh, sl, s1, s2, fh, fl);
     s1 := sh; s2 := sl;
   end;
-  fl := 0.0;
+  fl := Double(0.0);
   fh := TGPolyDDD(d, jmax, cl, fl);
   TGSumDD(sh, sl, s1, s2, fh, fl);
   s1 := sh; s2 := sl;
@@ -194,7 +194,7 @@ function TGFloor(x: Double): Double; inline;
 var ix: Double;
 begin
   ix := System.Int(x);
-  if (x < 0.0) and (ix <> x) then ix := ix - 1.0;
+  if (x < Double(0.0)) and (ix <> x) then ix := ix - Double(1.0);
   Result := ix;
 end;
 
@@ -251,8 +251,8 @@ begin
   r  := cTGLogR1[i1].f * cTGLogR2[i2].f;
   o  := r * t.f;
   dxl := pcr_fma(r, t.f, -o);
-  dxh := o - 1.0;
-  dx  := pcr_fma(r, t.f, -1.0);
+  dxh := o - Double(1.0);
+  dx  := pcr_fma(r, t.f, -Double(1.0));
   dx2 := dx * dx;
   f := dx2 * ((cTGLogC[0].f + dx*cTGLogC[1].f) + dx2*(cTGLogC[2].f + dx*cTGLogC[3].f));
   lt := (cTGLogL1[i1, 1].f + cTGLogL2[i2, 1].f) + ed * cTGLogTblH.f;
@@ -275,7 +275,7 @@ var
   qh, ql, th, tl, ph, pl: Double;
   xs, outl: Double;
 begin
-  xs := Abs(x - 0.5) * 128.0;
+  xs := Abs(x - Double(0.5)) * Double(128.0);
   ix := pcr_roundeven(xs);
   d  := ix - xs;
   d2 := d * d;
@@ -328,7 +328,7 @@ begin
   TGFastTwoSum(fh, fl, cTGExpC[0, 0].f, fl);
   fl := fl + cTGExpC[0, 1].f;
   fh := TGMul(xh, xl, fh, fl, fl);
-  TGFastTwoSum(fh, el, 1.0, fh); fl := fl + el;
+  TGFastTwoSum(fh, el, Double(1.0), fh); fl := fl + el;
   rh := TGMul(rh, rl, fh, fl, rl);
   l  := rl;
   Result := rh;
@@ -343,15 +343,15 @@ var
   q0, q2, q4, q6, q8: Double;
   bArr: array of Tb64u64;
 begin
-  zh := 1.0 / xh;
+  zh := Double(1.0) / xh;
   dz := xl * zh;
-  zl := (pcr_fma(zh, -xh, 1.0) - dz) * zh;
+  zl := (pcr_fma(zh, -xh, Double(1.0)) - dz) * zh;
   lh := TGLogd(xh, ll);
   ll := ll + dz;
-  lh := TGMul(xh - 0.5, xl, lh - 1.0, ll, ll);
+  lh := TGMul(xh - Double(0.5), xl, lh - Double(1.0), ll, ll);
   z2h := TGMul(zh, zl, zh, zl, z2l);
   x2 := z2h * z2h;
-  if xh > 11.5 then
+  if xh > Double(11.5) then
   begin
     TGFastSum(lh, ll, lh, ll, cTGLgBig[0, 0].f, cTGLgBig[0, 1].f);
     q0 := cTGLgBig[2, 0].f + z2h * cTGLgBig[3, 0].f;
@@ -426,7 +426,7 @@ var
   chFlat: TTGFlatArr;
 begin
   // ---- Path A: |x| < 0.25 -------------------------------------------------
-  if Abs(x) < 0.25 then
+  if Abs(x) < Double(0.25) then
   begin
     SetLength(cFlat, 28*2);
     for i := 0 to 27 do
@@ -442,23 +442,23 @@ begin
     c0v := c0v + x4*c4v;
     cl := x * c0v;
     ch := TGPolyDDD(x, 28, cFlat, cl);
-    fh := 1.0 / x;
-    dh := pcr_fma(fh, -x, 1.0);
+    fh := Double(1.0) / x;
+    dh := pcr_fma(fh, -x, Double(1.0));
     fl := dh * fh;
     fll := pcr_fma(fl, -x, dh) * fh;
     TGSumDD(fl, fll, fl, fll, ch, cl);
     TGTwoSum(fl, fll, fl, fll);
     TGFastTwoSum(fh, fl, fh, fl);
     TGFastTwoSum(fl, fll, fl, fll);
-    TGFastTwoSum(et, et, fh, 2.0 * fl);  // discard sum, only need et
+    TGFastTwoSum(et, et, fh, Double(2.0) * fl);  // discard sum, only need et
     // (Actually C: fasttwosum(fh, 2*fl, &et) — return value unused, just et.)
-    if et = 0.0 then
+    if et = Double(0.0) then
     begin
       // Same-sign test via signbit comparison
-      if ((fl >= 0.0) = (fll >= 0.0)) then
-        fl := fl * (1.0 + cTGEps50.f)
+      if ((fl >= Double(0.0)) = (fll >= Double(0.0))) then
+        fl := fl * (Double(1.0) + cTGEps50.f)
       else
-        fl := fl * (1.0 - cTGEps50.f);
+        fl := fl * (Double(1.0) - cTGEps50.f);
     end;
     Result := fh + fl;
     Exit;
@@ -466,7 +466,7 @@ begin
 
   // ---- Path B: 0.25 <= |x| -----------------------------------------------
   ix := TGFloor(x);
-  dval := 2.0 * (x - (ix + 0.5));
+  dval := Double(2.0) * (x - (ix + Double(0.5)));
   ic := Int32(Trunc(ix));
   if ic > 159 then begin branchIdx := 0; jm := 160 - ic; eoff := 942; end
   else if ic > 127 then begin branchIdx := 1; jm := 128 - ic; eoff := 713; end
@@ -547,18 +547,18 @@ begin
   end;
 
   // Recurrence multiplications
-  wh := 1.0; wl := 0.0;
+  wh := Double(1.0); wl := Double(0.0);
   if jm <> 0 then
   begin
     if jm > 0 then
     begin
-      xph := x; xpl := 0.0;
+      xph := x; xpl := Double(0.0);
       wh := xph;
       jSign := jm - 1;
       while jSign > 0 do
       begin
-        if Abs(xph) > 1.0 then TGFastTwoSum(xph, lTmp, xph, 1.0)
-        else                   TGFastTwoSum(xph, lTmp, 1.0, xph);
+        if Abs(xph) > Double(1.0) then TGFastTwoSum(xph, lTmp, xph, Double(1.0))
+        else                   TGFastTwoSum(xph, lTmp, Double(1.0), xph);
         xpl := xpl + lTmp;
         TGFastTwoSum(xph, xpl, xph, xpl);
         wh := TGMul3(xph, xpl, wh, wl, wl);
@@ -573,12 +573,12 @@ begin
     end
     else
     begin
-      xph := x - 1.0; xpl := 0.0;
+      xph := x - Double(1.0); xpl := Double(0.0);
       wh := xph;
       jSign := -1 - jm;
       while jSign > 0 do
       begin
-        TGFastTwoSum(xph, lTmp, xph, -1.0);
+        TGFastTwoSum(xph, lTmp, xph, -Double(1.0));
         xpl := xpl + lTmp;
         TGFastTwoSum(xph, xpl, xph, xpl);
         wh := TGMul3(xph, xpl, wh, wl, wl);
@@ -589,8 +589,8 @@ begin
 
   if jm > 0 then
   begin
-    rh := 1.0 / wh;
-    rl := (pcr_fma(rh, -wh, 1.0) - wl * rh) * rh;
+    rh := Double(1.0) / wh;
+    rl := (pcr_fma(rh, -wh, Double(1.0)) - wl * rh) * rh;
     fh := TGMul3(fh, fl, rh, rl, fl);
   end
   else if jm < 0 then
@@ -609,9 +609,9 @@ begin
   begin
     op := cTGEps53.f - cTGEps107.f;
     om := -cTGEps53.f + cTGEps107.f;
-    crr := 0.0;
+    crr := Double(0.0);
     if op = -om then crr := cTGEps53.f - op;
-    fl := fl - fh * ((jm - 5) * crr * 1.04);
+    fl := fl - fh * ((jm - 5) * crr * Double(1.04));
   end;
 
   eps := cTGEpsAcc.f * fh;
@@ -673,7 +673,7 @@ begin
   end;
 
   z := x;
-  if Abs(x) < 0.25 then
+  if Abs(x) < Double(0.25) then
   begin
     if ax < cTGTinyAxThr then
     begin
@@ -681,9 +681,9 @@ begin
       begin
         Result := cTGSpecPow1024H.f + cTGSpecPow1024L.f; Exit;
       end;
-      rh := 1.0 / x;
-      if x = 0.0 then begin Result := rh; Exit; end;
-      if pcr_fma(rh, x, -1.0) = 0.0 then rh := rh - 0.5;
+      rh := Double(1.0) / x;
+      if x = Double(0.0) then begin Result := rh; Exit; end;
+      if pcr_fma(rh, x, -Double(1.0)) = Double(0.0) then rh := rh - Double(0.5);
       Result := rh; Exit;
     end;
     SetLength(ccFlat, 5*2);
@@ -701,10 +701,10 @@ begin
     c8v := c8v + x4*c12v;
     cl := x * (c0v + x8 * c8v);
     ch := TGPolyDDD(x, 5, ccFlat, cl);
-    fh := 1.0 / z;
-    fl := pcr_fma(fh, -z, 1.0) * fh;
+    fh := Double(1.0) / z;
+    fl := pcr_fma(fh, -z, Double(1.0)) * fh;
     TGFastSum(fh, fl, fh, fl, ch, cl);
-    eps := fh * (3.5e-19 + (x2 * x4) * 4e-15);
+    eps := fh * (Double(3.5e-19) + (x2 * x4) * Double(4e-15));
     ub := fh + (fl + eps); lb := fh + (fl - eps);
     if ub <> lb then
     begin
@@ -723,23 +723,23 @@ begin
   fx := TGFloor(x);
   if fx = x then
   begin
-    if x = 0.0 then begin Result := 1.0 / x; Exit; end;
-    if x < 0.0 then begin Result := cNaNDouble; Exit; end;
+    if x = Double(0.0) then begin Result := Double(1.0) / x; Exit; end;
+    if x < Double(0.0) then begin Result := cNaNDouble; Exit; end;
     // x is positive integer ≤ 171 here (overflow already handled above)
     k := Trunc(fx);
-    fh := 1.0; fl := 0.0; m := 1.0;
+    fh := Double(1.0); fl := Double(0.0); m := Double(1.0);
     i := 1;
     while i < k do
     begin
       fh := TGMulD(m, fh, fl, fl);
-      m := m + 1.0;
+      m := m + Double(1.0);
       Inc(i);
     end;
     Result := fh + fl;
     Exit;
   end;
 
-  if x <= -184.0 then
+  if x <= -Double(184.0) then
   begin
     // Non-integer x <= -184: |x| < 2^53 (else fx==x would have triggered above)
     k := Trunc(fx);
@@ -748,22 +748,22 @@ begin
     Exit;
   end;
 
-  if x < -3.0 then
+  if x < -Double(3.0) then
   begin
-    TGFastTwoSum(lh, ll, -x, 1.0);
+    TGFastTwoSum(lh, ll, -x, Double(1.0));
     lh := TGLgammaAsym(lh, ll);
     lh := TGExpd(lh, ll, e);
     fx := TGFloor(x); dx := x - fx; ip := Int32(Trunc(fx));
     sh := TGSinpid(dx, sl);
     lh := TGMul(sh, sl, lh, ll, ll);
-    rcp := 1.0 / lh;
+    rcp := Double(1.0) / lh;
     rh := rcp * cTGPiH.f;
     rl := rcp * (cTGPiL.f - ll * rh - pcr_fma(rh, lh, -cTGPiH.f));
     if (ip and 1) <> 0 then
     begin
       rh := -rh; rl := -rl;
     end;
-    eps := rh * (6.5e-21 - x * 1.46e-22);
+    eps := rh * (Double(6.5e-21) - x * Double(1.46e-22));
     if ip >= -170 then
     begin
       ub := rh + (rl + eps); lb := rh + (rl - eps);
@@ -800,12 +800,12 @@ begin
     end;
   end;
 
-  if x > 4.0 then
+  if x > Double(4.0) then
   begin
-    ll := 0.0;
+    ll := Double(0.0);
     lh := TGLgammaAsym(x, ll);
     lh := TGExpd(lh, ll, e);
-    eps := lh * (2e-21 + x * 1.5e-22);
+    eps := lh * (Double(2e-21) + x * Double(1.5e-22));
     ub := lh + (ll + eps); lb := lh + (ll - eps);
     if ub <> lb then begin Result := TGAccurate(x); Exit; end;
     th_u.f := ub;
@@ -820,9 +820,9 @@ begin
     ccFlat[2*i]   := cTGMainCc[i, 0];
     ccFlat[2*i+1] := cTGMainCc[i, 1];
   end;
-  m := z - 3.5;
+  m := z - Double(3.5);
   ipos := pcr_roundeven(m);
-  d := z - (ipos + 3.5);
+  d := z - (ipos + Double(3.5));
   d2 := d*d; d4 := d2*d2;
   // FMA-contracted polynomial to match gcc -O2 -ffp-contract=fast output.
   fl := d * (pcr_fma(d, cTGMainC[11].f, cTGMainC[10].f)
@@ -831,25 +831,25 @@ begin
                   + d2*pcr_fma(d, cTGMainC[17].f, cTGMainC[16].f)));
   fh := TGPolyDDD(d, 10, ccFlat, fl);
   jm := Int32(Trunc(Abs(ipos)));
-  wh := 1.0; wl := 0.0;
-  xph := z; xpl := 0.0;
+  wh := Double(1.0); wl := Double(0.0);
+  xph := z; xpl := Double(0.0);
   if jm <> 0 then
   begin
     wh := xph;
     j := jm - 1;
     while j > 0 do
     begin
-      if Abs(xph) > 1.0 then TGFastTwoSum(xph, fl, xph, 1.0)
-      else                   TGFastTwoSum(xph, fl, 1.0, xph);
+      if Abs(xph) > Double(1.0) then TGFastTwoSum(xph, fl, xph, Double(1.0))
+      else                   TGFastTwoSum(xph, fl, Double(1.0), xph);
       xpl := xpl + fl;
       wh := TGMul(xph, xpl, wh, wl, wl);
       Dec(j);
     end;
   end;
-  rh := 1.0 / wh;
-  rl := (pcr_fma(rh, -wh, 1.0) - wl * rh) * rh;
+  rh := Double(1.0) / wh;
+  rl := (pcr_fma(rh, -wh, Double(1.0)) - wl * rh) * rh;
   fh := TGMul(rh, rl, fh, fl, fl);
-  eps := fh * 1e-21;
+  eps := fh * Double(1e-21);
   ub := fh + (fl + eps); lb := fh + (fl - eps);
   if ub <> lb then begin Result := TGAccurate(x); Exit; end;
   Result := ub;
