@@ -119,7 +119,7 @@ var
 begin
   a := 0; b := 50;
   ax := Abs(x);
-  if x >= 0.0 then sgn := 1.0 else sgn := -1.0;
+  if x >= Double(0.0) then sgn := Double(1.0) else sgn := Double(-1.0);
   m := (a + b) div 2;
   while a <= b do
   begin
@@ -233,8 +233,8 @@ begin
   if aix > cCoshAxHuge then
   begin
     if aix >= UInt64($7FF0000000000000) then begin Result := x + x; Exit; end;
-    if x >= 0.0 then Result :=  cCoshOvf.f * Double(2.0)
-                else Result := -cCoshOvf.f * Double(2.0);
+    if x >= Double(0.0) then Result :=  cCoshOvf.f * Double(2.0)
+                        else Result := -cCoshOvf.f * Double(2.0);
     Exit;
   end;
 
@@ -269,7 +269,7 @@ begin
   pp := dx * ((cCoshMainCh0.f + dx * cCoshMainCh1.f)
             + dx2 * (cCoshMainCh2.f + dx * cCoshMainCh3.f));
 
-  if x >= 0.0 then sgn := 1.0 else sgn := -1.0;
+  if x >= Double(0.0) then sgn := Double(1.0) else sgn := Double(-1.0);
 
   if aix > cCoshAxMed then
   begin
