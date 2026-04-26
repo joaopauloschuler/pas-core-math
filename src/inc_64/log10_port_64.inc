@@ -64,7 +64,7 @@ begin
 
   if m >= UInt64($16A09E667F3BCD) then begin
     e := e + 1;
-    y := vf * 0.5;
+    y := vf * Double(0.5);
     i := Int32(m shr 44);
   end else begin
     y := vf;
@@ -74,7 +74,7 @@ begin
   r  := cLogInverse[i - cLog10OFFSET].f;
   l1 := cLogInvH   [i - cLog10OFFSET].f;
   l2 := cLogInvL   [i - cLog10OFFSET].f;
-  z  := pcr_fma(r, y, -1.0);
+  z  := pcr_fma(r, y, -Double(1.0));
 
   z2  := z * z;
   p45 := pcr_fma(cLogP_5.f, z, cLogP_4.f);
@@ -105,7 +105,7 @@ function Log10Accurate(x: Double): Double;
 var
   X64, Y64: TDInt64;
 begin
-  if x = 1.0 then begin Result := 0.0; Exit; end;
+  if x = Double(1.0) then begin Result := Double(0.0); Exit; end;
   DIntFromD(X64, x);
   LogTwo(Y64, X64);
   // Multiply by 1/log(10).
@@ -130,17 +130,17 @@ begin
       Result := x + x;  // +Inf or NaN
       Exit;
     end;
-    if x <= 0.0 then begin
+    if x <= Double(0.0) then begin
       if x < 0 then begin
         Result := cNaNDouble;
         Exit;
       end else begin
-        Result := 1.0 / Double(-0.0);
+        Result := Double(1.0) / Double(-0.0);
         Exit;
       end;
     end;
     if e = -$3FF then begin
-      v.f := v.f * 4503599627370496.0; // 0x1p52
+      v.f := v.f * Double(4503599627370496.0); // 0x1p52
       e := Int32(v.u shr 52) - $3FF - 52;
     end;
   end;
