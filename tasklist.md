@@ -555,12 +555,26 @@ pass doesn't blanket-apply the 64-bit recipe:
   tanf 210 (vs 210, TIE). The non-pi trig regressions are unchanged
   from baseline — the lift only touched the pi-variants.
 
-- [ ] **7.4** inverse-trig family — `atanf`, `atan2f`, `asinf`, `acosf`,
-  `atanpif`, `atan2pif`, `asinpif`, `acospif`, `atanhf` regions. Pillar B
-  candidates: `cn_a2`, `cd_a2`, `cn_a2p`, `cd_a2p`, `c_atanh_s`,
-  `c_atanh_acc`, `c_near_ac`. The `cn_a2p` / `cd_a2p` Estrin block is the
-  exemplar that motivated this phase — full lift to `cn_a2p_<i>` /
-  `cd_a2p_<i>` named scalars, drop the array if no other reader.
+- [x] **7.4** inverse-trig family — `atanf`, `atan2f`, `asinf`, `acosf`,
+  `atanpif`, `atan2pif`, `atanhf`. Pillar B done: lifted
+  `cn`/`cd` (atanpif → `cn_atp_*`/`cd_atp_*`), `cn`/`cd` (atanf → `cn_at_*`/`cd_at_*`),
+  `b[0..15]` (acosf → `b_ac_*`), `b[0..15]` (asinf → `b_as_*`),
+  `b_atanh`/`c_atanh_s`/`c_atanh_acc` (atanhf → `*_0..N` named scalars),
+  `cn_a2`/`cd_a2` (atan2f → `cn_a2_*`/`cd_a2_*`),
+  `cn_a2p`/`cd_a2p` (atan2pif → `cn_a2p_*`/`cd_a2p_*`).
+  acospif/asinpif have only multi-dim runtime-indexed `ch[0..15, 0..7]`
+  (out of scope). acosf/asinf `c1`/`c2` are consumed by `pcr_poly12`
+  (runtime-indexed loop, out of scope). `c_near_ac` referenced in the
+  task spec actually lives in `pcr_acoshf` (hyperbolic family, 7.5) — moved.
+  Audit B count: 407 → 296 (-111 reads). Tests: all 42 pass at `--pct 1`.
+  Bench (taskset -c 1, AVX2): atanpif 466 (vs C 400, FASTER) /
+  atanhf 379 (vs 314, FASTER) / asinf 438 (vs 396, FASTER) /
+  acospif 248 (vs 227, FASTER, indirect) / atanf 349 (vs 358, TIE) /
+  atan2f 241 (vs 274) / acosf 203 (vs 372) / asinpif 202 (vs 248) /
+  atan2pif 3.0 (vs 7.0). The remaining gaps are in paths dominated by
+  `pcr_poly12` (acosf/asinf accurate) or `pcr_polydd` over the
+  runtime-indexed `c_a2`/`c_a2p` Taylor table (atan2/atan2pi accurate
+  path) — out of Pillar B scope.
 
 - [ ] **7.5** hyperbolic family — `sinhf`, `coshf`, `tanhf`, `asinhf`,
   `acoshf` regions. Pillar B candidates: `c_sinh`, `ch_sinh`, `cp_sinh`,

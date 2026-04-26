@@ -199,12 +199,19 @@ end;
 // ── 2.01 atanpif ─────────────────────────────────────────────────────────────
 function pcr_atanpif(x: Single): Single;
 const
-  cn: array[0..5] of Double = (
-    0.31830988618379064, 0.7250620755086127, 0.5797844040060893,
-    0.193473170705847, 0.02469825010811925, 0.0008063015432615248);
-  cd: array[0..6] of Double = (
-    1.0, 2.6111830231477096, 2.4918407653440666, 1.0590480183430666,
-    0.19415473041607811, 0.012196596718179518, 0.00011321825378267113);
+  cn_atp_0: Double = 0.31830988618379064;
+  cn_atp_1: Double = 0.7250620755086127;
+  cn_atp_2: Double = 0.5797844040060893;
+  cn_atp_3: Double = 0.193473170705847;
+  cn_atp_4: Double = 0.02469825010811925;
+  cn_atp_5: Double = 0.0008063015432615248;
+  cd_atp_0: Double = 1.0;
+  cd_atp_1: Double = 2.6111830231477096;
+  cd_atp_2: Double = 2.4918407653440666;
+  cd_atp_3: Double = 1.0590480183430666;
+  cd_atp_4: Double = 0.19415473041607811;
+  cd_atp_5: Double = 0.012196596718179518;
+  cd_atp_6: Double = 0.00011321825378267113;
 var
   t: Tb32u32;
   e: Int32;
@@ -261,16 +268,16 @@ begin
   end;
   if gt then z := 1.0 / z;
   z2 := z*z; z4 := z2*z2; z8 := z4*z4;
-  cn0 := cn[0] + z2*cn[1];
-  cn2 := cn[2] + z2*cn[3];
-  cn4 := cn[4] + z2*cn[5];
+  cn0 := cn_atp_0 + z2*cn_atp_1;
+  cn2 := cn_atp_2 + z2*cn_atp_3;
+  cn4 := cn_atp_4 + z2*cn_atp_5;
   cn0 := cn0 + z4*cn2;
   cn0 := cn0 + z8*cn4;
   cn0 := cn0 * z;
-  cd0 := cd[0] + z2*cd[1];
-  cd2 := cd[2] + z2*cd[3];
-  cd4 := cd[4] + z2*cd[5];
-  cd6 := cd[6];
+  cd0 := cd_atp_0 + z2*cd_atp_1;
+  cd2 := cd_atp_2 + z2*cd_atp_3;
+  cd4 := cd_atp_4 + z2*cd_atp_5;
+  cd6 := cd_atp_6;
   cd0 := cd0 + z4*cd2;
   cd4 := cd4 + z4*cd6;
   cd0 := cd0 + z8*cd4;
@@ -353,11 +360,22 @@ end;
 function pcr_acosf(x: Single): Single;
 const
   pi2: Double = 1.5707963267948966;
-  b: array[0..15] of Double = (
-    0.9999999997220561, 0.1666675305523315, 0.07491953938381704, 0.047534405138862854,
-    -0.024905344107261872, 0.6698889818036169, -5.003757071019054, 27.02642690834356,
-    -103.66551324982036, 288.04495822181497, -580.9121849063603, 842.6925540871983,
-    -857.2868238883075, 581.0567760763246, -235.92908248702702, 43.51567221246845);
+  b_ac_0:  Double =  0.9999999997220561;
+  b_ac_1:  Double =  0.1666675305523315;
+  b_ac_2:  Double =  0.07491953938381704;
+  b_ac_3:  Double =  0.047534405138862854;
+  b_ac_4:  Double = -0.024905344107261872;
+  b_ac_5:  Double =  0.6698889818036169;
+  b_ac_6:  Double = -5.003757071019054;
+  b_ac_7:  Double =  27.02642690834356;
+  b_ac_8:  Double = -103.66551324982036;
+  b_ac_9:  Double =  288.04495822181497;
+  b_ac_10: Double = -580.9121849063603;
+  b_ac_11: Double =  842.6925540871983;
+  b_ac_12: Double = -857.2868238883075;
+  b_ac_13: Double =  581.0567760763246;
+  b_ac_14: Double = -235.92908248702702;
+  b_ac_15: Double =  43.51567221246845;
   c1: array[0..11] of Double = (
     0.1666666666666473, 0.07500000000425495, 0.044642856775806136, 0.030381960865898193,
     0.022371723076598973, 0.01736016508415668, 0.01388117521087077, 0.012193412697105537,
@@ -396,8 +414,8 @@ begin
       Exit;
     end;
     z := xs; z2 := z*z; z4 := z2*z2; z8 := z4*z4; z16 := z8*z8;
-    r := z * ((((b[0] + z2*b[1]) + z4*(b[2] + z2*b[3])) + z8*((b[4] + z2*b[5]) + z4*(b[6] + z2*b[7]))) +
-              z16*(((b[8] + z2*b[9]) + z4*(b[10] + z2*b[11])) + z8*((b[12] + z2*b[13]) + z4*(b[14] + z2*b[15]))));
+    r := z * ((((b_ac_0 + z2*b_ac_1) + z4*(b_ac_2 + z2*b_ac_3)) + z8*((b_ac_4 + z2*b_ac_5) + z4*(b_ac_6 + z2*b_ac_7))) +
+              z16*(((b_ac_8 + z2*b_ac_9) + z4*(b_ac_10 + z2*b_ac_11)) + z8*((b_ac_12 + z2*b_ac_13) + z4*(b_ac_14 + z2*b_ac_15))));
     ub_s := Single(Double(1.5707963270725467) - r);
     lb_s := Single(Double(1.5707963265172467) - r);
     if ub_s = lb_s then begin Result := ub_s; Exit; end;
@@ -570,12 +588,20 @@ end;
 function pcr_atanf(x: Single): Single;
 const
   pi2: Double = 1.5707963267948966;
-  cn: array[0..6] of Double = (
-    0.33000489885804146, 0.8269936260181494, 0.7536692267812706, 0.3041250206581639,
-    0.052585465033265374, 0.0030928116297212196, 2.6680447001914062e-05);
-  cd: array[0..6] of Double = (
-    0.3300048988580414, 0.9369952589708292, 1.0, 0.4972028591750377,
-    0.1155090060414157, 0.0109022453539874, 0.00027322693677761577);
+  cn_at_0: Double = 0.33000489885804146;
+  cn_at_1: Double = 0.8269936260181494;
+  cn_at_2: Double = 0.7536692267812706;
+  cn_at_3: Double = 0.3041250206581639;
+  cn_at_4: Double = 0.052585465033265374;
+  cn_at_5: Double = 0.0030928116297212196;
+  cn_at_6: Double = 2.6680447001914062e-05;
+  cd_at_0: Double = 0.3300048988580414;
+  cd_at_1: Double = 0.9369952589708292;
+  cd_at_2: Double = 1.0;
+  cd_at_3: Double = 0.4972028591750377;
+  cd_at_4: Double = 0.1155090060414157;
+  cd_at_5: Double = 0.0109022453539874;
+  cd_at_6: Double = 0.00027322693677761577;
   PI_OVER2_H: Double = 1.5625;
   PI_OVER2_L: Double = 0.008296326794896619;
 var
@@ -609,12 +635,12 @@ begin
   z := x;
   if gt then z := 1.0 / z;
   z2 := z*z; z4 := z2*z2; z8 := z4*z4;
-  cn0 := cn[0] + z2*cn[1]; cn2 := cn[2] + z2*cn[3];
-  cn4 := cn[4] + z2*cn[5]; cn6 := cn[6];
+  cn0 := cn_at_0 + z2*cn_at_1; cn2 := cn_at_2 + z2*cn_at_3;
+  cn4 := cn_at_4 + z2*cn_at_5; cn6 := cn_at_6;
   cn0 := cn0 + z4*cn2; cn4 := cn4 + z4*cn6; cn0 := cn0 + z8*cn4;
   cn0 := cn0 * z;
-  cd0 := cd[0] + z2*cd[1]; cd2 := cd[2] + z2*cd[3];
-  cd4 := cd[4] + z2*cd[5]; cd6 := cd[6];
+  cd0 := cd_at_0 + z2*cd_at_1; cd2 := cd_at_2 + z2*cd_at_3;
+  cd4 := cd_at_4 + z2*cd_at_5; cd6 := cd_at_6;
   cd0 := cd0 + z4*cd2; cd4 := cd4 + z4*cd6; cd0 := cd0 + z8*cd4;
   r := cn0 / cd0;
   if not gt then begin Result := r; Exit; end;
@@ -626,11 +652,22 @@ end;
 function pcr_asinf(x: Single): Single;
 const
   pi2: Double = 1.5707963267948966;
-  b: array[0..15] of Double = (
-    1.000000000000001, 0.16666694674143204, 0.07497112542795417, 0.0458179575336707,
-    0.005331008900413985, 0.34410258152367046, -2.680930042099564, 15.541270760972983,
-    -63.17329833405016, 184.79515144873312, -390.0198166803775, 589.2790780950768,
-    -621.89777643639, 435.8403729646551, -182.48552714860514, 34.63705332873756);
+  b_as_0:  Double =  1.000000000000001;
+  b_as_1:  Double =  0.16666694674143204;
+  b_as_2:  Double =  0.07497112542795417;
+  b_as_3:  Double =  0.0458179575336707;
+  b_as_4:  Double =  0.005331008900413985;
+  b_as_5:  Double =  0.34410258152367046;
+  b_as_6:  Double = -2.680930042099564;
+  b_as_7:  Double =  15.541270760972983;
+  b_as_8:  Double = -63.17329833405016;
+  b_as_9:  Double =  184.79515144873312;
+  b_as_10: Double = -390.0198166803775;
+  b_as_11: Double =  589.2790780950768;
+  b_as_12: Double = -621.89777643639;
+  b_as_13: Double =  435.8403729646551;
+  b_as_14: Double = -182.48552714860514;
+  b_as_15: Double =  34.63705332873756;
   c1: array[0..11] of Double = (
     0.1666666666666473, 0.07500000000425495, 0.044642856775806136, 0.030381960865898193,
     0.022371723076598973, 0.01736016508415668, 0.01388117521087077, 0.012193412697105537,
@@ -664,8 +701,8 @@ begin
       Result := pcr_fmaf(x, Single(2.9802322387695312e-08), x); Exit;
     end;
     z := xs; z2 := z*z; z4 := z2*z2; z8 := z4*z4; z16 := z8*z8;
-    r := z * ((((b[0] + z2*b[1]) + z4*(b[2] + z2*b[3])) + z8*((b[4] + z2*b[5]) + z4*(b[6] + z2*b[7]))) +
-              z16*(((b[8] + z2*b[9]) + z4*(b[10] + z2*b[11])) + z8*((b[12] + z2*b[13]) + z4*(b[14] + z2*b[15]))));
+    r := z * ((((b_as_0 + z2*b_as_1) + z4*(b_as_2 + z2*b_as_3)) + z8*((b_as_4 + z2*b_as_5) + z4*(b_as_6 + z2*b_as_7))) +
+              z16*(((b_as_8 + z2*b_as_9) + z4*(b_as_10 + z2*b_as_11)) + z8*((b_as_12 + z2*b_as_13) + z4*(b_as_14 + z2*b_as_15))));
     ub_s := Single(r);
     lb_s := Single(r - z * Double(9.015999891115456e-10));
     if ub_s = lb_s then begin Result := ub_s; Exit; end;
@@ -2646,11 +2683,20 @@ const
     4.5054566735266448, 4.8520302638066175, 5.1986038540865902, 5.5451774443665629,
     5.8917510346465347, 6.2383246249265074, 6.5848982152064801, 6.9314718054864528,
     7.2780453957664255, 7.6246189860463982, 7.9711925763263709, 8.3177661666063436);
-  b_atanh: array[0..2] of Double = (0.49999999981938592, -0.25000751197527959, 0.16667568182579121);
-  c_atanh_s: array[0..3] of Double = (0.33333333333333076, 0.20000000005949592, 0.14285692689117752, 0.11136190102118979);
-  c_atanh_acc: array[0..6] of Double = (
-    0.5, -0.2500000000000015, 0.16666666666666946, -0.12499999980249463,
-    0.099999999758626501, -0.083339906466727953, 0.071435144331263092);
+  b_atanh_0: Double =  0.49999999981938592;
+  b_atanh_1: Double = -0.25000751197527959;
+  b_atanh_2: Double =  0.16667568182579121;
+  c_atanh_s_0: Double = 0.33333333333333076;
+  c_atanh_s_1: Double = 0.20000000005949592;
+  c_atanh_s_2: Double = 0.14285692689117752;
+  c_atanh_s_3: Double = 0.11136190102118979;
+  c_atanh_acc_0: Double =  0.5;
+  c_atanh_acc_1: Double = -0.2500000000000015;
+  c_atanh_acc_2: Double =  0.16666666666666946;
+  c_atanh_acc_3: Double = -0.12499999980249463;
+  c_atanh_acc_4: Double =  0.099999999758626501;
+  c_atanh_acc_5: Double = -0.083339906466727953;
+  c_atanh_acc_6: Double =  0.071435144331263092;
 var
   ta: Tb32u32;
   ux_a, ax_a: UInt32;
@@ -2685,7 +2731,7 @@ begin
       Result := pcr_fmaf(x, 2.9802322387695312e-08, x); Exit;
     end;
     zz_a := x; z2_a := zz_a*zz_a; z4_a := z2_a*z2_a;
-    r_a := c_atanh_s[0] + z2_a*c_atanh_s[1] + z4_a*(c_atanh_s[2] + z2_a*c_atanh_s[3]);
+    r_a := c_atanh_s_0 + z2_a*c_atanh_s_1 + z4_a*(c_atanh_s_2 + z2_a*c_atanh_s_3);
     Result := Single(zz_a + (zz_a*z2_a)*r_a); Exit;
   end;
   if (ux_a shr 31) <> 0 then sgn_a := -1.0 else sgn_a := 1.0;
@@ -2702,20 +2748,20 @@ begin
   zd_a := td_a.f * tr_atanh[jd_a] - 1.0;
   zn2_a := zn_a * zn_a;
   zd2_a := zd_a * zd_a;
-  rn_a := ((tl_atanh[jn_a] - ln2n_atanh[nz_a-1]) + zn_a*b_atanh[0]) + zn2_a*(b_atanh[1] + zn_a*b_atanh[2]);
-  rd_a := (tl_atanh[jd_a] + zd_a*b_atanh[0]) + zd2_a*(b_atanh[1] + zd_a*b_atanh[2]);
+  rn_a := ((tl_atanh[jn_a] - ln2n_atanh[nz_a-1]) + zn_a*b_atanh_0) + zn2_a*(b_atanh_1 + zn_a*b_atanh_2);
+  rd_a := (tl_atanh[jd_a] + zd_a*b_atanh_0) + zd2_a*(b_atanh_1 + zd_a*b_atanh_2);
   r_a := sgn_a*(rd_a - rn_a);
   ub_a := Single(r_a);
   lb_a := Single(r_a + sgn_a*Double(0.226e-9));
   if ub_a <> lb_a then begin
     zn4_a := zn2_a*zn2_a; zd4_a := zd2_a*zd2_a;
-    fn_a := zn_a*(((c_atanh_acc[0] + zn_a*c_atanh_acc[1]) + zn2_a*(c_atanh_acc[2] + zn_a*c_atanh_acc[3])) +
-                  zn4_a*((c_atanh_acc[4] + zn_a*c_atanh_acc[5]) + zn2_a*c_atanh_acc[6]));
+    fn_a := zn_a*(((c_atanh_acc_0 + zn_a*c_atanh_acc_1) + zn2_a*(c_atanh_acc_2 + zn_a*c_atanh_acc_3)) +
+                  zn4_a*((c_atanh_acc_4 + zn_a*c_atanh_acc_5) + zn2_a*c_atanh_acc_6));
     fn_a := fn_a + Double(9.3209433686215166e-16) * Double(nz_a);
     fn_a := fn_a + tl_atanh[jn_a];
     en_a := Double(nz_a) * Double(0.34657359027997359);
-    fd_a := zd_a*(((c_atanh_acc[0] + zd_a*c_atanh_acc[1]) + zd2_a*(c_atanh_acc[2] + zd_a*c_atanh_acc[3])) +
-                  zd4_a*((c_atanh_acc[4] + zd_a*c_atanh_acc[5]) + zd2_a*c_atanh_acc[6]));
+    fd_a := zd_a*(((c_atanh_acc_0 + zd_a*c_atanh_acc_1) + zd2_a*(c_atanh_acc_2 + zd_a*c_atanh_acc_3)) +
+                  zd4_a*((c_atanh_acc_4 + zd_a*c_atanh_acc_5) + zd2_a*c_atanh_acc_6));
     fd_a := fd_a + tl_atanh[jd_a];
     r_a := fd_a - fn_a + en_a;
     ub_a := Single(sgn_a * r_a);
@@ -3717,13 +3763,21 @@ end;
 function pcr_atan2f(y, x: Single): Single;
 const
   { numerator poly coeffs }
-  cn_a2: array[0..6] of Double = (
-    1.0, 2.506848521335565, 2.2855336234350774, 0.9227540611112051,
-    0.15965700667756133, 0.0093982071883745, 8.116266383809054e-05);
+  cn_a2_0: Double = 1.0;
+  cn_a2_1: Double = 2.506848521335565;
+  cn_a2_2: Double = 2.2855336234350774;
+  cn_a2_3: Double = 0.9227540611112051;
+  cn_a2_4: Double = 0.15965700667756133;
+  cn_a2_5: Double = 0.0093982071883745;
+  cn_a2_6: Double = 8.116266383809054e-05;
   { denominator poly coeffs }
-  cd_a2: array[0..6] of Double = (
-    1.0, 2.840181854668896, 3.03226090832491, 1.5083284691366383,
-    0.35061013533424623, 0.03311601651598859, 0.0008307046818566012);
+  cd_a2_0: Double = 1.0;
+  cd_a2_1: Double = 2.840181854668896;
+  cd_a2_2: Double = 3.03226090832491;
+  cd_a2_3: Double = 1.5083284691366383;
+  cd_a2_4: Double = 0.35061013533424623;
+  cd_a2_5: Double = 0.03311601651598859;
+  cd_a2_6: Double = 0.0008307046818566012;
   { pi=0x1.921fb54442d18p+1, pi2=0x1.921fb54442d18p+0, pi2l=0x1.1a62633145c07p-54 }
   off_a2: array[0..7] of Double = (
     0.0, 1.5707963267948966, 3.141592653589793, 1.5707963267948966,
@@ -3829,14 +3883,14 @@ begin
     z2_a2 := z_a2 * z_a2;
     z4_a2 := z2_a2 * z2_a2;
     z8_a2 := z4_a2 * z4_a2;
-    cn0_a2 := (cn_a2[0] + z2_a2*cn_a2[1]) + 
-      z4_a2*(cn_a2[2] + z2_a2*cn_a2[3]) + 
-      z8_a2*((cn_a2[4] + z2_a2*cn_a2[5]) + 
-      z4_a2*cn_a2[6]);
-    cd0_a2 := (cd_a2[0] + z2_a2*cd_a2[1]) + 
-      z4_a2*(cd_a2[2] + z2_a2*cd_a2[3]) + 
-      z8_a2*((cd_a2[4] + z2_a2*cd_a2[5]) + 
-      z4_a2*cd_a2[6]);
+    cn0_a2 := (cn_a2_0 + z2_a2*cn_a2_1) +
+      z4_a2*(cn_a2_2 + z2_a2*cn_a2_3) +
+      z8_a2*((cn_a2_4 + z2_a2*cn_a2_5) +
+      z4_a2*cn_a2_6);
+    cd0_a2 := (cd_a2_0 + z2_a2*cd_a2_1) +
+      z4_a2*(cd_a2_2 + z2_a2*cd_a2_3) +
+      z8_a2*((cd_a2_4 + z2_a2*cd_a2_5) +
+      z4_a2*cd_a2_6);
     r_a2 := cn0_a2 / cd0_a2;
   end else
     r_a2 := 1.0;
@@ -3885,13 +3939,20 @@ end;
 
 function pcr_atan2pif(y, x: Single): Single;
 const
-  cn_a2p: array[0..6] of Double = (
-    0.3183098861837907, 0.7979546675063276, 0.7275079475448462,
-    0.29372174016793834, 0.05082040362397926, 0.0029915422604631704,
-    2.583487828867586e-05);
-  cd_a2p: array[0..6] of Double = (
-    1.0, 2.840181854668896, 3.03226090832491, 1.5083284691366383,
-    0.35061013533424623, 0.03311601651598859, 0.0008307046818566012);
+  cn_a2p_0: Double = 0.3183098861837907;
+  cn_a2p_1: Double = 0.7979546675063276;
+  cn_a2p_2: Double = 0.7275079475448462;
+  cn_a2p_3: Double = 0.29372174016793834;
+  cn_a2p_4: Double = 0.05082040362397926;
+  cn_a2p_5: Double = 0.0029915422604631704;
+  cn_a2p_6: Double = 2.583487828867586e-05;
+  cd_a2p_0: Double = 1.0;
+  cd_a2p_1: Double = 2.840181854668896;
+  cd_a2p_2: Double = 3.03226090832491;
+  cd_a2p_3: Double = 1.5083284691366383;
+  cd_a2p_4: Double = 0.35061013533424623;
+  cd_a2p_5: Double = 0.03311601651598859;
+  cd_a2p_6: Double = 0.0008307046818566012;
   m_a2p: array[0..1] of Double = (0.0, 1.0);
   off_a2p: array[0..7] of Double = (
     0.0, 0.5, 1.0, 0.5, 0.0, -0.5, -1.0, -0.5);
@@ -3989,23 +4050,23 @@ begin
   zx_a2p := x; zy_a2p := y;
   z_a2p := (m_a2p[gt_a2p]*zx_a2p + m_a2p[1-gt_a2p]*zy_a2p) /
            (m_a2p[gt_a2p]*zy_a2p + m_a2p[1-gt_a2p]*zx_a2p);
-  r_a2p := cn_a2p[0];
+  r_a2p := cn_a2p_0;
   z2_a2p := z_a2p * z_a2p;
   z_a2p := z_a2p * sgn_a2p[gt_a2p];
   if z2_a2p > Double(5.551115123125783e-17) then begin  { 0x1p-54 }
     z4_a2p := z2_a2p * z2_a2p;
     z8_a2p := z4_a2p * z4_a2p;
-    cn0_p := r_a2p    + z2_a2p*cn_a2p[1];
-    cn2_p := cn_a2p[2] + z2_a2p*cn_a2p[3];
-    cn4_p := cn_a2p[4] + z2_a2p*cn_a2p[5];
-    cn6_p := cn_a2p[6];
+    cn0_p := r_a2p    + z2_a2p*cn_a2p_1;
+    cn2_p := cn_a2p_2 + z2_a2p*cn_a2p_3;
+    cn4_p := cn_a2p_4 + z2_a2p*cn_a2p_5;
+    cn6_p := cn_a2p_6;
     cn0_p := cn0_p + z4_a2p*cn2_p;
     cn4_p := cn4_p + z4_a2p*cn6_p;
     cn0_p := cn0_p + z8_a2p*cn4_p;
-    cd0_p := cd_a2p[0] + z2_a2p*cd_a2p[1];
-    cd2_p := cd_a2p[2] + z2_a2p*cd_a2p[3];
-    cd4_p := cd_a2p[4] + z2_a2p*cd_a2p[5];
-    cd6_p := cd_a2p[6];
+    cd0_p := cd_a2p_0 + z2_a2p*cd_a2p_1;
+    cd2_p := cd_a2p_2 + z2_a2p*cd_a2p_3;
+    cd4_p := cd_a2p_4 + z2_a2p*cd_a2p_5;
+    cd6_p := cd_a2p_6;
     cd0_p := cd0_p + z4_a2p*cd2_p;
     cd4_p := cd4_p + z4_a2p*cd6_p;
     cd0_p := cd0_p + z8_a2p*cd4_p;
