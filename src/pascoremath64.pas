@@ -602,22 +602,47 @@ const
   cAtanRefCl2:  Tb64u64 = (u:$3FB3B13B115BCBC4);  //  0x1.3b13b115bcbc4p-4
   cAtanRefCl3:  Tb64u64 = (u:QWord($BFB1107C41AD3253));  // -0x1.1107c41ad3253p-4
 
-  // Hard cases db[0..11]: (|x| input, |result| output, correction)
-  cAtanDbIn:  array[0..11] of Tb64u64 = (
-    (u:$3F80DC89A3B55010),(u:$3F7E3FB41D2D2260),(u:$3FE7BA49F739829F),
-    (u:$3FCA933FE176B375),(u:$3F7BB04A79820063),(u:$3F7CD30A9499618B),
-    (u:$3F8F44AA37B8E66B),(u:$3F7FD2AC95E57EF9),(u:$3F96419079BBF601),
-    (u:$3FE7BA49F739829F),(u:$3FCD768804487B07),(u:$3F7BB04A79820063));
-  cAtanDbOut: array[0..11] of Tb64u64 = (
-    (u:$3F80DC70AC228717),(u:$3F7E3F9013A852F8),(u:$3FE46AC372243536),
-    (u:$3FCA33F32AC5CEB5),(u:$3F7BB02ED5C5E956),(u:$3F7CD2EB65F92A46),
-    (u:$3F8F440B04187C87),(u:$3F7FD2829FEBC03A),(u:$3F9640AADE8F5427),
-    (u:$3FE46AC372243536),(u:$3FCCF5676F373EC1),(u:$3F7BB02ED5C5E956));
-  cAtanDbCor: array[0..11] of Tb64u64 = (
-    (u:$3C20000000000000),(u:$3C10000000000000),(u:$3920000000000000),
-    (u:QWord($B8F0000000000000)),(u:QWord($B8C0000000000000)),(u:QWord($B8F0000000000000)),
-    (u:QWord($B8F0000000000000)),(u:QWord($B8F0000000000000)),(u:$38D0000000000000),
-    (u:$3910000000000000),(u:QWord($B910000000000000)),(u:QWord($B8C0000000000000)));
+  // Phase 6.4/A+B: Hard-case db[0..11] triples (|x| input, |result| output,
+  // correction) lifted to named Tb64u64 scalars; the 12-iteration scan in
+  // pcr_atan was unrolled to literal-indexed reads.
+  cAtanDbIn_00:  Tb64u64 = (u:$3F80DC89A3B55010);
+  cAtanDbIn_01:  Tb64u64 = (u:$3F7E3FB41D2D2260);
+  cAtanDbIn_02:  Tb64u64 = (u:$3FE7BA49F739829F);
+  cAtanDbIn_03:  Tb64u64 = (u:$3FCA933FE176B375);
+  cAtanDbIn_04:  Tb64u64 = (u:$3F7BB04A79820063);
+  cAtanDbIn_05:  Tb64u64 = (u:$3F7CD30A9499618B);
+  cAtanDbIn_06:  Tb64u64 = (u:$3F8F44AA37B8E66B);
+  cAtanDbIn_07:  Tb64u64 = (u:$3F7FD2AC95E57EF9);
+  cAtanDbIn_08:  Tb64u64 = (u:$3F96419079BBF601);
+  cAtanDbIn_09:  Tb64u64 = (u:$3FE7BA49F739829F);
+  cAtanDbIn_10:  Tb64u64 = (u:$3FCD768804487B07);
+  cAtanDbIn_11:  Tb64u64 = (u:$3F7BB04A79820063);
+
+  cAtanDbOut_00: Tb64u64 = (u:$3F80DC70AC228717);
+  cAtanDbOut_01: Tb64u64 = (u:$3F7E3F9013A852F8);
+  cAtanDbOut_02: Tb64u64 = (u:$3FE46AC372243536);
+  cAtanDbOut_03: Tb64u64 = (u:$3FCA33F32AC5CEB5);
+  cAtanDbOut_04: Tb64u64 = (u:$3F7BB02ED5C5E956);
+  cAtanDbOut_05: Tb64u64 = (u:$3F7CD2EB65F92A46);
+  cAtanDbOut_06: Tb64u64 = (u:$3F8F440B04187C87);
+  cAtanDbOut_07: Tb64u64 = (u:$3F7FD2829FEBC03A);
+  cAtanDbOut_08: Tb64u64 = (u:$3F9640AADE8F5427);
+  cAtanDbOut_09: Tb64u64 = (u:$3FE46AC372243536);
+  cAtanDbOut_10: Tb64u64 = (u:$3FCCF5676F373EC1);
+  cAtanDbOut_11: Tb64u64 = (u:$3F7BB02ED5C5E956);
+
+  cAtanDbCor_00: Tb64u64 = (u:$3C20000000000000);
+  cAtanDbCor_01: Tb64u64 = (u:$3C10000000000000);
+  cAtanDbCor_02: Tb64u64 = (u:$3920000000000000);
+  cAtanDbCor_03: Tb64u64 = (u:QWord($B8F0000000000000));
+  cAtanDbCor_04: Tb64u64 = (u:QWord($B8C0000000000000));
+  cAtanDbCor_05: Tb64u64 = (u:QWord($B8F0000000000000));
+  cAtanDbCor_06: Tb64u64 = (u:QWord($B8F0000000000000));
+  cAtanDbCor_07: Tb64u64 = (u:QWord($B8F0000000000000));
+  cAtanDbCor_08: Tb64u64 = (u:$38D0000000000000);
+  cAtanDbCor_09: Tb64u64 = (u:$3910000000000000);
+  cAtanDbCor_10: Tb64u64 = (u:QWord($B910000000000000));
+  cAtanDbCor_11: Tb64u64 = (u:QWord($B8C0000000000000));
 
 function AtanAddDD(xh, xl, ch, cl: Double; out l: Double): Double; inline;
 var s, d: Double;
@@ -643,7 +668,6 @@ var
   v0, v1, v2: Double;
   ax: Double;
   t0, t1, w_r: Tb64u64;
-  j: Integer;
 begin
   phi.f := Abs(a) * cAtanPhiScale.f + Double(256.5);
   ip := Int64((phi.u shr 44) and UInt64($FF));
@@ -729,16 +753,35 @@ begin
   if (((t1.u + UInt64(1)) and UInt64($000FFFFFFFFFFFFF)) <= UInt64(2)) or
      (((t0.u shr 52) and UInt64($7FF)) - ((t1.u shr 52) and UInt64($7FF)) > UInt64(103)) then
   begin
-    for j := 0 to 11 do
+    // Phase 6.4/A: 12-iteration unroll, sign-branch-first so each match list
+    // is literal-indexed (cf. atanpi / asinpi exception scans).
+    if x >= Double(0.0) then
     begin
-      if ax = cAtanDbIn[j].f then
-      begin
-        if x >= Double(0.0) then
-          Result := cAtanDbOut[j].f + cAtanDbCor[j].f
-        else
-          Result := -(cAtanDbOut[j].f + cAtanDbCor[j].f);
-        Exit;
-      end;
+      if ax = cAtanDbIn_00.f then begin Result := cAtanDbOut_00.f + cAtanDbCor_00.f; Exit; end;
+      if ax = cAtanDbIn_01.f then begin Result := cAtanDbOut_01.f + cAtanDbCor_01.f; Exit; end;
+      if ax = cAtanDbIn_02.f then begin Result := cAtanDbOut_02.f + cAtanDbCor_02.f; Exit; end;
+      if ax = cAtanDbIn_03.f then begin Result := cAtanDbOut_03.f + cAtanDbCor_03.f; Exit; end;
+      if ax = cAtanDbIn_04.f then begin Result := cAtanDbOut_04.f + cAtanDbCor_04.f; Exit; end;
+      if ax = cAtanDbIn_05.f then begin Result := cAtanDbOut_05.f + cAtanDbCor_05.f; Exit; end;
+      if ax = cAtanDbIn_06.f then begin Result := cAtanDbOut_06.f + cAtanDbCor_06.f; Exit; end;
+      if ax = cAtanDbIn_07.f then begin Result := cAtanDbOut_07.f + cAtanDbCor_07.f; Exit; end;
+      if ax = cAtanDbIn_08.f then begin Result := cAtanDbOut_08.f + cAtanDbCor_08.f; Exit; end;
+      if ax = cAtanDbIn_09.f then begin Result := cAtanDbOut_09.f + cAtanDbCor_09.f; Exit; end;
+      if ax = cAtanDbIn_10.f then begin Result := cAtanDbOut_10.f + cAtanDbCor_10.f; Exit; end;
+      if ax = cAtanDbIn_11.f then begin Result := cAtanDbOut_11.f + cAtanDbCor_11.f; Exit; end;
+    end else begin
+      if ax = cAtanDbIn_00.f then begin Result := -(cAtanDbOut_00.f + cAtanDbCor_00.f); Exit; end;
+      if ax = cAtanDbIn_01.f then begin Result := -(cAtanDbOut_01.f + cAtanDbCor_01.f); Exit; end;
+      if ax = cAtanDbIn_02.f then begin Result := -(cAtanDbOut_02.f + cAtanDbCor_02.f); Exit; end;
+      if ax = cAtanDbIn_03.f then begin Result := -(cAtanDbOut_03.f + cAtanDbCor_03.f); Exit; end;
+      if ax = cAtanDbIn_04.f then begin Result := -(cAtanDbOut_04.f + cAtanDbCor_04.f); Exit; end;
+      if ax = cAtanDbIn_05.f then begin Result := -(cAtanDbOut_05.f + cAtanDbCor_05.f); Exit; end;
+      if ax = cAtanDbIn_06.f then begin Result := -(cAtanDbOut_06.f + cAtanDbCor_06.f); Exit; end;
+      if ax = cAtanDbIn_07.f then begin Result := -(cAtanDbOut_07.f + cAtanDbCor_07.f); Exit; end;
+      if ax = cAtanDbIn_08.f then begin Result := -(cAtanDbOut_08.f + cAtanDbCor_08.f); Exit; end;
+      if ax = cAtanDbIn_09.f then begin Result := -(cAtanDbOut_09.f + cAtanDbCor_09.f); Exit; end;
+      if ax = cAtanDbIn_10.f then begin Result := -(cAtanDbOut_10.f + cAtanDbCor_10.f); Exit; end;
+      if ax = cAtanDbIn_11.f then begin Result := -(cAtanDbOut_11.f + cAtanDbCor_11.f); Exit; end;
     end;
     if (t1.u and UInt64($000FFFFFFFFFFFFF)) = UInt64(0) then
     begin
