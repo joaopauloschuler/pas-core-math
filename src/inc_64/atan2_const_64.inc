@@ -133,11 +133,14 @@ const
     (u:QWord($C00921FB54442D18)), (u:QWord($BCA1A62633145C07)), (u:QWord($BFF921FB54442D18)), (u:QWord($BC91A62633145C07))
   );
 
-  cAtan2B: array[0..2] of Tb64u64 = (
-    (u:QWord($BFD55555555554D2)), (u:$3FC999999860E1CA), (u:QWord($BFC248AD469844A1))
-  );
+  // Phase 6.4/B: cAtan2B[0..2] / cAtan2B2[0..3] lifted to named Tb64u64
+  // scalars (read only as `.f` from atan2_port_64.inc).
+  cAtan2B_0: Tb64u64 = (u:QWord($BFD55555555554D2));
+  cAtan2B_1: Tb64u64 = (u:$3FC999999860E1CA);
+  cAtan2B_2: Tb64u64 = (u:QWord($BFC248AD469844A1));
 
-  cAtan2B2: array[0..3] of Tb64u64 = (
-    (u:QWord($BFD5555555555555)), (u:$3FC999999999755E), (u:QWord($BFC24924883596F8)), (u:$3FBC6F7D73531BC2)
-  );
+  cAtan2B2_0: Tb64u64 = (u:QWord($BFD5555555555555));
+  cAtan2B2_1: Tb64u64 = (u:$3FC999999999755E);
+  cAtan2B2_2: Tb64u64 = (u:QWord($BFC24924883596F8));
+  cAtan2B2_3: Tb64u64 = (u:$3FBC6F7D73531BC2);
 

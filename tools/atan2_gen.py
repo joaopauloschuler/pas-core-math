@@ -13,7 +13,7 @@ import re, struct, os, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC  = os.path.join(ROOT, '..', 'core-math', 'src', 'binary64', 'atan2', 'atan2.c')
-OUT  = os.path.join(ROOT, 'src', 'atan2_const.inc')
+OUT  = os.path.join(ROOT, 'src', 'inc_64', 'atan2_const_64.inc')
 
 text = open(SRC).read()
 
@@ -21,7 +21,13 @@ def b64(s):
     f = float.fromhex(s)
     return struct.unpack('<Q', struct.pack('<d', f))[0]
 
-def fu(u): return f"${u:016X}"
+def fu(u):
+    s = f"${u:016X}"
+    # Wrap bit-63-set entries with QWord() so FPC's range check does not
+    # warn while parsing the literal as Int64.
+    if u >= (1 << 63):
+        return f"QWord({s})"
+    return s
 
 def slice_array(name):
     m = re.search(rf'\b{re.escape(name)}\b\s*(?:\[[^\]]*\]\s*)+=\s*\{{', text)
@@ -155,14 +161,14 @@ for i in range(0, 16, 4):
     lines.append(f'    {s}{sep}')
 lines.append('  );')
 lines.append('')
-# B[3], B2[4]
-lines.append('  cAtan2B: array[0..2] of Tb64u64 = (')
-lines.append('    ' + ', '.join(f'(u:{fu(u)})' for u in B))
-lines.append('  );')
+# B[3], B2[4] — Phase 6.4/B: emit as named Tb64u64 scalars (read only as .f).
+lines.append('  // Phase 6.4/B: cAtan2B[0..2] / cAtan2B2[0..3] lifted to named Tb64u64')
+lines.append('  // scalars (read only as `.f` from atan2_port_64.inc).')
+for i, u in enumerate(B):
+    lines.append(f'  cAtan2B_{i}: Tb64u64 = (u:{fu(u)});')
 lines.append('')
-lines.append('  cAtan2B2: array[0..3] of Tb64u64 = (')
-lines.append('    ' + ', '.join(f'(u:{fu(u)})' for u in B2))
-lines.append('  );')
+for i, u in enumerate(B2):
+    lines.append(f'  cAtan2B2_{i}: Tb64u64 = (u:{fu(u)});')
 lines.append('')
 
 open(OUT, 'w').write('\n'.join(lines) + '\n')

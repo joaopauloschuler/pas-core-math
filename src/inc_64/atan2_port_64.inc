@@ -343,7 +343,7 @@ begin
 
   z2 := z * z;
   z  := z * signsel;
-  dz := (z * z2) * (cAtan2B[0].f + z2 * (cAtan2B[1].f + z2 * cAtan2B[2].f));
+  dz := (z * z2) * (cAtan2B_0.f + z2 * (cAtan2B_1.f + z2 * cAtan2B_2.f));
 
   eps := Abs(z) * cAtan2EpsK.f + cAtan2EpsAdd.f;
 
@@ -378,7 +378,7 @@ begin
     z2 := zh * zh;
     zl := rdh * (pcr_fma(dh, -zh, nh) + (nl - (nh * rdh) * dl));
 
-    zl := zl + zh * z2 * ((cAtan2B2[0].f + z2 * cAtan2B2[1].f) + (z2 * z2) * (cAtan2B2[2].f + z2 * cAtan2B2[3].f));
+    zl := zl + zh * z2 * ((cAtan2B2_0.f + z2 * cAtan2B2_1.f) + (z2 * z2) * (cAtan2B2_2.f + z2 * cAtan2B2_3.f));
     zh := zh * signsel;
     zl := zl * signsel;
 
