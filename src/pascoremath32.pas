@@ -144,12 +144,22 @@ end;
 // ── 1.02 tanhf ───────────────────────────────────────────────────────────────
 function pcr_tanhf(x: Single): Single;
 const
-  cn: array[0..7] of Double = (
-    1.0, 0.14869591254532963, 0.00551287098907202, 7.653349704714027e-05,
-    4.4724281332217524e-07, 1.0666590627970085e-09, 8.352093632538344e-13, 9.376645859884988e-17);
-  cd: array[0..7] of Double = (
-    1.0, 0.4820292458786627, 0.03285595294862704, 0.0007262056643542124,
-    6.510296665448557e-06, 2.4619801106746077e-08, 3.5204157099784045e-11, 1.2726168760182741e-14);
+  cn_th_0: Double = 1.0;
+  cn_th_1: Double = 0.14869591254532963;
+  cn_th_2: Double = 0.00551287098907202;
+  cn_th_3: Double = 7.653349704714027e-05;
+  cn_th_4: Double = 4.4724281332217524e-07;
+  cn_th_5: Double = 1.0666590627970085e-09;
+  cn_th_6: Double = 8.352093632538344e-13;
+  cn_th_7: Double = 9.376645859884988e-17;
+  cd_th_0: Double = 1.0;
+  cd_th_1: Double = 0.4820292458786627;
+  cd_th_2: Double = 0.03285595294862704;
+  cd_th_3: Double = 0.0007262056643542124;
+  cd_th_4: Double = 6.510296665448557e-06;
+  cd_th_5: Double = 2.4619801106746077e-08;
+  cd_th_6: Double = 3.5204157099784045e-11;
+  cd_th_7: Double = 1.2726168760182741e-14;
   ir: array[0..1] of Single = (1.0, -1.0);
   c_neg_third: Single = -0.3333333432674408;
   c_two_neg25: Single = 2.9802322387695312e-08;
@@ -186,11 +196,11 @@ begin
     Result := pcr_copysignf(1.0, x) - pcr_copysignf(c_two_neg25, x); Exit;
   end;
   z2 := z * z; z4 := z2 * z2; z8 := z4 * z4;
-  n0 := cn[0] + z2*cn[1]; n2 := cn[2] + z2*cn[3];
-  n4 := cn[4] + z2*cn[5]; n6 := cn[6] + z2*cn[7];
+  n0 := cn_th_0 + z2*cn_th_1; n2 := cn_th_2 + z2*cn_th_3;
+  n4 := cn_th_4 + z2*cn_th_5; n6 := cn_th_6 + z2*cn_th_7;
   n0 := n0 + z4*n2; n4 := n4 + z4*n6; n0 := n0 + z8*n4;
-  d0 := cd[0] + z2*cd[1]; d2 := cd[2] + z2*cd[3];
-  d4 := cd[4] + z2*cd[5]; d6 := cd[6] + z2*cd[7];
+  d0 := cd_th_0 + z2*cd_th_1; d2 := cd_th_2 + z2*cd_th_3;
+  d4 := cd_th_4 + z2*cd_th_5; d6 := cd_th_6 + z2*cd_th_7;
   d0 := d0 + z4*d2; d4 := d4 + z4*d6; d0 := d0 + z8*d4;
   r := z * n0 / d0;
   Result := r;
@@ -447,9 +457,14 @@ const
     UInt64($3FF0000000000000),  // 1.0
     UInt64($3FF428A2F98D728B),  // 2^(1/3)
     UInt64($3FF965FEA53D6E3D)); // 2^(2/3)
-  c: array[0..7] of Double = (
-    0.5685564078059381, 0.7024960185339382, -0.39381000363475277, 0.21397507019181075,
-    -0.08593966563932363, 0.023134567971640832, -0.003702862366439682, 0.00026571366637555694);
+  c_cb_0: Double = 0.5685564078059381;
+  c_cb_1: Double = 0.7024960185339382;
+  c_cb_2: Double = -0.39381000363475277;
+  c_cb_3: Double = 0.21397507019181075;
+  c_cb_4: Double = -0.08593966563932363;
+  c_cb_5: Double = 0.023134567971640832;
+  c_cb_6: Double = -0.003702862366439682;
+  c_cb_7: Double = 0.00026571366637555694;
 var
   t: Tb32u32;
   u: UInt32;
@@ -493,7 +508,7 @@ begin
   z := cvt1.f;
   r0 := Double(-0.024975246527242426) / z;  // -0x1.9931c6c2d19d1p-6 / z
   z2 := z * z; z4 := z2 * z2;
-  f := ((c[0] + z*c[1]) + z2*(c[2] + z*c[3])) + z4*((c[4] + z*c[5]) + z2*(c[6] + z*c[7])) + r0;
+  f := ((c_cb_0 + z*c_cb_1) + z2*(c_cb_2 + z*c_cb_3)) + z4*((c_cb_4 + z*c_cb_5) + z2*(c_cb_6 + z*c_cb_7)) + r0;
   r := f * cvt2.f;
   ub := Single(r);
   lb := Single(r - cvt2.f * Double(1.4182e-9));
@@ -3327,23 +3342,33 @@ end;
 // ── lgammaf helpers ───────────────────────────────────────────────────────────
 function lgamma_as_sinpi(x0: Double): Double;
 const
-  c_sp: array[0..7] of Double = (
-    4.0, -3.7392088021786822, 1.2780132969493234, -0.22899788751887007,
-    0.025330969591019943, -0.0019036696909283705, 0.00010351520901665411, -4.131827870010798e-06);
+  c_sp_0: Double = 4.0;
+  c_sp_1: Double = -3.7392088021786822;
+  c_sp_2: Double = 1.2780132969493234;
+  c_sp_3: Double = -0.22899788751887007;
+  c_sp_4: Double = 0.025330969591019943;
+  c_sp_5: Double = -0.0019036696909283705;
+  c_sp_6: Double = 0.00010351520901665411;
+  c_sp_7: Double = -4.131827870010798e-06;
 var
   x_sp, x2_sp, x4_sp, x8_sp: Double;
 begin
   x_sp := x0 - 0.5;
   x2_sp := x_sp * x_sp; x4_sp := x2_sp * x2_sp; x8_sp := x4_sp * x4_sp;
-  Result := (0.25 - x2_sp) * ((c_sp[0] + x2_sp*c_sp[1]) + x4_sp*(c_sp[2] + x2_sp*c_sp[3])
-    + x8_sp*((c_sp[4] + x2_sp*c_sp[5]) + x4_sp*(c_sp[6] + x2_sp*c_sp[7])));
+  Result := (0.25 - x2_sp) * ((c_sp_0 + x2_sp*c_sp_1) + x4_sp*(c_sp_2 + x2_sp*c_sp_3)
+    + x8_sp*((c_sp_4 + x2_sp*c_sp_5) + x4_sp*(c_sp_6 + x2_sp*c_sp_7)));
 end;
 
 function lgamma_as_ln(x: Double): Double;
 const
-  c_aln: array[0..7] of Double = (
-    0.9999999999999756, -0.4999999999895039, 0.33333333159684553, -0.2499998558809608,
-    0.19999326364239384, -0.16648082067582767, 0.13983949497072432, -0.09792103500684109);
+  c_aln_0: Double = 0.9999999999999756;
+  c_aln_1: Double = -0.4999999999895039;
+  c_aln_2: Double = 0.33333333159684553;
+  c_aln_3: Double = -0.2499998558809608;
+  c_aln_4: Double = 0.19999326364239384;
+  c_aln_5: Double = -0.16648082067582767;
+  c_aln_6: Double = 0.13983949497072432;
+  c_aln_7: Double = -0.09792103500684109;
   il_aln: array[0..15] of Double = (
     9.372730068330667e-18, 0.06062462181643487, 0.11778303565638353, 0.17185025692665928,
     0.2231435513142097, 0.2719337154836418, 0.3184537311185346, 0.3629054936893685,
@@ -3368,8 +3393,8 @@ begin
   z_aln := ix_aln[i_aln] * t_aln.f - 1.0;
   z2_aln := z_aln * z_aln; z4_aln := z2_aln * z2_aln;
   Result := Double(e_aln) * Double(0.6931471805599453) + il_aln[i_aln]
-    + z_aln * ((c_aln[0] + z_aln*c_aln[1]) + z2_aln*(c_aln[2] + z_aln*c_aln[3])
-               + z4_aln*((c_aln[4] + z_aln*c_aln[5]) + z2_aln*(c_aln[6] + z_aln*c_aln[7])));
+    + z_aln * ((c_aln_0 + z_aln*c_aln_1) + z2_aln*(c_aln_2 + z_aln*c_aln_3)
+               + z4_aln*((c_aln_4 + z_aln*c_aln_5) + z2_aln*(c_aln_6 + z_aln*c_aln_7)));
 end;
 
 // ── 4.01 tgammaf ─────────────────────────────────────────────────────────────
@@ -4621,26 +4646,22 @@ const
      0.022705078125,        1.4998374755498776e-05,  { j=31 }
      0.0,                   0.0                      { j=32 }
   );
-  { c[]: log2 polynomial, 8 coefficients }
-  c_pf: array[0..7] of Double = (
-     1.4426950408889634,   { 0x1.71547652b82fep+0 }
-    -0.7213475204444817,   { -0x1.71547652b82fep-1 }
-     0.4808983469635712,   { 0x1.ec709dc3a2d0bp-2 }
-    -0.36067376022317404,  { -0x1.71547652bc4a9p-2 }
-     0.28853899623008594,  { 0x1.2776c441b72ep-2 }
-    -0.24044915938489397,  { -0x1.ec709bdf453ecp-3 }
-     0.20617758474822143,  { 0x1.a6406efd4b877p-3 }
-    -0.1804151705675918    { -0x1.717d824a520f7p-3 }
-  );
-  { ce[]: exp2 polynomial, 6 coefficients }
-  ce_pf: array[0..5] of Double = (
-    0.043321698784995886,  { 0x1.62e42fefa398bp-5 }
-    0.0009383847928200837, { 0x1.ebfbdff84555ap-11 }
-    1.3550807712983854e-05,{ 0x1.c6b08d4ad86d3p-17 }
-    1.4676119301623784e-07,{ 0x1.3b2ad1b1716a2p-23 }
-    1.271309415715539e-09, { 0x1.5d7472718ce9dp-30 }
-    9.382438953978075e-12  { 0x1.4a1d7f457ac56p-37 }
-  );
+  { c[]: log2 polynomial, 8 coefficients (lifted to named scalars) }
+  c_pf_0: Double =  1.4426950408889634;
+  c_pf_1: Double = -0.7213475204444817;
+  c_pf_2: Double =  0.4808983469635712;
+  c_pf_3: Double = -0.36067376022317404;
+  c_pf_4: Double =  0.28853899623008594;
+  c_pf_5: Double = -0.24044915938489397;
+  c_pf_6: Double =  0.20617758474822143;
+  c_pf_7: Double = -0.1804151705675918;
+  { ce[]: exp2 polynomial, 6 coefficients (lifted to named scalars) }
+  ce_pf_0: Double = 0.043321698784995886;
+  ce_pf_1: Double = 0.0009383847928200837;
+  ce_pf_2: Double = 1.3550807712983854e-05;
+  ce_pf_3: Double = 1.4676119301623784e-07;
+  ce_pf_4: Double = 1.271309415715539e-09;
+  ce_pf_5: Double = 9.382438953978075e-12;
   { tb[]: 2^(j/16) for j=0..15 }
   tb_pf: array[0..15] of Double = (
     1.0,                   { 0x1p+0 }
@@ -4758,10 +4779,10 @@ begin
   xd_pf.u := m_pf or (UInt64($3FF) shl 52);
   z_pf := pcr_fma(xd_pf.f, ix_pf[j_pf], -1.0);
   z2_pf := z_pf * z_pf; z4_pf := z2_pf * z2_pf;
-  c6_pf := c_pf[6] + z_pf * c_pf[7];
-  c4_pf := c_pf[4] + z_pf * c_pf[5];
-  c2_pf := c_pf[2] + z_pf * c_pf[3];
-  c0_pf := c_pf[0] + z_pf * c_pf[1];
+  c6_pf := c_pf_6 + z_pf * c_pf_7;
+  c4_pf := c_pf_4 + z_pf * c_pf_5;
+  c2_pf := c_pf_2 + z_pf * c_pf_3;
+  c0_pf := c_pf_0 + z_pf * c_pf_1;
   c0_pf := c0_pf + z2_pf * c2_pf;
   c4_pf := c4_pf + z2_pf * c6_pf;
   c0_pf := c0_pf + z4_pf * c4_pf;
@@ -4799,9 +4820,9 @@ begin
   su_pf.u := UInt64(Int64($3FF) + el_pf) shl 52;
   s_pf := s_pf * su_pf.f;
   h2_pf := h_pf * h_pf;
-  c0_pf := ce_pf[0] + h_pf * ce_pf[1];
-  c2_pf := ce_pf[2] + h_pf * ce_pf[3];
-  c4_pf := ce_pf[4] + h_pf * ce_pf[5];
+  c0_pf := ce_pf_0 + h_pf * ce_pf_1;
+  c2_pf := ce_pf_2 + h_pf * ce_pf_3;
+  c4_pf := ce_pf_4 + h_pf * ce_pf_5;
   c0_pf := c0_pf + h2_pf * (c2_pf + h2_pf * c4_pf);
   w_pf := s_pf * h_pf;
   rr_pf.f := s_pf + w_pf * c0_pf;
@@ -4827,61 +4848,52 @@ end;
 
 const
   CF_INVLOG2: Double = 1.4426950408889634;
-  // P1 polynomial coefficients (degree 1..7, index 0 unused)
-  CF_P1C: array[0..7] of Double = (
-    0.0,
-    1.4426950408889634,
-    -0.721347520444768,
-    0.4808983469640691,
-    -0.36067375082452474,
-    0.28853899226737745,
-    -0.24052620964966426,
-    0.2061866781489112
-  );
-  // P2 polynomial (18 entries, pairs for degrees 1-5, singles for 6-13)
-  CF_P2C: array[0..17] of Double = (
-    1.4426950408889634,     // [0] deg1 hi
-    2.0355273740931317e-17, // [1] deg1 lo
-   -0.7213475204444817,    // [2] deg2 hi
-   -1.0177636800051583e-17,// [3] deg2 lo
-    0.4808983469629878,    // [4] deg3 hi
-    2.5288808125554186e-17, // [5] deg3 lo
-   -0.36067376022224085,   // [6] deg4 hi
-   -5.096856780843964e-18, // [7] deg4 lo
-    0.28853900817779266,   // [8] deg5 hi
-    2.6289836446187457e-17, // [9] deg5 lo
-   -0.24044917348149364,   // [10] deg6
-    0.20609929155556583,   // [11] deg7
-   -0.180336880114796,     // [12] deg8
-    0.16029944899207862,   // [13] deg9
-   -0.14426947904986057,   // [14] deg10
-    0.13115406763151405,   // [15] deg11
-   -0.12030649210107214,   // [16] deg12
-    0.11105797113583867    // [17] deg13
-  );
-  // Q1 polynomial (degree 0..4)
-  CF_Q1C: array[0..4] of Double = (
-    1.0,
-    0.6931471805351095,
-    0.24022650695393627,
-    0.055504515574106836,
-    0.009618187397453178
-  );
-  // Q2 polynomial (12 entries)
-  CF_Q2C: array[0..11] of Double = (
-    1.0,                      // [0] deg0
-    0.6931471805599453,       // [1] deg1 hi
-    2.3190455425771328e-17,   // [2] deg1 lo
-    0.24022650695910072,      // [3] deg2 hi
-   -9.493917425934395e-18,    // [4] deg2 lo
-    0.05550410866482158,      // [5] deg3 hi
-   -2.4715450854778426e-18,   // [6] deg3 lo
-    0.009618129107628477,     // [7] deg4
-    0.0013333558146326069,    // [8] deg5
-    0.00015403530393530196,   // [9] deg6
-    1.5252789714172188e-05,   // [10] deg7
-    1.321548082021043e-06     // [11] deg8
-  );
+  // P1 polynomial coefficients (degree 1..7, index 0 unused) — lifted to named scalars
+  CF_P1C_1: Double =  1.4426950408889634;
+  CF_P1C_2: Double = -0.721347520444768;
+  CF_P1C_3: Double =  0.4808983469640691;
+  CF_P1C_4: Double = -0.36067375082452474;
+  CF_P1C_5: Double =  0.28853899226737745;
+  CF_P1C_6: Double = -0.24052620964966426;
+  CF_P1C_7: Double =  0.2061866781489112;
+  // P2 polynomial (18 entries) — lifted to named scalars
+  CF_P2C_0:  Double =  1.4426950408889634;
+  CF_P2C_1:  Double =  2.0355273740931317e-17;
+  CF_P2C_2:  Double = -0.7213475204444817;
+  CF_P2C_3:  Double = -1.0177636800051583e-17;
+  CF_P2C_4:  Double =  0.4808983469629878;
+  CF_P2C_5:  Double =  2.5288808125554186e-17;
+  CF_P2C_6:  Double = -0.36067376022224085;
+  CF_P2C_7:  Double = -5.096856780843964e-18;
+  CF_P2C_8:  Double =  0.28853900817779266;
+  CF_P2C_9:  Double =  2.6289836446187457e-17;
+  CF_P2C_10: Double = -0.24044917348149364;
+  CF_P2C_11: Double =  0.20609929155556583;
+  CF_P2C_12: Double = -0.180336880114796;
+  CF_P2C_13: Double =  0.16029944899207862;
+  CF_P2C_14: Double = -0.14426947904986057;
+  CF_P2C_15: Double =  0.13115406763151405;
+  CF_P2C_16: Double = -0.12030649210107214;
+  CF_P2C_17: Double =  0.11105797113583867;
+  // Q1 polynomial (degree 0..4) — lifted to named scalars
+  CF_Q1C_0: Double = 1.0;
+  CF_Q1C_1: Double = 0.6931471805351095;
+  CF_Q1C_2: Double = 0.24022650695393627;
+  CF_Q1C_3: Double = 0.055504515574106836;
+  CF_Q1C_4: Double = 0.009618187397453178;
+  // Q2 polynomial (12 entries) — lifted to named scalars
+  CF_Q2C_0:  Double =  1.0;
+  CF_Q2C_1:  Double =  0.6931471805599453;
+  CF_Q2C_2:  Double =  2.3190455425771328e-17;
+  CF_Q2C_3:  Double =  0.24022650695910072;
+  CF_Q2C_4:  Double = -9.493917425934395e-18;
+  CF_Q2C_5:  Double =  0.05550410866482158;
+  CF_Q2C_6:  Double = -2.4715450854778426e-18;
+  CF_Q2C_7:  Double =  0.009618129107628477;
+  CF_Q2C_8:  Double =  0.0013333558146326069;
+  CF_Q2C_9:  Double =  0.00015403530393530196;
+  CF_Q2C_10: Double =  1.5252789714172188e-05;
+  CF_Q2C_11: Double =  1.321548082021043e-06;
   // inv[i] approximates 1/t for the i-th interval (46 entries)
   CF_INV: array[0..45] of Double = (
     1.40625, 1.375, 1.34375, 1.3125, 1.296875, 1.265625, 1.25,
@@ -5070,11 +5082,11 @@ function cf_p1(z: Double): Double; inline;
 var z2_p1, z4_p1, c5_p1, c3_p1, c1_p1: Double;
 begin
   z2_p1 := z * z;
-  c5_p1 := pcr_fma(CF_P1C[6], z, CF_P1C[5]);
-  c3_p1 := pcr_fma(CF_P1C[4], z, CF_P1C[3]);
-  c1_p1 := pcr_fma(CF_P1C[2], z, CF_P1C[1]);
+  c5_p1 := pcr_fma(CF_P1C_6, z, CF_P1C_5);
+  c3_p1 := pcr_fma(CF_P1C_4, z, CF_P1C_3);
+  c1_p1 := pcr_fma(CF_P1C_2, z, CF_P1C_1);
   z4_p1 := z2_p1 * z2_p1;
-  c5_p1 := pcr_fma(CF_P1C[7], z2_p1, c5_p1);
+  c5_p1 := pcr_fma(CF_P1C_7, z2_p1, c5_p1);
   c1_p1 := pcr_fma(c3_p1, z2_p1, c1_p1);
   c1_p1 := pcr_fma(c5_p1, z4_p1, c1_p1);
   Result := z * c1_p1;
@@ -5084,31 +5096,31 @@ end;
 procedure cf_p2(out h, l: Double; zh, zl: Double); inline;
 var t_p2: Double;
 begin
-  h := CF_P2C[17]; // degree 13
-  h := pcr_fma(h, zh, CF_P2C[16]);
-  h := pcr_fma(h, zh, CF_P2C[15]);
-  h := pcr_fma(h, zh, CF_P2C[14]);
-  h := pcr_fma(h, zh, CF_P2C[13]);
-  h := pcr_fma(h, zh, CF_P2C[12]);
-  h := pcr_fma(h, zh, CF_P2C[11]);
+  h := CF_P2C_17; // degree 13
+  h := pcr_fma(h, zh, CF_P2C_16);
+  h := pcr_fma(h, zh, CF_P2C_15);
+  h := pcr_fma(h, zh, CF_P2C_14);
+  h := pcr_fma(h, zh, CF_P2C_13);
+  h := pcr_fma(h, zh, CF_P2C_12);
+  h := pcr_fma(h, zh, CF_P2C_11);
   pcr_s_mul(h, l, h, zh, zl);
-  pcr_fasttwosum(h, t_p2, CF_P2C[10], h);
+  pcr_fasttwosum(h, t_p2, CF_P2C_10, h);
   l := l + t_p2;
   pcr_d_mul(h, l, h, l, zh, zl);
-  pcr_fasttwosum(h, t_p2, CF_P2C[8], h);
-  l := l + t_p2 + CF_P2C[9];
+  pcr_fasttwosum(h, t_p2, CF_P2C_8, h);
+  l := l + t_p2 + CF_P2C_9;
   pcr_d_mul(h, l, h, l, zh, zl);
-  pcr_fasttwosum(h, t_p2, CF_P2C[6], h);
-  l := l + t_p2 + CF_P2C[7];
+  pcr_fasttwosum(h, t_p2, CF_P2C_6, h);
+  l := l + t_p2 + CF_P2C_7;
   pcr_d_mul(h, l, h, l, zh, zl);
-  pcr_fasttwosum(h, t_p2, CF_P2C[4], h);
-  l := l + t_p2 + CF_P2C[5];
+  pcr_fasttwosum(h, t_p2, CF_P2C_4, h);
+  l := l + t_p2 + CF_P2C_5;
   pcr_d_mul(h, l, h, l, zh, zl);
-  pcr_fasttwosum(h, t_p2, CF_P2C[2], h);
-  l := l + t_p2 + CF_P2C[3];
+  pcr_fasttwosum(h, t_p2, CF_P2C_2, h);
+  l := l + t_p2 + CF_P2C_3;
   pcr_d_mul(h, l, h, l, zh, zl);
-  pcr_fasttwosum(h, t_p2, CF_P2C[0], h);
-  l := l + t_p2 + CF_P2C[1];
+  pcr_fasttwosum(h, t_p2, CF_P2C_0, h);
+  l := l + t_p2 + CF_P2C_1;
   pcr_d_mul(h, l, h, l, zh, zl);
 end;
 
@@ -5117,9 +5129,9 @@ function cf_q1(z: Double): Double; inline;
 var z2_q1, c3_q1, c0_q1, c2_q1: Double;
 begin
   z2_q1 := z * z;
-  c3_q1 := pcr_fma(CF_Q1C[4], z, CF_Q1C[3]);
-  c0_q1 := pcr_fma(CF_Q1C[1], z, CF_Q1C[0]);
-  c2_q1 := pcr_fma(c3_q1, z, CF_Q1C[2]);
+  c3_q1 := pcr_fma(CF_Q1C_4, z, CF_Q1C_3);
+  c0_q1 := pcr_fma(CF_Q1C_1, z, CF_Q1C_0);
+  c2_q1 := pcr_fma(c3_q1, z, CF_Q1C_2);
   Result := pcr_fma(c2_q1, z2_q1, c0_q1);
 end;
 
@@ -5128,22 +5140,22 @@ procedure cf_q2(out qh, ql: Double; h, l: Double); inline;
 var h2_q2, c7_q2, c5_q2, t_q2: Double;
 begin
   h2_q2 := h * h;
-  c7_q2 := pcr_fma(CF_Q2C[11], h, CF_Q2C[10]);
-  c5_q2 := pcr_fma(CF_Q2C[9],  h, CF_Q2C[8]);
+  c7_q2 := pcr_fma(CF_Q2C_11, h, CF_Q2C_10);
+  c5_q2 := pcr_fma(CF_Q2C_9,  h, CF_Q2C_8);
   c5_q2 := pcr_fma(c7_q2, h2_q2, c5_q2);
   qh := c5_q2 * h;
-  pcr_fasttwosum(qh, ql, CF_Q2C[7], qh);
+  pcr_fasttwosum(qh, ql, CF_Q2C_7, qh);
   pcr_d_mul(qh, ql, qh, ql, h, l);
-  pcr_fasttwosum(qh, t_q2, CF_Q2C[5], qh);
-  ql := ql + t_q2 + CF_Q2C[6];
+  pcr_fasttwosum(qh, t_q2, CF_Q2C_5, qh);
+  ql := ql + t_q2 + CF_Q2C_6;
   pcr_d_mul(qh, ql, qh, ql, h, l);
-  pcr_fasttwosum(qh, t_q2, CF_Q2C[3], qh);
-  ql := ql + t_q2 + CF_Q2C[4];
+  pcr_fasttwosum(qh, t_q2, CF_Q2C_3, qh);
+  ql := ql + t_q2 + CF_Q2C_4;
   pcr_d_mul(qh, ql, qh, ql, h, l);
-  pcr_fasttwosum(qh, t_q2, CF_Q2C[1], qh);
-  ql := ql + t_q2 + CF_Q2C[2];
+  pcr_fasttwosum(qh, t_q2, CF_Q2C_1, qh);
+  ql := ql + t_q2 + CF_Q2C_2;
   pcr_d_mul(qh, ql, qh, ql, h, l);
-  pcr_fasttwosum(qh, t_q2, CF_Q2C[0], qh);
+  pcr_fasttwosum(qh, t_q2, CF_Q2C_0, qh);
   ql := ql + t_q2;
 end;
 
@@ -5342,10 +5354,8 @@ end;
 // ── exp2_2: accurate path for 2^(h+l) → Single ───────────────────────────────
 function cf_exp2_2(h, l: Double; x, y: Single; exact: Int32; flag: DWord): Single; {$IFNDEF AVX2} inline; {$ENDIF}
 const
-  CF_ERR_E22: array[0..1] of Double = (
-    8.744365362193872e-26,  // 0x1.b1p-84
-    4.861355328424485e-29   // 0x1.edp-95
-  );
+  CF_ERR_E22_0: Double = 8.744365362193872e-26; // 0x1.b1p-84
+  CF_ERR_E22_1: Double = 4.861355328424485e-29; // 0x1.edp-95
 var k_e22: Double;
     r_e22: Double;
     v_e22, w_e22: Tb64u64;
@@ -5388,7 +5398,7 @@ begin
   w_e22.f := qh_e22;
   if ((w_e22.u + 1) and UInt64($FFFFFFF) <= 2) then begin
     small_e22 := (k_e22 = 0.0) and (i_e22 = 16) and (pcr_fabs(h) <= 3.814697265625e-06);
-    if small_e22 then err_e22 := CF_ERR_E22[1] else err_e22 := CF_ERR_E22[0];
+    if small_e22 then err_e22 := CF_ERR_E22_1 else err_e22 := CF_ERR_E22_0;
     v_e22.f := qh_e22 + (ql_e22 - err_e22);
     v_e22.u := UInt64(Int64(v_e22.u) + Round(k_e22) * Int64($10000000000000));
     w_e22.f := qh_e22 + (ql_e22 + err_e22);

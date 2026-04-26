@@ -615,10 +615,33 @@ pass doesn't blanket-apply the 64-bit recipe:
   reflection path; the lifted arrays are folded but the heavy
   `lgamma_as_ln` call still dominates.
 
-- [ ] **7.7** miscellaneous — `hypotf`, `cbrtf`, `rsqrtf`, `powf`,
-  `compoundf`, plus any helpers (`muldd_f`, `polydd_f`, etc.). Spot-fix
-  Pillar C; B unlikely to apply outside `powf`. Verify
-  `tools/x87_audit.py` reports zero hits before close.
+- [x] **7.7** miscellaneous — `hypotf`, `cbrtf`, `rsqrtf`, `powf`,
+  `compoundf`, plus any helpers. Pillar B done: lifted `c_pf`/`ce_pf`
+  (powf → `c_pf_*`/`ce_pf_*`), `CF_P1C`/`CF_P2C`/`CF_Q1C`/`CF_Q2C`
+  (compoundf helpers `cf_p1`/`cf_p2`/`cf_q1`/`cf_q2` → `CF_*_N`),
+  `CF_ERR_E22` (compoundf `cf_exp2_2` → `CF_ERR_E22_0/1`), `c[]` (cbrtf
+  → `c_cb_0..7`). Also swept leftovers from earlier subtasks: `cn`/`cd`
+  (tanhf → `cn_th_*`/`cd_th_*`, missed in 7.5 because they sit at the
+  top of the file before `pcr_atanpif`) and the lgamma_as_sinpi /
+  lgamma_as_ln *helper* arrays (`c_sp` → `c_sp_*`, `c_aln` → `c_aln_*`,
+  missed in 7.6 because the lifts targeted `pcr_lgammaf`'s body and the
+  helpers were not re-audited). hypotf and rsqrtf had no [B] hits in
+  scope. All other large tables in `pcr_powf` and `pcr_compoundf`
+  (`tb_pf`, `lix_pf`, `ix_pf`, `CF_INV`, `CF_LOG2INV`, `CF_INVT`,
+  `CF_LOG2T`, `CF_EXP2T`, `CF_EXP2U`, the q2/p2 dd tables) are
+  runtime-indexed and stay arrays.
+  Audit: `pascoremath32.pas: A=0 B=0 C=422` (was B=98). Tests: all 42
+  pass at `--pct 1` (17.5 s).
+  Bench (taskset -c 1, AVX2): cbrtf 207 (vs C 239) / hypotf 215 (vs 151,
+  FASTER) / rsqrtf 425 (vs 190, FASTER) / powf 142 (vs 165) /
+  compoundf 117 (vs 102, FASTER) / tanhf 285 (vs 340) / lgammaf 128
+  (vs 146). Pillar B effects across the misc family are codegen-noise:
+  the helpers were already small and FPC's constant-folding had little
+  to gain from named scalars over array literals. The remaining gaps
+  (cbrtf, powf, tanhf, lgammaf) are unchanged from baseline and live in
+  paths dominated by either runtime-indexed tables (powf/compoundf) or
+  iteration counts (lgammaf reflection / `lgamma_as_ln` Horner). Phase 7
+  Pillar B is complete across `pascoremath32.pas`.
 
 ### Subtask template (per function family)
 
