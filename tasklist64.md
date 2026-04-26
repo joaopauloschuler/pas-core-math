@@ -1169,6 +1169,99 @@ starting this phase. Validate the qint arithmetic independently.
 
 ---
 
+## Phase 6 — x87-avoidance pass (post-port optimization)
+
+Phase 6 is a cross-cutting cleanup applied after every function in Phases 1–5 is bit-exact.
+The goal is to keep FPC's code generator on SSE2 and out of the x87 FPU on x86-64 by
+(a) eliminating untyped numeric literals that can promote intermediate results to 80-bit
+extended precision, and (b) replacing constant-array element reads in hot polynomial
+chains with named scalar `const` declarations that the compiler can fold directly into
+the instruction stream. The newer code (5.02b's `cPowP1_*` / `cPowQ1_*` named scalars,
+the `Double(...)` casts in `pow_port.inc`) already follows these rules; Phase 6 retrofits
+the older inc files to match.
+
+**Scope guard.** This phase targets fixed-trip-count polynomial loops over small
+(≤~20 entry) coefficient arrays. It does **not** apply to runtime-indexed lookup
+tables (`cPowInverse[0..181]`, `cAtan2T2[0..64]`, `cCosTables`, etc.) — those are
+indexed by input bits and cannot be unrolled or lifted to named scalars.
+
+### Three pillars (applied in order, per inc file)
+
+**Pillar A — Unroll fixed-trip-count polynomial loops.**
+Any `for i := 0 to K do … cFoo[i].f …` with `K` known at compile time (Horner, FMA
+chains, dot products over fixed-size coefficient arrays) is unrolled into an explicit
+chain with literal indices. Mirror the C source's manual unroll where one exists;
+otherwise unroll fully (K is always small — typically 3–18). Do not unroll loops
+whose trip count depends on input or whose body has side effects beyond the
+accumulator. Pillar A unblocks Pillar B.
+
+**Pillar B — Lift literal-index constant-array reads to named scalars.**
+Once `cFoo[3].f` is a compile-time access, replace it with `cFoo_3: Double = …;`
+declared in the matching `*_const_64.inc`. For `Tb64u64` arrays where only `.f` is
+read in hot code, emit a named `Double` const and drop the array; keep the
+`Tb64u64` array only if its bit-pattern form is also used (e.g. for `pcr_clzll`
+style integer access). Naming: `cFoo_3` for `cFoo[3]`; for double-double tables
+`cFooHi_3` / `cFooLo_3`. Auto-generators in `tmp/*_gen.py` must be updated in the
+same commit, or the next regen reverts the work.
+
+**Pillar C — `Double(...)` typecast on every bare float literal.**
+Wrap every Double-typed literal in expressions, return values, and NaN sentinels:
+`1.0 / x` → `Double(1.0) / x`; `Result := 1.0` → `Result := Double(1.0)`;
+`0.0 / 0.0` → `Double(0.0) / Double(0.0)`. Does **not** apply to literals already
+inside a `const … : Double = …;` declaration — those are typed by their declaration.
+Pick one convention for negatives (`-Double(1.0)` vs `Double(-1.0)`) and document it.
+
+### Subtask template (apply per inc file)
+
+1. Apply Pillar A — unroll. Commit. Run `taskset -c 1 env Benchmark64 <fn>` + `TestHarness64 --pct 1`.
+2. Apply Pillar B — lift to named scalars; update generator script if one exists. Commit. Re-run.
+3. Apply Pillar C — typecast sweep. Commit. Re-run.
+4. Verify the audit grep (see 6.0) reports zero hits for that file.
+5. Record Mops/s delta in the subtask note (A vs B vs C contributions if separable, else combined).
+
+Splitting A/B/C into separate commits per file means a regression bisects to the exact pillar.
+
+### Subtasks
+
+- [ ] **6.0** Tooling & policy
+  - Add the rule to *Key rules for the developer*: every Double-typed literal in `.inc`
+    math code is `Double(...)`-cast; literal-indexed constant-array reads in hot paths
+    are lifted to named `const` scalars; fixed-trip-count polynomial loops over
+    coefficient arrays are unrolled.
+  - Write `tmp/x87_audit.py` (or a bash grep) that flags untyped `[0-9]+\.[0-9]+`
+    literals not preceded by `Double(`, and `cFoo[i].f` reads where `i` is either a
+    literal (Pillar B candidate) or a loop variable (Pillar A candidate). Exit
+    condition for each subtask: grep is empty for that file.
+  - Add a per-function checklist row: *"x87-avoidance pass applied (Phase 6)"*.
+
+- [ ] **6.1** exp family — `exp_port_64.inc`, `exp2_port_64.inc`, `exp10_port_64.inc`, `expm1_port_64.inc`
+- [ ] **6.2** log family — `log_port_64.inc`, `log10_port_64.inc`, `log1p_port_64.inc`, `log2p1_port_64.inc`, `log10p1_port_64.inc`
+- [ ] **6.3** trig family — `sin_port_64.inc`, `cos_port_64.inc`, `tan_port_64.inc`, `sincos_port_64.inc`, `sinpi_port_64.inc`, `cospi_port_64.inc`, `tanpi_port_64.inc`
+- [ ] **6.4** inverse-trig family — `atan_port_64.inc`, `atan2_port_64.inc`, `atanpi_port_64.inc`, `atan2pi_port_64.inc`, `asin_port_64.inc`, `acos_port_64.inc`, `asinpi_port_64.inc`, `acospi_port_64.inc`
+- [ ] **6.5** hyperbolic family — `sinh_port_64.inc`, `cosh_port_64.inc`, `tanh_port_64.inc`, `asinh_port_64.inc`, `acosh_port_64.inc`, `atanh_port_64.inc`
+- [ ] **6.6** special-functions family — `erf_port_64.inc`, `erfc_port_64.inc`, `tgamma_port_64.inc`, `lgamma_port_64.inc`
+- [ ] **6.7** miscellaneous — `hypot_port_64.inc`, `cbrt_port_64.inc`, `rsqrt_port_64.inc`, `pow_port_64.inc` (mostly already compliant; spot-fix only)
+
+### Sharp edges to remember
+
+- **Auto-generated inc files revert.** Subtasks 6.1–6.7 must update both the `.inc`
+  and the matching `tmp/<fn>_gen.py` (where one exists — e.g. `pow_gen.py`,
+  `atan2_gen.py`). Otherwise the next regen silently undoes Pillar B.
+- **`Double()` is a typecast, not a function call.** It's free at runtime; the
+  concern is purely about telling FPC the literal's type so intermediate results
+  stay in SSE2 registers.
+- **`Tb64u64` arrays may have dual users.** Some tables are read both as `.f`
+  (in hot polynomial code) and as `.u` (for bit-level tricks). Lift only the
+  `.f`-only entries; keep the `Tb64u64` form for the rest.
+- **Negative-literal convention matters.** `-Double(1.0)` and `Double(-1.0)`
+  should both compile to the same constant, but pick one and stay consistent so
+  the audit grep stays simple.
+- **Don't unroll input-dependent loops.** Reduction loops in `as_sinpi`,
+  `cordic`-style iterations, and the slow-path Ziv refinement loops are
+  out of scope for Pillar A.
+
+---
+
 ## Per-function porting checklist
 
 Apply this checklist to every function before marking it done:
