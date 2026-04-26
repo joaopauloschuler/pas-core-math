@@ -1654,11 +1654,14 @@ const
     ((u:$3FE33DFEB0FA4BFE),(u:$3FE1372F9EE76E99),(u:$3C90000000000000)),
     ((u:$3FE49F24AC5CAC35),(u:$3FE22C495FF06104),(u:QWord($B970000000000000))));
 
-  // as_exp_accurate: ch[3][2]
-  cTanhExpCh: array[0..2, 0..1] of Tb64u64 = (
-    ((u:$3FF0000000000000),(u:$3A16C16BD194535D)),
-    ((u:$3FE0000000000000),(u:QWord($BA28259D904FD34F))),
-    ((u:$3FC5555555555555),(u:$3C653E93E9F26E62)));
+  // as_exp_accurate: ch[3][2] — Pillar B: named Tb64u64 scalars
+  // (used by tanh + cosh + sinh via TanhExpAccurate).
+  cTanhExpChH_0: Tb64u64 = (u:$3FF0000000000000);
+  cTanhExpChL_0: Tb64u64 = (u:$3A16C16BD194535D);
+  cTanhExpChH_1: Tb64u64 = (u:$3FE0000000000000);
+  cTanhExpChL_1: Tb64u64 = (u:QWord($BA28259D904FD34F));
+  cTanhExpChH_2: Tb64u64 = (u:$3FC5555555555555);
+  cTanhExpChL_2: Tb64u64 = (u:$3C653E93E9F26E62);
   // Inner exp polynomial seed coefficients (0x1.555...p-5 etc.)
   cTanhExpP0: Tb64u64 = (u:$3FA5555555555555);
   cTanhExpP1: Tb64u64 = (u:$3F811111113E93E9);
@@ -1668,32 +1671,41 @@ const
   cTanhL2lA:  Tb64u64 = (u:$3D0718432A1B0E26);   //  0x1.718432a1b0e26p-47
   cTanhL2llA: Tb64u64 = (u:$3999FF0342542FC3);   //  0x1.9ff0342542fc3p-102
 
-  // as_tanh_zero: ch[10][2]
-  cTanhZeroCh: array[0..9, 0..1] of Tb64u64 = (
-    ((u:QWord($BFD5555555555555)),(u:QWord($BC75555555555555))),
-    ((u:$3FC1111111111111),(u:$3C41111111110916)),
-    ((u:QWord($BFABA1BA1BA1BA1C)),(u:$3C47917917A46F2C)),
-    ((u:$3F9664F4882C10FA),(u:QWord($BC09A52A06F1E599))),
-    ((u:QWord($BF8226E355E6C23D)),(u:$3C2C297394C24E38)),
-    ((u:$3F6D6D3D0E157DE0),(u:QWord($BC0311087E5B1526))),
-    ((u:QWord($BF57DA36452B75E1)),(u:QWord($BBE2868CDE54EA0C))),
-    ((u:$3F4355824803667B),(u:$3BD2CD8FC406C3F7)),
-    ((u:QWord($BF2F57D7734C821D)),(u:$3B9DA22861B4CA80)),
-    ((u:$3F1967E18AD3FACF),(u:QWord($BBB0831108273A74))));
+  // as_tanh_zero: ch[10][2] — Pillar B: named scalars.
+  cTanhZeroChH_0: Tb64u64 = (u:QWord($BFD5555555555555));  cTanhZeroChL_0: Tb64u64 = (u:QWord($BC75555555555555));
+  cTanhZeroChH_1: Tb64u64 = (u:$3FC1111111111111);         cTanhZeroChL_1: Tb64u64 = (u:$3C41111111110916);
+  cTanhZeroChH_2: Tb64u64 = (u:QWord($BFABA1BA1BA1BA1C));  cTanhZeroChL_2: Tb64u64 = (u:$3C47917917A46F2C);
+  cTanhZeroChH_3: Tb64u64 = (u:$3F9664F4882C10FA);         cTanhZeroChL_3: Tb64u64 = (u:QWord($BC09A52A06F1E599));
+  cTanhZeroChH_4: Tb64u64 = (u:QWord($BF8226E355E6C23D));  cTanhZeroChL_4: Tb64u64 = (u:$3C2C297394C24E38);
+  cTanhZeroChH_5: Tb64u64 = (u:$3F6D6D3D0E157DE0);         cTanhZeroChL_5: Tb64u64 = (u:QWord($BC0311087E5B1526));
+  cTanhZeroChH_6: Tb64u64 = (u:QWord($BF57DA36452B75E1));  cTanhZeroChL_6: Tb64u64 = (u:QWord($BBE2868CDE54EA0C));
+  cTanhZeroChH_7: Tb64u64 = (u:$3F4355824803667B);         cTanhZeroChL_7: Tb64u64 = (u:$3BD2CD8FC406C3F7);
+  cTanhZeroChH_8: Tb64u64 = (u:QWord($BF2F57D7734C821D));  cTanhZeroChL_8: Tb64u64 = (u:$3B9DA22861B4CA80);
+  cTanhZeroChH_9: Tb64u64 = (u:$3F1967E18AD3FACF);         cTanhZeroChL_9: Tb64u64 = (u:QWord($BBB0831108273A74));
 
-  // as_tanh_zero: cl[6]
-  cTanhZeroCl: array[0..5] of Tb64u64 = (
-    (u:QWord($BF0497D8E6462927)),(u:$3EF0B1318C243BD7),(u:QWord($BEDB0F2935E9A120)),
-    (u:$3EC5E9444536E654),(u:QWord($BEB174FF2A31908C)),(u:$3E9749698C8D338D));
+  // as_tanh_zero: cl[6] — Pillar B: named scalars.
+  cTanhZeroCl_0: Tb64u64 = (u:QWord($BF0497D8E6462927));
+  cTanhZeroCl_1: Tb64u64 = (u:$3EF0B1318C243BD7);
+  cTanhZeroCl_2: Tb64u64 = (u:QWord($BEDB0F2935E9A120));
+  cTanhZeroCl_3: Tb64u64 = (u:$3EC5E9444536E654);
+  cTanhZeroCl_4: Tb64u64 = (u:QWord($BEB174FF2A31908C));
+  cTanhZeroCl_5: Tb64u64 = (u:$3E9749698C8D338D);
 
-  // Medium-path polynomial in x2 (after x^3 factor) for |x| in [2^-30, 0.25)
-  cTanhMedC: array[0..7] of Tb64u64 = (
-    (u:QWord($BFD5555555555554)),(u:$3FC1111111110D61),(u:QWord($BFABA1BA1B983D8B)),(u:$3F9664F4820E99F0),
-    (u:QWord($BF8226E11E4AC7CF)),(u:$3F6D6C4AB70668B6),(u:QWord($BF57BBECB57CE996)),(u:$3F41451443697DD8));
+  // Medium-path polynomial in x2 (after x^3 factor) for |x| in [2^-30, 0.25) — Pillar B.
+  cTanhMedC_0: Tb64u64 = (u:QWord($BFD5555555555554));
+  cTanhMedC_1: Tb64u64 = (u:$3FC1111111110D61);
+  cTanhMedC_2: Tb64u64 = (u:QWord($BFABA1BA1B983D8B));
+  cTanhMedC_3: Tb64u64 = (u:$3F9664F4820E99F0);
+  cTanhMedC_4: Tb64u64 = (u:QWord($BF8226E11E4AC7CF));
+  cTanhMedC_5: Tb64u64 = (u:$3F6D6C4AB70668B6);
+  cTanhMedC_6: Tb64u64 = (u:QWord($BF57BBECB57CE996));
+  cTanhMedC_7: Tb64u64 = (u:$3F41451443697DD8);
 
-  // Large/medium exp polynomial ch[4]
-  cTanhChOuter: array[0..3] of Tb64u64 = (
-    (u:$4000000000000000),(u:$4000000000000000),(u:$3FF55555557E54FF),(u:$3FE55555553A12F4));
+  // Large/medium exp polynomial ch[4] — Pillar B: named scalars.
+  cTanhChOuter_0: Tb64u64 = (u:$4000000000000000);
+  cTanhChOuter_1: Tb64u64 = (u:$4000000000000000);
+  cTanhChOuter_2: Tb64u64 = (u:$3FF55555557E54FF);
+  cTanhChOuter_3: Tb64u64 = (u:$3FE55555553A12F4);
 
   cTanhSBig:   Tb64u64 = (u:QWord($C0C71547652B82FE));   // -0x1.71547652b82fep+13
   cTanhMagic:  Tb64u64 = (u:$4188000004000000);   //  0x1.8000004p+25
@@ -1751,17 +1763,17 @@ begin
   // Seed fl = dxh*(p0 + dxh*(p1 + dxh*p2))
   fl := dxh * (cTanhExpP0.f + dxh * (cTanhExpP1.f + dxh * cTanhExpP2.f));
 
-  // polydd(dxh, dxl, 3, ch, &fl) — seeded
-  chp := cTanhExpCh[2,0].f + fl;
-  clp := ((cTanhExpCh[2,0].f - chp) + fl) + cTanhExpCh[2,1].f;
+  // polydd(dxh, dxl, 3, ch, &fl) — seeded; manually unrolled 3-step.
+  chp := cTanhExpChH_2.f + fl;
+  clp := ((cTanhExpChH_2.f - chp) + fl) + cTanhExpChL_2.f;
   // i = 1
   chp := pcr_muldd(dxh, dxl, chp, clp, clp);
-  thp := chp + cTanhExpCh[1,0].f; tlp := (cTanhExpCh[1,0].f - thp) + chp;
-  chp := thp; clp := clp + tlp + cTanhExpCh[1,1].f;
+  thp := chp + cTanhExpChH_1.f; tlp := (cTanhExpChH_1.f - thp) + chp;
+  chp := thp; clp := clp + tlp + cTanhExpChL_1.f;
   // i = 0
   chp := pcr_muldd(dxh, dxl, chp, clp, clp);
-  thp := chp + cTanhExpCh[0,0].f; tlp := (cTanhExpCh[0,0].f - thp) + chp;
-  chp := thp; clp := clp + tlp + cTanhExpCh[0,1].f;
+  thp := chp + cTanhExpChH_0.f; tlp := (cTanhExpChH_0.f - thp) + chp;
+  chp := thp; clp := clp + tlp + cTanhExpChL_0.f;
 
   fh := chp; fl := clp;
   fh := pcr_muldd(dxh, dxl, fh, fl, fl);
@@ -1779,26 +1791,53 @@ var
   x2, x2l, y0, y1, y2: Double;
   chp, clp, thp, tlp: Double;
   s_tmp, z_tmp: Double;
-  i: Int32;
   t_u, w_u: Tb64u64;
 begin
   x2  := x * x;
   x2l := pcr_fma(x, x, -x2);
 
-  y2 := x2 * (cTanhZeroCl[0].f + x2 * (cTanhZeroCl[1].f + x2 * (cTanhZeroCl[2].f
-        + x2 * (cTanhZeroCl[3].f + x2 * (cTanhZeroCl[4].f + x2 * cTanhZeroCl[5].f)))));
+  y2 := x2 * (cTanhZeroCl_0.f + x2 * (cTanhZeroCl_1.f + x2 * (cTanhZeroCl_2.f
+        + x2 * (cTanhZeroCl_3.f + x2 * (cTanhZeroCl_4.f + x2 * cTanhZeroCl_5.f)))));
 
-  // polydd (n=10) seeded with y2
-  chp := cTanhZeroCh[9,0].f + y2;
-  clp := ((cTanhZeroCh[9,0].f - chp) + y2) + cTanhZeroCh[9,1].f;
-  for i := 8 downto 0 do
-  begin
-    chp := pcr_muldd(x2, x2l, chp, clp, clp);
-    thp := chp + cTanhZeroCh[i,0].f;
-    tlp := (cTanhZeroCh[i,0].f - thp) + chp;
-    chp := thp;
-    clp := clp + tlp + cTanhZeroCh[i,1].f;
-  end;
+  // polydd (n=10) seeded with y2 — Pillar A unroll of `for i := 8 downto 0`.
+  chp := cTanhZeroChH_9.f + y2;
+  clp := ((cTanhZeroChH_9.f - chp) + y2) + cTanhZeroChL_9.f;
+
+  chp := pcr_muldd(x2, x2l, chp, clp, clp);
+  thp := chp + cTanhZeroChH_8.f; tlp := (cTanhZeroChH_8.f - thp) + chp;
+  chp := thp; clp := clp + tlp + cTanhZeroChL_8.f;
+
+  chp := pcr_muldd(x2, x2l, chp, clp, clp);
+  thp := chp + cTanhZeroChH_7.f; tlp := (cTanhZeroChH_7.f - thp) + chp;
+  chp := thp; clp := clp + tlp + cTanhZeroChL_7.f;
+
+  chp := pcr_muldd(x2, x2l, chp, clp, clp);
+  thp := chp + cTanhZeroChH_6.f; tlp := (cTanhZeroChH_6.f - thp) + chp;
+  chp := thp; clp := clp + tlp + cTanhZeroChL_6.f;
+
+  chp := pcr_muldd(x2, x2l, chp, clp, clp);
+  thp := chp + cTanhZeroChH_5.f; tlp := (cTanhZeroChH_5.f - thp) + chp;
+  chp := thp; clp := clp + tlp + cTanhZeroChL_5.f;
+
+  chp := pcr_muldd(x2, x2l, chp, clp, clp);
+  thp := chp + cTanhZeroChH_4.f; tlp := (cTanhZeroChH_4.f - thp) + chp;
+  chp := thp; clp := clp + tlp + cTanhZeroChL_4.f;
+
+  chp := pcr_muldd(x2, x2l, chp, clp, clp);
+  thp := chp + cTanhZeroChH_3.f; tlp := (cTanhZeroChH_3.f - thp) + chp;
+  chp := thp; clp := clp + tlp + cTanhZeroChL_3.f;
+
+  chp := pcr_muldd(x2, x2l, chp, clp, clp);
+  thp := chp + cTanhZeroChH_2.f; tlp := (cTanhZeroChH_2.f - thp) + chp;
+  chp := thp; clp := clp + tlp + cTanhZeroChL_2.f;
+
+  chp := pcr_muldd(x2, x2l, chp, clp, clp);
+  thp := chp + cTanhZeroChH_1.f; tlp := (cTanhZeroChH_1.f - thp) + chp;
+  chp := thp; clp := clp + tlp + cTanhZeroChL_1.f;
+
+  chp := pcr_muldd(x2, x2l, chp, clp, clp);
+  thp := chp + cTanhZeroChH_0.f; tlp := (cTanhZeroChH_0.f - thp) + chp;
+  chp := thp; clp := clp + tlp + cTanhZeroChL_0.f;
   y1 := chp; y2 := clp;
 
   // y1 = mulddd(y1, y2, x, &y2)
@@ -1894,10 +1933,10 @@ begin
       end;
 
       x2 := x * x; x3 := x2 * x; x4 := x2 * x2; x8 := x4 * x4;
-      p1 := (cTanhMedC[4].f + x2 * cTanhMedC[5].f)
-            + x4 * (cTanhMedC[6].f + x2 * cTanhMedC[7].f);
-      p0 := (cTanhMedC[0].f + x2 * cTanhMedC[1].f)
-            + x4 * (cTanhMedC[2].f + x2 * cTanhMedC[3].f);
+      p1 := (cTanhMedC_4.f + x2 * cTanhMedC_5.f)
+            + x4 * (cTanhMedC_6.f + x2 * cTanhMedC_7.f);
+      p0 := (cTanhMedC_0.f + x2 * cTanhMedC_1.f)
+            + x4 * (cTanhMedC_2.f + x2 * cTanhMedC_3.f);
       p0 := p0 + x8 * p1;
       p0 := p0 * x3;
 
@@ -1919,8 +1958,8 @@ begin
 
     dx  := (cTanhL2hM.f * t - ax) - cTanhL2lM.f * t;
     dx2 := dx * dx;
-    p   := dx * ((cTanhChOuter[0].f + dx * cTanhChOuter[1].f)
-                 + dx2 * (cTanhChOuter[2].f + dx * cTanhChOuter[3].f));
+    p   := dx * ((cTanhChOuter_0.f + dx * cTanhChOuter_1.f)
+                 + dx2 * (cTanhChOuter_2.f + dx * cTanhChOuter_3.f));
     rh  := th;
     rl  := tl + rh * p;
     pcr_fasttwosum(rh, rl, rh, rl);
@@ -1952,8 +1991,8 @@ begin
     // |x| >= 3.683 — fast fallback when tanh ≈ ±1
     dx  := pcr_fma(cTanhL2L.f, t, -ax);
     dx2 := dx * dx;
-    p   := dx * ((cTanhChOuter[0].f + dx * cTanhChOuter[1].f)
-                 + dx2 * (cTanhChOuter[2].f + dx * cTanhChOuter[3].f));
+    p   := dx * ((cTanhChOuter_0.f + dx * cTanhChOuter_1.f)
+                 + dx2 * (cTanhChOuter_2.f + dx * cTanhChOuter_3.f));
     rh  := th * sp.f;
     rh  := rh + (p + ((Double(2.0) * cTanh1p3_55.f) * ax)) * rh;
     e   := rh * cTanh11p49.f;
