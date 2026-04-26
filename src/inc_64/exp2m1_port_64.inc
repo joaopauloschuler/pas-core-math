@@ -266,7 +266,6 @@ function Exp2m1AccurateTiny(x: Double): Double;
 var
   a, b, c: Int32;
   h, l, t, x2, x4, c13, c11, exc: Double;
-  i: Int32;
 begin
   a := 0; b := 59;
   while a + 1 <> b do
@@ -290,12 +289,28 @@ begin
   E2M1SMul(h, l, x, h, l);
   pcr_fasttwosum(h, t, cExp2m1Q[14].f, h);
   l := l + t;
-  for i := 6 downto 0 do
-  begin
-    E2M1SMul(h, l, x, h, l);
-    pcr_fasttwosum(h, t, cExp2m1Q[i*2].f, h);
-    l := l + t + cExp2m1Q[i*2 + 1].f;
-  end;
+  // Unrolled: for i := 6 downto 0 — Pillar A.
+  E2M1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cExp2m1Q[12].f, h);
+  l := l + t + cExp2m1Q[13].f;
+  E2M1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cExp2m1Q[10].f, h);
+  l := l + t + cExp2m1Q[11].f;
+  E2M1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cExp2m1Q[8].f, h);
+  l := l + t + cExp2m1Q[9].f;
+  E2M1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cExp2m1Q[6].f, h);
+  l := l + t + cExp2m1Q[7].f;
+  E2M1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cExp2m1Q[4].f, h);
+  l := l + t + cExp2m1Q[5].f;
+  E2M1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cExp2m1Q[2].f, h);
+  l := l + t + cExp2m1Q[3].f;
+  E2M1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cExp2m1Q[0].f, h);
+  l := l + t + cExp2m1Q[1].f;
   E2M1SMul(h, l, x, h, l);
   Result := h + l;
 end;
