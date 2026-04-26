@@ -153,7 +153,6 @@ var
   a, b, c: Int32;
   h, l, t: Double;
   del: ShortInt;
-  i: Int32;
 begin
   // Binary search by exceptions[a][0] <= x < exceptions[b][0]
   a := 0; b := 222;
@@ -170,19 +169,45 @@ begin
   end;
 
   // degrees 16..10 single-double Horner
+  // Pillar A: unrolled `for i := 15 downto 10 do h := fma(h, x, Pacc[i+7])`
+  // (i+7 yields 22, 21, 20, 19, 18, 17).
   h := pcr_fma(cLog10p1Pacc[24].f, x, cLog10p1Pacc[23].f);  // degree 16 at idx 24
-  for i := 15 downto 10 do
-    h := pcr_fma(h, x, cLog10p1Pacc[i+7].f);
+  h := pcr_fma(h, x, cLog10p1Pacc[22].f);
+  h := pcr_fma(h, x, cLog10p1Pacc[21].f);
+  h := pcr_fma(h, x, cLog10p1Pacc[20].f);
+  h := pcr_fma(h, x, cLog10p1Pacc[19].f);
+  h := pcr_fma(h, x, cLog10p1Pacc[18].f);
+  h := pcr_fma(h, x, cLog10p1Pacc[17].f);
   // degree 9
   pcr_a_mul(h, l, x, h);
-  pcr_fasttwosum(h, t, cLog10p1Pacc[9+7].f, h);
+  pcr_fasttwosum(h, t, cLog10p1Pacc[16].f, h);
   l := l + t;
   // degrees 8..1: dd polynomial
-  for i := 8 downto 1 do begin
-    Log10p1SMul(h, l, x, h, l);
-    pcr_fasttwosum(h, t, cLog10p1Pacc[2*i-2].f, h);
-    l := l + t + cLog10p1Pacc[2*i-1].f;
-  end;
+  // Pillar A: unrolled `for i := 8 downto 1 do` over Pacc[2*i-2] / Pacc[2*i-1].
+  Log10p1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cLog10p1Pacc[14].f, h);
+  l := l + t + cLog10p1Pacc[15].f;
+  Log10p1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cLog10p1Pacc[12].f, h);
+  l := l + t + cLog10p1Pacc[13].f;
+  Log10p1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cLog10p1Pacc[10].f, h);
+  l := l + t + cLog10p1Pacc[11].f;
+  Log10p1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cLog10p1Pacc[8].f, h);
+  l := l + t + cLog10p1Pacc[9].f;
+  Log10p1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cLog10p1Pacc[6].f, h);
+  l := l + t + cLog10p1Pacc[7].f;
+  Log10p1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cLog10p1Pacc[4].f, h);
+  l := l + t + cLog10p1Pacc[5].f;
+  Log10p1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cLog10p1Pacc[2].f, h);
+  l := l + t + cLog10p1Pacc[3].f;
+  Log10p1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cLog10p1Pacc[0].f, h);
+  l := l + t + cLog10p1Pacc[1].f;
   Log10p1SMul(h, l, x, h, l);
   Result := h + l;
 end;
