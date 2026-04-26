@@ -50,7 +50,8 @@ import re, struct, os
 
 SRC = os.path.join(os.path.dirname(__file__), '..', '..', 'core-math', 'src',
                    'binary64', 'lgamma', 'lgamma.c')
-OUT = os.path.join(os.path.dirname(__file__), '..', 'src', 'lgamma_const.inc')
+OUT = os.path.join(os.path.dirname(__file__), '..', 'src', 'inc_64',
+                   'lgamma_const_64.inc')
 
 with open(SRC) as f:
     text = f.read()
@@ -61,6 +62,31 @@ def to_u64(s):
     v = float.fromhex(s)
     b = struct.pack('<d', v)
     return struct.unpack('<Q', b)[0], v
+
+def fu(u):
+    """Format u64 hex as Pascal Tb64u64 .u initializer; wrap bit-63-set
+    in QWord(...) to avoid FPC range-check warnings."""
+    if u >> 63:
+        return f"QWord(${u:016X})"
+    return f"${u:016X}"
+
+def emit_named_scalars_1d(prefix, nums):
+    for i, n in enumerate(nums):
+        u, _ = to_u64(n)
+        lines.append(f"  {prefix}_{i}: Tb64u64 = (u:{fu(u)});")
+    lines.append("")
+
+def emit_named_scalars_2d(prefix, rows):
+    for i, row in enumerate(rows):
+        for j, n in enumerate(row):
+            u, _ = to_u64(n)
+            lines.append(f"  {prefix}_{i}_{j}: Tb64u64 = (u:{fu(u)});")
+    lines.append("")
+
+def emit_scalar(name, hexstr):
+    u, _ = to_u64(hexstr)
+    lines.append(f"  {name}: Tb64u64 = (u:{fu(u)});")
+    lines.append("")
 
 def get_block(start_marker, end_marker, where=None):
     """Return text between markers (start_marker exclusive, end_marker exclusive),
@@ -96,7 +122,7 @@ def emit_array1(name, nums, comment=''):
     for i, n in enumerate(nums):
         u, v = to_u64(n)
         sep = ',' if i < len(nums)-1 else ''
-        lines.append(f"    (u:${u:016X}){sep}  // {n}")
+        lines.append(f"    (u:{fu(u)}){sep}  // {n}")
     lines.append("  );")
     lines.append("")
 
@@ -108,7 +134,7 @@ def emit_array2(name, rows, dim_comment=''):
         ents = []
         for n in row:
             u, _ = to_u64(n)
-            ents.append(f"(u:${u:016X})")
+            ents.append(f"(u:{fu(u)})")
         sep = ',' if i < R-1 else ''
         lines.append(f"    ({', '.join(ents)}){sep}  // i={i}")
     lines.append("  );")
@@ -121,7 +147,7 @@ def emit_array3(name, rows, dim_comment=''):
     for i, row in enumerate(rows):
         pairs = []
         for pair in row:
-            ents = ', '.join(f"(u:${to_u64(n)[0]:016X})" for n in pair)
+            ents = ', '.join(f"(u:{fu(to_u64(n)[0])})" for n in pair)
             pairs.append(f"({ents})")
         sep = ',' if i < R-1 else ''
         lines.append(f"    ({', '.join(pairs)}){sep}  // i={i}")
@@ -187,6 +213,7 @@ tiny_q = HEX.findall(tiny_block.group(2))
 assert len(tiny_q) == 8
 emit_array2('cLgammaTinyC0', tiny_c0, '[4][2] tiny |x|<0.03125 dd polynomial')
 emit_array1('cLgammaTinyQ', tiny_q, '[8] tiny |x|<0.03125 single polynomial')
+emit_named_scalars_1d('cLgammaTinyQ', tiny_q)
 
 # Asymptotic |x|>=8.29541 polynomial
 # c[][2] (2 entries) and q[] (5 entries)
@@ -196,7 +223,9 @@ asym_c = parse_dd_rows(asym_block.group(1), expected_rows=2)
 asym_q = HEX.findall(asym_block.group(2))
 assert len(asym_q) == 5
 emit_array2('cLgammaAsymC', asym_c, '[2][2] |x|>=8.29541 dd constants')
+emit_named_scalars_2d('cLgammaAsymC', asym_c)
 emit_array1('cLgammaAsymQ', asym_q, '[5] |x|>=8.29541 single polynomial')
+emit_named_scalars_1d('cLgammaAsymQ', asym_q)
 
 # ---- as_logd: B[32] (struct), r1[33], r2[33], l1[33][2], l2[33][2], c[4] ----
 fn_logd_a = text.index('double as_logd(double x, double *l)')
@@ -237,6 +266,7 @@ m = re.search(r'static const double c\[\] = \{(-?0x[^}]+?)\};', text[fn_logd_a:f
 logd_c = HEX.findall(m.group(1))
 assert len(logd_c) == 4
 emit_array1('cLgammaLogC', logd_c, '[4] as_logd polynomial')
+emit_named_scalars_1d('cLgammaLogC', logd_c)
 
 # ---- as_logd_accurate ----
 fn_logda_a = text.index('double as_logd_accurate(double x, double *l, double *l_)')
@@ -267,6 +297,7 @@ emit_array2('cLgammaLogH2', h2_rows, '[33][3]')
 m = re.search(r'static const double c\[\]\[2\] = \{(.*?)\};', text[fn_logda_a:fn_logda_b], re.S)
 logda_c = parse_dd_rows(m.group(1), expected_rows=9)
 emit_array2('cLgammaLogAC', logda_c, '[9][2] as_logd_accurate dd polynomial')
+emit_named_scalars_2d('cLgammaLogAC', logda_c)
 
 # ---- stpi[65][2] ----
 m = re.search(r'static const double stpi\[\]\[2\] = \{(.*?)\};', text, re.S)
@@ -281,27 +312,33 @@ m = re.search(r'static const double c\[2\] = \{(.*?)\};', text[fn_sin_a:fn_sin_b
 sinp_kx2_c = HEX.findall(m.group(1))
 assert len(sinp_kx2_c) == 2
 emit_array1('cLgammaSinKx2C', sinp_kx2_c, '[2] kx<2 dd constants')
+emit_named_scalars_1d('cLgammaSinKx2C', sinp_kx2_c)
 
 m = re.search(r'static const double cl\[\] = \{(.*?)\};', text[fn_sin_a:fn_sin_b])
 sinp_kx2_cl = HEX.findall(m.group(1))
 assert len(sinp_kx2_cl) == 3
 emit_array1('cLgammaSinKx2Cl', sinp_kx2_cl, '[3] kx<2 polynomial')
+emit_named_scalars_1d('cLgammaSinKx2Cl', sinp_kx2_cl)
 
 # main: c[4], s[4], c0 scalar, s0 scalar
 m_c = re.search(r'static const double c\[\] = \{(.*?)\};', text[fn_sin_a:fn_sin_b])
 sinp_c = HEX.findall(m_c.group(1))
 assert len(sinp_c) == 4
 emit_array1('cLgammaSinC', sinp_c, '[4] sinpipid polynomial — cos coeffs')
+emit_named_scalars_1d('cLgammaSinC', sinp_c)
 
 m_s = re.search(r'static const double s\[\] = \{(.*?)\};', text[fn_sin_a:fn_sin_b])
 sinp_s = HEX.findall(m_s.group(1))
 assert len(sinp_s) == 4
 emit_array1('cLgammaSinS', sinp_s, '[4] sinpipid polynomial — sin coeffs')
+emit_named_scalars_1d('cLgammaSinS', sinp_s)
 
 m_c0 = re.search(r'double c0 = (-?0x[^;]+);', text[fn_sin_a:fn_sin_b])
 m_s0 = re.search(r'double s0 = (0x[^;]+);', text[fn_sin_a:fn_sin_b])
 emit_array1('cLgammaSinC0', [m_c0.group(1)], '(scalar)')
+emit_named_scalars_1d('cLgammaSinC0', [m_c0.group(1)])
 emit_array1('cLgammaSinS0', [m_s0.group(1)], '(scalar)')
+emit_named_scalars_1d('cLgammaSinS0', [m_s0.group(1)])
 
 # ---- as_sinpipid_accurate ----
 fn_sina_a = text.index('double as_sinpipid_accurate(double x')
@@ -324,16 +361,19 @@ fn_asy_b = len(text)
 asy_block48 = re.search(r'if\(xh>=48\)\{.*?static const double c\[\]\[2\] = \{(.*?)\};', text[fn_asy_a:fn_asy_b], re.S)
 asy48_c = parse_dd_rows(asy_block48.group(1), expected_rows=8)
 emit_array2('cLgammaAsy48C', asy48_c, '[8][2] xh>=48 polynomial')
+emit_named_scalars_2d('cLgammaAsy48C', asy48_c[:1])
 
 # xh>=14.5: c[12][2]
 asy_block14 = re.search(r'else if\(xh>=14\.5\)\{.*?static const double c\[\]\[2\] = \{(.*?)\};', text[fn_asy_a:fn_asy_b], re.S)
 asy14_c = parse_dd_rows(asy_block14.group(1), expected_rows=12)
 emit_array2('cLgammaAsy14C', asy14_c, '[12][2] xh>=14.5 polynomial')
+emit_named_scalars_2d('cLgammaAsy14C', asy14_c[:1])
 
 # else (xh<14.5): c[28][2]
 asy_block4 = re.search(r'\} else \{\s*static const double c\[\]\[2\] = \{(.*?)\};', text[fn_asy_a:fn_asy_b], re.S)
 asy4_c = parse_dd_rows(asy_block4.group(1), expected_rows=28)
 emit_array2('cLgammaAsy4C', asy4_c, '[28][2] xh<14.5 polynomial')
+emit_named_scalars_2d('cLgammaAsy4C', asy4_c[:1])
 
 # ---- as_lgamma_database: db[19][3] ----
 fn_db_a = text.index('static __attribute__((noinline)) double as_lgamma_database')

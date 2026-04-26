@@ -213,8 +213,8 @@ begin
   dxh := o - Double(1.0);
   dx  := pcr_fma(r, t.f, -Double(1.0));
   dx2 := dx * dx;
-  f := dx2 * ((cLgammaLogC[0].f + dx*cLgammaLogC[1].f)
-              + dx2*(cLgammaLogC[2].f + dx*cLgammaLogC[3].f));
+  f := dx2 * ((cLgammaLogC_0.f + dx*cLgammaLogC_1.f)
+              + dx2*(cLgammaLogC_2.f + dx*cLgammaLogC_3.f));
   lt := (cLgammaLogL1[i1, 1].f + cLgammaLogL2[i2, 1].f) + ed * cLgammaLn2Hi.f;
   lh := lt + dxh;
   ll := (lt - lh) + dxh;
@@ -262,8 +262,8 @@ begin
   dxh := o - Double(1.0);
 
   LgFastTwoSum(dxh, dxl, dxh, dxl);
-  fl := dxh * (cLgammaLogAC[6, 0].f
-        + dxh * (cLgammaLogAC[7, 0].f + dxh * cLgammaLogAC[8, 0].f));
+  fl := dxh * (cLgammaLogAC_6_0.f
+        + dxh * (cLgammaLogAC_7_0.f + dxh * cLgammaLogAC_8_0.f));
   cArr := LgPairsFlat(cLgammaLogAC, 9);
   fh := LgPolyDD(dxh, dxl, 6, cArr, fl);
   fh := LgMul(dxh, dxl, fh, fl, fl);
@@ -304,10 +304,10 @@ begin
     z  := Double(0.5) - ax;
     z2 := z * z;
     z2l := pcr_fma(z, z, -z2);
-    fl := z2 * (cLgammaSinKx2Cl[0].f
-                + z2 * (cLgammaSinKx2Cl[1].f + z2 * cLgammaSinKx2Cl[2].f));
-    LgFastTwoSum(fh, fl, cLgammaSinKx2C[0].f, fl);
-    fl := fl + cLgammaSinKx2C[1].f;
+    fl := z2 * (cLgammaSinKx2Cl_0.f
+                + z2 * (cLgammaSinKx2Cl_1.f + z2 * cLgammaSinKx2Cl_2.f));
+    LgFastTwoSum(fh, fl, cLgammaSinKx2C_0.f, fl);
+    fl := fl + cLgammaSinKx2C_1.f;
     fh := LgMul(z2, z2l, fh, fl, fl);
     fh := LgMulD(z, fh, fl, fl);
     LgFastTwoSum(fh, e, z, fh);
@@ -321,15 +321,15 @@ begin
   shv := cLgammaStpi[kx, 1].f; slv := cLgammaStpi[kx, 0].f;
   chv := cLgammaStpi[ky, 1].f; cl  := cLgammaStpi[ky, 0].f;
 
-  P := d2 * (cLgammaSinC[1].f + d2 * (cLgammaSinC[2].f + d2 * cLgammaSinC[3].f));
-  Q := d2 * (cLgammaSinS[1].f + d2 * (cLgammaSinS[2].f + d2 * cLgammaSinS[3].f));
+  P := d2 * (cLgammaSinC_1.f + d2 * (cLgammaSinC_2.f + d2 * cLgammaSinC_3.f));
+  Q := d2 * (cLgammaSinS_1.f + d2 * (cLgammaSinS_2.f + d2 * cLgammaSinS_3.f));
 
-  LgFastTwoSum(qh, ql, cLgammaSinS[0].f, Q);
-  ql := ql + cLgammaSinS0[0].f;
+  LgFastTwoSum(qh, ql, cLgammaSinS_0.f, Q);
+  ql := ql + cLgammaSinS0_0.f;
   chv := LgMul(qh, ql, chv, cl, cl);
 
-  LgFastTwoSum(th, tl, cLgammaSinC[0].f, P);
-  tl := tl + cLgammaSinC0[0].f;
+  LgFastTwoSum(th, tl, cLgammaSinC_0.f, P);
+  tl := tl + cLgammaSinC0_0.f;
   th := LgMulD(d, th, tl, tl);
 
   ph := LgMul(th, tl, shv, slv, pl);
@@ -424,7 +424,7 @@ begin
     z2h := LgMul(zh, zl, zh, zl, z2l);
     if xh >= Double(48.0) then
     begin
-      LgSumDD(l1x, l2x, l1x, l2x, cLgammaAsy48C[0, 0].f, cLgammaAsy48C[0, 1].f);
+      LgSumDD(l1x, l2x, l1x, l2x, cLgammaAsy48C_0_0.f, cLgammaAsy48C_0_1.f);
       fl := Double(0.0);
       SetLength(cArr, 7 * 2);
       for k := 0 to 6 do
@@ -436,7 +436,7 @@ begin
     end
     else if xh >= Double(14.5) then
     begin
-      LgSumDD(l1x, l2x, l1x, l2x, cLgammaAsy14C[0, 0].f, cLgammaAsy14C[0, 1].f);
+      LgSumDD(l1x, l2x, l1x, l2x, cLgammaAsy14C_0_0.f, cLgammaAsy14C_0_1.f);
       fl := Double(0.0);
       SetLength(cArr, 11 * 2);
       for k := 0 to 10 do
@@ -448,7 +448,7 @@ begin
     end
     else
     begin
-      LgSumDD(l1x, l2x, l1x, l2x, cLgammaAsy4C[0, 0].f, cLgammaAsy4C[0, 1].f);
+      LgSumDD(l1x, l2x, l1x, l2x, cLgammaAsy4C_0_0.f, cLgammaAsy4C_0_1.f);
       fl := Double(0.0);
       SetLength(cArr, 27 * 2);
       for k := 0 to 26 do
@@ -820,7 +820,6 @@ var
   j, i: Int32;
   xl, hlh, zh, zl, z2h, z4h, sl, sh, fhSign, flSign: Double;
   cArrTinyC0, cArrCH: TLgFlatArr;
-  cArrTinyQ: array[0..7] of Double;
   jj: UInt64;
   tmpFh, tmpFl, tmpTf: Double;
 begin
@@ -868,12 +867,11 @@ begin
     else if au < UInt32($1fd0000) then
     begin
       cArrTinyC0 := LgPairsFlat(cLgammaTinyC0, 4);
-      for i := 0 to 7 do cArrTinyQ[i] := cLgammaTinyQ[i].f;
       z := x; z2 := z*z; z4 := z2*z2;
-      q0 := cArrTinyQ[0] + z*cArrTinyQ[1];
-      q2 := cArrTinyQ[2] + z*cArrTinyQ[3];
-      q4 := cArrTinyQ[4] + z*cArrTinyQ[5];
-      q6 := cArrTinyQ[6] + z*cArrTinyQ[7];
+      q0 := cLgammaTinyQ_0.f + z*cLgammaTinyQ_1.f;
+      q2 := cLgammaTinyQ_2.f + z*cLgammaTinyQ_3.f;
+      q4 := cLgammaTinyQ_4.f + z*cLgammaTinyQ_5.f;
+      q6 := cLgammaTinyQ_6.f + z*cLgammaTinyQ_7.f;
       fl := z*((q0 + z2*q2) + z4*(q4 + z2*q6));
       fh := LgPolyDDD(z, 4, cArrTinyC0, fl);
       fh := LgMulD(x, fh, fl, fl);
@@ -934,18 +932,18 @@ begin
       begin
         lh := LgMulD(ax - Double(0.5), lh, ll, ll);
       end;
-      LgFastSum(lh, ll, lh, ll, cLgammaAsymC[0, 0].f, cLgammaAsymC[0, 1].f);
+      LgFastSum(lh, ll, lh, ll, cLgammaAsymC_0_0.f, cLgammaAsymC_0_1.f);
       if ax < cLgammaP100Pos.f then
       begin
         zh := Double(1.0) / ax;
         zl := pcr_fma(zh, -ax, Double(1.0)) * zh;
         z2h := zh*zh; z4h := z2h*z2h;
-        q0 := cLgammaAsymQ[0].f + z2h*cLgammaAsymQ[1].f;
-        q2 := cLgammaAsymQ[2].f + z2h*cLgammaAsymQ[3].f;
-        q4 := cLgammaAsymQ[4].f;
+        q0 := cLgammaAsymQ_0.f + z2h*cLgammaAsymQ_1.f;
+        q2 := cLgammaAsymQ_2.f + z2h*cLgammaAsymQ_3.f;
+        q4 := cLgammaAsymQ_4.f;
         fl := z2h * (q0 + z4h * (q2 + z4h * q4));
-        LgFastTwoSum(fh, fl, cLgammaAsymC[1, 0].f, fl);
-        fl := fl + cLgammaAsymC[1, 1].f;
+        LgFastTwoSum(fh, fl, cLgammaAsymC_1_0.f, fl);
+        fl := fl + cLgammaAsymC_1_1.f;
         fh := LgMul(fh, fl, zh, zl, fl);
       end
       else
