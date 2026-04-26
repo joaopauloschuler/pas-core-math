@@ -1253,6 +1253,33 @@ Splitting A/B/C into separate commits per file means a regression bisects to the
 - [ ] **6.1** exp family — `exp`/`exp2`/`exp10`/`expm1` bodies live in
   `pascoremath64.pas` (no separate `_port_64.inc`); plus `exp2m1_port_64.inc`
   and `exp10m1_port_64.inc`.
+  - **Partial (2026-04-26):**
+    - `exp2m1_port_64.inc` audit-clean across A/B/C; bench 92.7 → 192.5 Mops/s
+      (+108 %, FASTER). Pillar A unrolled the audit-missed `for i := 6 downto 0`
+      ZIv loop (i*2 index expression); Pillar B lifted Q1/Q2/P/Q (all four
+      fast/accurate polynomials) to named scalars; const file rewritten so
+      `tools/exp2m1_gen.py` regen produces named scalars (output path also
+      corrected from `src/exp2m1_const.inc` → `src/inc_64/exp2m1_const_64.inc`).
+    - `exp10m1_port_64.inc` audit-clean across A/B/C; bench ~168.9 Mops/s.
+      Pillar A unrolled the audit-missed `for i := 7 downto 0` Ziv loop;
+      Pillar B lifted P[0..13] / Q[0..24] to named scalars; Pillar C wrapped
+      the 4194304.0/4194303.0 K-clamp constants in `Double(...)`. Generator
+      `tools/exp10m1_gen.py` updated and output path corrected.
+    - **Cross-cutting note for future passes:** several `tools/*_gen.py`
+      scripts had stale OUT paths pointing at the pre-Phase-6.5 layout
+      (`src/<fn>_const.inc`); audit & correct them when touching that fn.
+    - **Audit-script blind spot:** `tools/x87_audit.py` does not flag
+      `for i := … do` bodies whose index expression contains arithmetic
+      (e.g. `cFoo[i*2].f`). Same heuristic miss applies to acoshlike loops.
+      Reviewers should grep for `for .* downto.*do` near coefficient arrays
+      even when the audit reports A=0.
+  - **Remaining:** `pcr_exp`, `pcr_exp2`, `pcr_exp10`, `pcr_expm1` bodies
+    inside `src/pascoremath64.pas` (lines 3097..4097). Audit shows
+    A=11 / B=28 / C=1 across the four functions: cExp2Cd, cExp2FastC,
+    cExp10AccC, cExp10FastCh, cExpAccCh, cExpm1AccCh, cExpm1AccCl,
+    cExpm1FastC are the lift-candidate arrays; one Expm1Database
+    untyped literal (`300E81651`-style hex inside a const initialiser)
+    is a likely audit false-positive — verify before wrapping.
 - [ ] **6.2** log family — `log_port_64.inc`, `log10_port_64.inc`, `log1p_port_64.inc`, `log2p1_port_64.inc`, `log10p1_port_64.inc`. (`log2` body lives in `pascoremath64.pas`.)
 - [ ] **6.3** trig family — `sin_port_64.inc`, `cos_port_64.inc`, `tan_port_64.inc`, `sincos_port_64.inc`, `sinpi_port_64.inc`, `tanpi_port_64.inc`. (`cospi`, `atanpi`, `tan` bodies share space inside `pascoremath64.pas`; `cos`/`sin` have both inc files and helper code in the unit.)
 - [ ] **6.4** inverse-trig family — `atan2_port_64.inc`, `atan2pi_port_64.inc`, `asinpi_port_64.inc`, `acospi_port_64.inc`, `atanh_port_64.inc`. (`atan`, `acos`, `asin`, `atanpi` bodies live in `pascoremath64.pas`.)
