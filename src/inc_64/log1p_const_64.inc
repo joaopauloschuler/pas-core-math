@@ -211,60 +211,70 @@
     ((u:QWord($BD3F4810A30AEBA8)), (u:$3FD51AAD7C2E0000)),
     ((u:$3D4394D2371C1D1C), (u:$3FD5D1BDBBD80000)));
 
-  cLog1pSmall1: array[0..1] of Tb64u64 = (
-    (u:QWord($BFE00000000001D1)),  // -0x1.00000000001d1p-1
-    (u:$3FD55555555558F7));  // 0x1.55555555558f7p-2
+  // cLog1pSmall1 — Pillar B: lifted to named Tb64u64 scalars.
+  cLog1pSmall1_0: Tb64u64 = (u:QWord($BFE00000000001D1));  // -0x1.00000000001d1p-1
+  cLog1pSmall1_1: Tb64u64 = (u:$3FD55555555558F7);  // 0x1.55555555558f7p-2
 
-  cLog1pSmall2: array[0..3] of Tb64u64 = (
-    (u:QWord($BFDFFFFFFFFFFFFD)),  // -0x1.ffffffffffffdp-2
-    (u:$3FD5555555555551),  // 0x1.5555555555551p-2
-    (u:QWord($BFD000000D5555E1)),  // -0x1.000000d5555e1p-2
-    (u:$3FC99999B442F73F));  // 0x1.99999b442f73fp-3
+  // cLog1pSmall2 — Pillar B: lifted to named Tb64u64 scalars.
+  cLog1pSmall2_0: Tb64u64 = (u:QWord($BFDFFFFFFFFFFFFD));  // -0x1.ffffffffffffdp-2
+  cLog1pSmall2_1: Tb64u64 = (u:$3FD5555555555551);  // 0x1.5555555555551p-2
+  cLog1pSmall2_2: Tb64u64 = (u:QWord($BFD000000D5555E1));  // -0x1.000000d5555e1p-2
+  cLog1pSmall2_3: Tb64u64 = (u:$3FC99999B442F73F);  // 0x1.99999b442f73fp-3
 
-  cLog1pMedium: array[0..11] of Tb64u64 = (
-    (u:$3FD5555555555555),  // 0x1.5555555555555p-2
-    (u:QWord($BFD0000000000000)),  // -0x1p-2
-    (u:$3FC9999999999B41),  // 0x1.9999999999b41p-3
-    (u:QWord($BFC555555555583B)),  // -0x1.555555555583bp-3
-    (u:$3FC24924923F39E0),  // 0x1.24924923f39ep-3
-    (u:QWord($BFBFFFFFFFE42E43)),  // -0x1.fffffffe42e43p-4
-    (u:$3FBC71C75511D70B),  // 0x1.c71c75511d70bp-4
-    (u:QWord($BFB99999DE10510F)),  // -0x1.99999de10510fp-4
-    (u:$3FB7457E81B175F6),  // 0x1.7457e81b175f6p-4
-    (u:QWord($BFB554FB43E54E0F)),  // -0x1.554fb43e54e0fp-4
-    (u:$3FB3ED68744F3D18),  // 0x1.3ed68744f3d18p-4
-    (u:QWord($BFB28558AD5A7AC4)));  // -0x1.28558ad5a7ac4p-4
+  // cLog1pMedium — Pillar B: lifted to named Tb64u64 scalars.
+  cLog1pMedium_0: Tb64u64 = (u:$3FD5555555555555);  // 0x1.5555555555555p-2
+  cLog1pMedium_1: Tb64u64 = (u:QWord($BFD0000000000000));  // -0x1p-2
+  cLog1pMedium_2: Tb64u64 = (u:$3FC9999999999B41);  // 0x1.9999999999b41p-3
+  cLog1pMedium_3: Tb64u64 = (u:QWord($BFC555555555583B));  // -0x1.555555555583bp-3
+  cLog1pMedium_4: Tb64u64 = (u:$3FC24924923F39E0);  // 0x1.24924923f39ep-3
+  cLog1pMedium_5: Tb64u64 = (u:QWord($BFBFFFFFFFE42E43));  // -0x1.fffffffe42e43p-4
+  cLog1pMedium_6: Tb64u64 = (u:$3FBC71C75511D70B);  // 0x1.c71c75511d70bp-4
+  cLog1pMedium_7: Tb64u64 = (u:QWord($BFB99999DE10510F));  // -0x1.99999de10510fp-4
+  cLog1pMedium_8: Tb64u64 = (u:$3FB7457E81B175F6);  // 0x1.7457e81b175f6p-4
+  cLog1pMedium_9: Tb64u64 = (u:QWord($BFB554FB43E54E0F));  // -0x1.554fb43e54e0fp-4
+  cLog1pMedium_10: Tb64u64 = (u:$3FB3ED68744F3D18);  // 0x1.3ed68744f3d18p-4
+  cLog1pMedium_11: Tb64u64 = (u:QWord($BFB28558AD5A7AC4));  // -0x1.28558ad5a7ac4p-4
 
-  cLog1pBig: array[0..5] of Tb64u64 = (
-    (u:QWord($BFE000000000003D)),  // -0x1.000000000003dp-1
-    (u:$3FD5555555554CF5),  // 0x1.5555555554cf5p-2
-    (u:QWord($BFCFFFFFFECA2939)),  // -0x1.ffffffeca2939p-3
-    (u:$3FC99999A3661724),  // 0x1.99999a3661724p-3
-    (u:QWord($BFC555D345BFE6FD)),  // -0x1.555d345bfe6fdp-3
-    (u:$3FC247B887A6E5ED));  // 0x1.247b887a6e5edp-3
+  // cLog1pBig — Pillar B: lifted to named Tb64u64 scalars.
+  cLog1pBig_0: Tb64u64 = (u:QWord($BFE000000000003D));  // -0x1.000000000003dp-1
+  cLog1pBig_1: Tb64u64 = (u:$3FD5555555554CF5);  // 0x1.5555555554cf5p-2
+  cLog1pBig_2: Tb64u64 = (u:QWord($BFCFFFFFFECA2939));  // -0x1.ffffffeca2939p-3
+  cLog1pBig_3: Tb64u64 = (u:$3FC99999A3661724);  // 0x1.99999a3661724p-3
+  cLog1pBig_4: Tb64u64 = (u:QWord($BFC555D345BFE6FD));  // -0x1.555d345bfe6fdp-3
+  cLog1pBig_5: Tb64u64 = (u:$3FC247B887A6E5ED);  // 0x1.247b887a6e5edp-3
 
-  cLog1pCz: array[0..4, 0..1] of Tb64u64 = (
-    ((u:$3FD5555555555555), (u:$3C75555555555556)),
-    ((u:QWord($BFD0000000000000)), (u:$3A925558EFF3C1EF)),
-    ((u:$3FC999999999999A), (u:QWord($BC6999999A91D6CA))),
-    ((u:QWord($BFC5555555555555)), (u:QWord($BC6588AAB185593A))),
-    ((u:$3FC2492492492492), (u:$3C628C490ABC528F)));
+  // cLog1pCz — Pillar B: lifted to named Tb64u64 scalars.
+  cLog1pCz_0_0: Tb64u64 = (u:$3FD5555555555555);  // 0x1.5555555555555p-2
+  cLog1pCz_0_1: Tb64u64 = (u:$3C75555555555556);  // 0x1.5555555555556p-56
+  cLog1pCz_1_0: Tb64u64 = (u:QWord($BFD0000000000000));  // -0x1p-2
+  cLog1pCz_1_1: Tb64u64 = (u:$3A925558EFF3C1EF);  // 0x1.25558eff3c1efp-86
+  cLog1pCz_2_0: Tb64u64 = (u:$3FC999999999999A);  // 0x1.999999999999ap-3
+  cLog1pCz_2_1: Tb64u64 = (u:QWord($BC6999999A91D6CA));  // -0x1.999999a91d6cap-57
+  cLog1pCz_3_0: Tb64u64 = (u:QWord($BFC5555555555555));  // -0x1.5555555555555p-3
+  cLog1pCz_3_1: Tb64u64 = (u:QWord($BC6588AAB185593A));  // -0x1.588aab185593ap-57
+  cLog1pCz_4_0: Tb64u64 = (u:$3FC2492492492492);  // 0x1.2492492492492p-3
+  cLog1pCz_4_1: Tb64u64 = (u:$3C628C490ABC528F);  // 0x1.28c490abc528fp-57
 
-  cLog1pCzl: array[0..3] of Tb64u64 = (
-    (u:QWord($BFBFFFFFFFFFC555)),  // -0x1.fffffffffc555p-4
-    (u:$3FBC71C71C7185AA),  // 0x1.c71c71c7185aap-4
-    (u:QWord($BFB9999D44449A31)),  // -0x1.9999d44449a31p-4
-    (u:$3FB745D51F1817C7));  // 0x1.745d51f1817c7p-4
+  // cLog1pCzl — Pillar B: lifted to named Tb64u64 scalars.
+  cLog1pCzl_0: Tb64u64 = (u:QWord($BFBFFFFFFFFFC555));  // -0x1.fffffffffc555p-4
+  cLog1pCzl_1: Tb64u64 = (u:$3FBC71C71C7185AA);  // 0x1.c71c71c7185aap-4
+  cLog1pCzl_2: Tb64u64 = (u:QWord($BFB9999D44449A31));  // -0x1.9999d44449a31p-4
+  cLog1pCzl_3: Tb64u64 = (u:$3FB745D51F1817C7);  // 0x1.745d51f1817c7p-4
 
-  cLog1pCy: array[0..4, 0..1] of Tb64u64 = (
-    ((u:$3FF0000000000000), (u:$0000000000000000)),
-    ((u:QWord($BFE0000000000000)), (u:$0000000000000000)),
-    ((u:$3FD5555555555555), (u:$3C75555555555555)),
-    ((u:QWord($BFD0000000000000)), (u:QWord($B9480007ED9858B7))),
-    ((u:$3FC999999999999A), (u:QWord($BC69999999999991))));
+  // cLog1pCy — Pillar B: lifted to named Tb64u64 scalars.
+  cLog1pCy_0_0: Tb64u64 = (u:$3FF0000000000000);  // 1
+  cLog1pCy_0_1: Tb64u64 = (u:$0000000000000000);  // 0
+  cLog1pCy_1_0: Tb64u64 = (u:QWord($BFE0000000000000));  // -0.5
+  cLog1pCy_1_1: Tb64u64 = (u:$0000000000000000);  // 0
+  cLog1pCy_2_0: Tb64u64 = (u:$3FD5555555555555);  // 0x1.5555555555555p-2
+  cLog1pCy_2_1: Tb64u64 = (u:$3C75555555555555);  // 0x1.5555555555555p-56
+  cLog1pCy_3_0: Tb64u64 = (u:QWord($BFD0000000000000));  // -0x1p-2
+  cLog1pCy_3_1: Tb64u64 = (u:QWord($B9480007ED9858B7));  // -0x1.80007ed9858b7p-107
+  cLog1pCy_4_0: Tb64u64 = (u:$3FC999999999999A);  // 0x1.999999999999ap-3
+  cLog1pCy_4_1: Tb64u64 = (u:QWord($BC69999999999991));  // -0x1.9999999999991p-57
 
-  cLog1pCl: array[0..3] of Tb64u64 = (
-    (u:QWord($BFC5555555555555)),  // -0x1.5555555555555p-3
-    (u:$3FC2492492492492),  // 0x1.2492492492492p-3
-    (u:QWord($BFC0000000073334)),  // -0x1.0000000073334p-3
-    (u:$3FBC71C71C802F68));  // 0x1.c71c71c802f68p-4
+  // cLog1pCl — Pillar B: lifted to named Tb64u64 scalars.
+  cLog1pCl_0: Tb64u64 = (u:QWord($BFC5555555555555));  // -0x1.5555555555555p-3
+  cLog1pCl_1: Tb64u64 = (u:$3FC2492492492492);  // 0x1.2492492492492p-3
+  cLog1pCl_2: Tb64u64 = (u:QWord($BFC0000000073334));  // -0x1.0000000073334p-3
+  cLog1pCl_3: Tb64u64 = (u:$3FBC71C71C802F68);  // 0x1.c71c71c802f68p-4
