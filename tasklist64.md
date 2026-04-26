@@ -1487,7 +1487,29 @@ Splitting A/B/C into separate commits per file means a regression bisects to the
     max_ulp=0. Same value, different bit-pattern (sign-of-zero
     or NaN-payload divergence). Predates this phase; tracked
     elsewhere. erf, erfc, lgamma all PASS pre/post.
-- [ ] **6.7** miscellaneous — `hypot_port_64.inc`, `cbrt_port_64.inc`, `rsqrt_port_64.inc`, `pow_port_64.inc` (mostly already compliant; spot-fix only)
+- [X] **6.7** miscellaneous — `hypot_port_64.inc`, `cbrt_port_64.inc`, `rsqrt_port_64.inc`, `pow_port_64.inc` (mostly already compliant; spot-fix only)
+  - **Done (2026-04-26):**
+    - `cbrt_port_64.inc` and `rsqrt_port_64.inc` were already audit-clean
+      pre-pass — no edits needed (A=B=C=0).
+    - `hypot_port_64.inc` Pillar C: 8 untyped literals wrapped (1.0/0.0/0.5
+      across HypotRound rb-or-sb branch, HypotMain entry op/om computation,
+      the "op = 1.0 round-down" branch, the +0.0 zero-input return, and the
+      `0.5 / r2` reciprocal scale). Audit clean. TestHarness64 --pct 1 hypot
+      PASS. Bench (taskset -c 1, 200M): C 144.3 vs Pascal 197.8 Mops/s
+      (FASTER).
+    - `pow_port_64.inc` Pillar C: 68 untyped literals wrapped across
+      PowExactPow (m=1 power-of-2 short-circuit + y range guards),
+      PowIsExact (y=0/y=1 short-circuit), PowQIntFromD (sign byte),
+      PowQIntToD (rd zero init), and the entire pcr_pow body (NaN/Inf
+      cascade, x≤0 cascade incl. cs0/cs1 sign factors, easy-case
+      shortcuts for y=0/0.5/1/2, the +1 ulp underflow rounding 0.5*s*MinSub,
+      the s = -1.0 sign tests in dint and qint phases, and the 1.0 ±
+      cPow1pm100.f near-1 fallback). Audit clean. TestHarness64 --pct 1
+      pow PASS (max_ulp=0). Bench sink=MISMATCH was pre-existing
+      (verified pre/post stash) — likely NaN-payload or signed-zero
+      divergence on a specific input not covered by the harness.
+  - **No generator updates needed** — pow/hypot Pillar C edits are in
+    the hand-written `_port_64.inc` body, not the generated `_const_64.inc`.
 
 ### Sharp edges to remember
 
