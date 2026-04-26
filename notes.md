@@ -19,67 +19,12 @@ RIP-relative memory operand used inline by `mulsd` / `addsd`:
 
     mulsd  TC_..._B_EXP_1, %xmm6     ; one instruction, no base load
 
-### How to apply
-
-**Add** named `Double` constants alongside the existing array — do **not**
-delete the array. The array may exist for a reason that is not immediately
-visible from the hot call site: it may be referenced elsewhere in the unit,
-iterated over in a loop somewhere, exposed via the interface section,
-consumed by initialization code, or simply kept as the canonical
-human-readable listing of the coefficients. Removing it can break unrelated
-code or erase documentation value.
-
-Keep the array as-is:
-
-    const
-      b_exp: array[0..3] of Double = (
-        Double(1), Double(0.69314718052023927),
-        Double(0.2402288551437867), Double(0.055504596827996931));
-
-Add one named `Double` constant per element next to it:
-
-    const
-      b_exp_0: Double = 1;
-      b_exp_1: Double = 0.69314718052023927;
-      b_exp_2: Double = 0.2402288551437867;
-      b_exp_3: Double = 0.055504596827996931;
-
-Then, **only inside the hot expression**, swap `b_exp[i]` for `b_exp_i`:
-
-    r_exp := ((b_exp_0 + h_exp*b_exp_1)
-             + h2_exp*(b_exp_2 + h_exp*b_exp_3)) * sv.f;
-
-Leave any other uses of `b_exp` (outside the hot path, in other functions,
-in initialization, etc.) untouched — they continue to reference the array.
-
-If, after the change, you verify that the array is genuinely unreferenced
-anywhere in the codebase (`grep` across `src/`), *then* you may consider
-removing it as a separate cleanup step — but default to keeping it.
-
-### When this applies
-
-- Small `Double` arrays (order of 4–8 elements) used as polynomial
-  coefficients, lookup values, etc.
-- All accesses use **compile-time-constant** indices. If any access uses a
-  runtime index (e.g. `tb_exp[u_exp.u and $3F]`), leave that array alone — it
-  legitimately needs base-address materialization and indexed addressing.
-- The array is **not** shared across units or functions. (If it is, moving
-  it to `pascoremathtypes.pas` is the right call instead.)
-
 ### What you gain
 
 - One fewer `movq $imm64, %reg` per use-site (the base-address load).
 - Sometimes one or two fewer redundant register-to-register moves from
   FPC's allocator.
 - Smaller code footprint in the hot function.
-
-### What you do NOT gain (honest accounting)
-
-Throughput of the refactored function is typically **unchanged** — the
-removed instructions are cheap µops that out-of-order execution absorbs
-alongside the `mulsd`/`addsd` dependency chain. Do not advertise this as a
-speed win unless a benchmark shows one. Treat it as a codegen cleanup that
-yields tighter assembly without changing observable performance.
 
 ### Verification workflow
 
