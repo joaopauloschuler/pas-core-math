@@ -1005,7 +1005,7 @@ begin
     movss xmm0, x4
     roundss xmm0, xmm0, 12
     movss nx4, xmm0
-  end;
+  end ['xmm0'];
   {$ELSE}
   nx4 := pcr_roundevenf(x4);
   {$ENDIF}
@@ -1015,7 +1015,7 @@ begin
     movss xmm0, x
     roundss xmm0, xmm0, 12
     movss ni, xmm0
-  end;
+  end ['xmm0'];
   {$ELSE}
   ni := pcr_roundevenf(x);
   {$ENDIF}
@@ -1117,7 +1117,7 @@ begin
     movsd xmm0, a_d
     roundsd xmm0, xmm0, 12
     movsd ia, xmm0
-  end;
+  end ['xmm0'];
   {$ELSE}
   ia := pcr_roundeven(a_d);
   {$ENDIF}
@@ -1712,7 +1712,7 @@ begin
     movsd xmm0, a
     roundsd xmm0, xmm0, 12
     movsd ia, xmm0
-  end;
+  end ['xmm0'];
   {$ELSE}
   ia := pcr_roundeven(a);
   {$ENDIF}
@@ -1825,7 +1825,7 @@ begin
     movsd xmm0, a
     roundsd xmm0, xmm0, 12
     movsd ia, xmm0
-  end;
+  end ['xmm0'];
   {$ELSE}
   ia := pcr_roundeven(a);
   {$ENDIF}
@@ -2430,7 +2430,7 @@ begin
     movsd xmm0, a_s
     roundsd xmm0, xmm0, 12
     movsd ia_s, xmm0
-  end;
+  end ['xmm0'];
   {$ELSE}
   ia_s := pcr_roundeven(a_s);
   {$ENDIF}
@@ -4226,7 +4226,7 @@ begin
     movsd xmm0, eh_a2
     roundsd xmm0, xmm0, 12
     movsd ee_a2, xmm0
-  end;
+  end ['xmm0'];
   {$ELSE}
   ee_a2 := pcr_roundeven(eh_a2);
   {$ENDIF}
@@ -4945,7 +4945,7 @@ begin
     movsd xmm0, t
     roundsd xmm0, xmm0, 12
     movsd k_e1, xmm0
-  end;
+  end ['xmm0'];
   {$ELSE}
   k_e1 := pcr_roundeven(t);
   {$ENDIF}
@@ -5128,7 +5128,7 @@ begin
     movsd xmm0, h
     roundsd xmm0, xmm0, 12
     movsd k_e22, xmm0
-  end;
+  end ['xmm0'];
   {$ELSE}
   k_e22 := pcr_roundeven(h);
   {$ENDIF}
@@ -5496,7 +5496,7 @@ begin
     adc  rdx, 0
     mov  p3l, rax       // p3l = p3.lo
     mov  p3h, rdx       // p3h = p3.hi
-  end;
+  end ['rax', 'rdx'];
   k := e_exp - 124;
   s := k - 23;
   if s < 64 then begin
@@ -5894,7 +5894,7 @@ begin
     adc  rdx, 0
     mov  p3l, rax
     mov  p3h, rdx
-  end;
+  end ['rax', 'rdx'];
   k       := e_exp - 127;   // tanf uses e-127; sincos_rbig uses e-124
   s_shift := k - 23;
   if s_shift < 64 then begin

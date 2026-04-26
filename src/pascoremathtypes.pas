@@ -332,7 +332,7 @@ begin
     mul  b           // rdx:rax = a * b
     mov  rlo, rax
     mov  rhi, rdx
-  end;
+  end ['rax', 'rdx'];
   Result.lo := rlo;
   Result.hi := rhi;
 end;
