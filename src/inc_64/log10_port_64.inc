@@ -77,10 +77,10 @@ begin
   z  := pcr_fma(r, y, -1.0);
 
   z2  := z * z;
-  p45 := pcr_fma(cLogP[5].f, z, cLogP[4].f);
-  p23 := pcr_fma(cLogP[3].f, z, cLogP[2].f);
+  p45 := pcr_fma(cLogP_5.f, z, cLogP_4.f);
+  p23 := pcr_fma(cLogP_3.f, z, cLogP_2.f);
   ph  := pcr_fma(p45, z2, p23);
-  ph  := pcr_fma(ph, z, cLogP[1].f);
+  ph  := pcr_fma(ph, z, cLogP_1.f);
   ph  := ph * z2;
 
   ee := e;
