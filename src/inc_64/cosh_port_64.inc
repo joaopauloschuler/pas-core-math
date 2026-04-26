@@ -120,7 +120,6 @@ function CoshZero(x: Double): Double;
 var
   x2, x2l, y0, y1, y2: Double;
   chp, clp, ch_c, e_tmp: Double;
-  i: Int32;
   t_u, w_u: Tb64u64;
 begin
   x2  := x * x;
@@ -132,14 +131,24 @@ begin
   // Seeded polydd: start with ch = c[n-1][0] + *l; cl = ... + c[n-1][1]
   chp := cCoshZeroCh[3, 0].f + y2;
   clp := ((cCoshZeroCh[3, 0].f - chp) + y2) + cCoshZeroCh[3, 1].f;
-  for i := 2 downto 0 do
-  begin
-    chp := pcr_muldd(x2, x2l, chp, clp, clp);
-    ch_c := chp + cCoshZeroCh[i, 0].f;
-    e_tmp := (cCoshZeroCh[i, 0].f - ch_c) + chp;
-    chp := ch_c;
-    clp := (clp + cCoshZeroCh[i, 1].f) + e_tmp;
-  end;
+  // Unrolled `for i := 2 downto 0` — Pillar A.
+  chp := pcr_muldd(x2, x2l, chp, clp, clp);
+  ch_c := chp + cCoshZeroCh[2, 0].f;
+  e_tmp := (cCoshZeroCh[2, 0].f - ch_c) + chp;
+  chp := ch_c;
+  clp := (clp + cCoshZeroCh[2, 1].f) + e_tmp;
+
+  chp := pcr_muldd(x2, x2l, chp, clp, clp);
+  ch_c := chp + cCoshZeroCh[1, 0].f;
+  e_tmp := (cCoshZeroCh[1, 0].f - ch_c) + chp;
+  chp := ch_c;
+  clp := (clp + cCoshZeroCh[1, 1].f) + e_tmp;
+
+  chp := pcr_muldd(x2, x2l, chp, clp, clp);
+  ch_c := chp + cCoshZeroCh[0, 0].f;
+  e_tmp := (cCoshZeroCh[0, 0].f - ch_c) + chp;
+  chp := ch_c;
+  clp := (clp + cCoshZeroCh[0, 1].f) + e_tmp;
   y1 := chp; y2 := clp;
 
   y1 := pcr_muldd(y1, y2, x2, x2l, y2);

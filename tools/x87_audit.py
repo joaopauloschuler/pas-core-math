@@ -142,15 +142,20 @@ def audit_file(path: Path, want: set) -> list:
         if "b" in want or "a" in want:
             for m in ARRAY_READ_RE.finditer(code):
                 arr, idx = m.group(1), m.group(2).strip()
-                if is_int_literal(idx):
+                # Multi-dim: split the index expression on top-level commas
+                # so cFoo[i, 0].f is classified by the most "interesting"
+                # dimension (loop var beats literal beats other).
+                dims = [d.strip() for d in idx.split(",")]
+                has_loop_var = any(d.lower() in loop_vars for d in dims)
+                all_literals = all(is_int_literal(d) for d in dims)
+                if has_loop_var:
+                    if "a" in want:
+                        findings.append((lineno, "A",
+                            f"loop-indexed read {arr}[{idx}].f inside for-loop — unroll candidate"))
+                elif all_literals:
                     if "b" in want:
                         findings.append((lineno, "B",
                             f"literal-indexed read {arr}[{idx}].f — lift to named scalar"))
-                else:
-                    idx_low = idx.lower()
-                    if "a" in want and any(lv == idx_low for lv in loop_vars):
-                        findings.append((lineno, "A",
-                            f"loop-indexed read {arr}[{idx}].f inside for-loop — unroll candidate"))
 
         # Pillar C — untyped float literals.
         if "c" in want and not in_const:
