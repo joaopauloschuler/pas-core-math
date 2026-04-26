@@ -200,7 +200,6 @@ function Exp10m1AccurateTiny(x: Double): Double;
 var
   a, b, c: Int32;
   h, l, t, x2, x4, c15, c13, exc: Double;
-  i: Int32;
 begin
   a := 0; b := 145;
   while a + 1 <> b do
@@ -231,12 +230,31 @@ begin
   pcr_fasttwosum(h, t, cExp10m1Q[16].f, h);
   l := l + t;
   // degrees 8..1 are dd: pairs (Q[14],Q[15]) ... (Q[0],Q[1])
-  for i := 7 downto 0 do
-  begin
-    E2M1SMul(h, l, x, h, l);
-    pcr_fasttwosum(h, t, cExp10m1Q[i*2].f, h);
-    l := l + t + cExp10m1Q[i*2 + 1].f;
-  end;
+  // Unrolled: for i := 7 downto 0 — Pillar A.
+  E2M1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cExp10m1Q[14].f, h);
+  l := l + t + cExp10m1Q[15].f;
+  E2M1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cExp10m1Q[12].f, h);
+  l := l + t + cExp10m1Q[13].f;
+  E2M1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cExp10m1Q[10].f, h);
+  l := l + t + cExp10m1Q[11].f;
+  E2M1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cExp10m1Q[8].f, h);
+  l := l + t + cExp10m1Q[9].f;
+  E2M1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cExp10m1Q[6].f, h);
+  l := l + t + cExp10m1Q[7].f;
+  E2M1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cExp10m1Q[4].f, h);
+  l := l + t + cExp10m1Q[5].f;
+  E2M1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cExp10m1Q[2].f, h);
+  l := l + t + cExp10m1Q[3].f;
+  E2M1SMul(h, l, x, h, l);
+  pcr_fasttwosum(h, t, cExp10m1Q[0].f, h);
+  l := l + t + cExp10m1Q[1].f;
   // multiply h+l by x
   E2M1SMul(h, l, x, h, l);
   Result := h + l;
