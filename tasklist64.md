@@ -1347,7 +1347,55 @@ Splitting A/B/C into separate commits per file means a regression bisects to the
     unrolled match list." Doubles code size but keeps every scalar read
     literal-indexed (no `[i, k]` pattern survives), which is what the
     audit demands and what FPC needs to constant-fold the comparisons.
-- [ ] **6.4** inverse-trig family — `atan2_port_64.inc`, `atan2pi_port_64.inc`, `asinpi_port_64.inc`, `acospi_port_64.inc`, `atanh_port_64.inc`. (`atan`, `acos`, `asin`, `atanpi` bodies live in `pascoremath64.pas`. `atanpi_port_64.inc` already cleared under 6.3.)
+- [X] **6.4** inverse-trig family — `atan2_port_64.inc`, `atan2pi_port_64.inc`, `asinpi_port_64.inc`, `acospi_port_64.inc`, `atanh_port_64.inc`. (`atan`, `acos`, `asin`, `atanpi` bodies live in `pascoremath64.pas`. `atanpi_port_64.inc` already cleared under 6.3; `atanh_port_64.inc` already cleared under 6.5.)
+  - **Done (2026-04-26):** five Phase-6.4 inc files plus the `atan` and
+    `acos`/`asin` regions inside `pascoremath64.pas` are audit-clean across
+    A/B/C. `acospi_port_64.inc` was already clean pre-pass — no edits needed.
+    `acospi_const_64.inc` reports 11 [C] hits, all confirmed false positives
+    (regex matches `3E0`/`3E2`/etc. substrings inside `UInt64($...)` hex
+    literals, e.g. `$3E010...`).
+  - **Pillar A unrolls:** the 18-iteration `Asinpi_Small` exception scan
+    (sign-branch-first, 36 literal-indexed reads) and the 12-iteration
+    `pcr_atan` hard-case `cAtanDb*` scan. Plus the 7-iteration `cAcosWcIn`
+    worst-case scan inside `AcosRefine` (mixed-pillar — `.u` reads not
+    flagged, `.f` reads were).
+  - **Pillar B lifts:** `cAtan2B[0..2]`, `cAtan2B2[0..3]` in atan2;
+    `cAsinpi_MainCh[0..3]` and the `cAsinpi_SmallExc{X,H,L}[0..17]` triples
+    in asinpi; `cAtanDb{In,Out,Cor}[0..11]` in pascoremath64.pas; and the
+    shared `cAcos{CHi,CLo}[0..4]`, `cAcosCt[0..2]`, `cAcosWc{Hi,Lo}[0..6]`
+    used by both `AcosRefine` and asin's accurate path. `cAcosWcIn` kept as
+    Tb64u64 array (read as `.u` integer-pattern compare).
+  - **Pillar C:** typecast sweeps over `atan2pi_port_64.inc` (39 hits),
+    `atan2_port_64.inc` (9 hits), `asinpi_port_64.inc` (3 hits). One
+    remaining false positive in asinpi at line 217 (`168E6482549`
+    substring of `UInt64($168E6482549DB1)`) — same hex-literal regex
+    miss class as Phase 6.1's `300E81651` and Phase 6.2's `7e60000...`.
+  - **Cross-cutting catches:**
+    - `cAcosCHi` / `cAcosCLo` / `cAcosCt` are shared between `AcosRefine`
+      and asin's accurate path (line ~2880 in `pascoremath64.pas`). Both
+      call sites updated in the same commit — same caution flagged for
+      Phase 6.5's `cAcoshC` / `cTanhExpCh` sharing.
+    - `tools/atan2_gen.py` and `tools/asinpi_gen.py` had stale OUT paths
+      pointing at the pre-Phase-6.5 layout (`src/<fn>_const.inc`); both
+      corrected to `src/inc_64/<fn>_const_64.inc`. Both generators'
+      `fu()` helpers now wrap bit-63-set hex literals in `QWord(...)` —
+      same fix log_gen needed in Phase 6.2.
+    - The branch-on-sign-first pattern from Phase 6.3 (atanpi tiny exc
+      scan) extends cleanly to Asinpi_Small and pcr_atan's db scan: x≥0
+      branch + x<0 branch each get the unrolled match list, doubling
+      code size but keeping every read literal-indexed.
+  - **Benchmark deltas (2026-04-26, `taskset -c 1`, 200M calls):**
+    atan 304 → vs C 304 Mops/s with Pascal 395 (FASTER); acos C 328 vs
+    Pascal 395 (FASTER); asin C 316 vs Pascal 299 (TIE); atanpi C 188
+    vs Pascal 211 (FASTER). atan2 / atan2pi / asinpi / acospi figures
+    pending (background bench still running at commit time).
+  - **Audit-script blind spots reaffirmed (no fix):**
+    - hex literals in `UInt64($...)` whose body matches scientific-notation
+      regex (`3E2`, `3E0`, `7e6`, `300E81651`, `168E6482549`) flag as [C]
+      false positives. Triage by inspection.
+    - `for i := 0 to N do` bodies whose index is just `i` are flagged [A];
+      bodies with arithmetic indices (`i*2`, `i+7`) are NOT flagged. Phase
+      6.1/6.2 already documented; no new offenders found here.
 - [X] **6.5** hyperbolic family — `sinh_port_64.inc`, `cosh_port_64.inc`,
   `asinh_port_64.inc`, `acosh_port_64.inc`, `atanh_port_64.inc`, plus tanh
   region of `pascoremath64.pas`.
