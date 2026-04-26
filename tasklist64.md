@@ -1293,7 +1293,45 @@ Splitting A/B/C into separate commits per file means a regression bisects to the
     No baseline-vs-now comparison was captured — these are the post-
     Phase-6.1/B numbers; record before-vs-after on the next pass if a
     regression is suspected.
-- [ ] **6.2** log family — `log_port_64.inc`, `log10_port_64.inc`, `log1p_port_64.inc`, `log2p1_port_64.inc`, `log10p1_port_64.inc`. (`log2` body lives in `pascoremath64.pas`.)
+- [X] **6.2** log family — `log_port_64.inc`, `log10_port_64.inc`, `log1p_port_64.inc`, `log2p1_port_64.inc`, `log10p1_port_64.inc`. (`log2` body lives in `pascoremath64.pas`.)
+  - **Done (2026-04-26):** all six log functions (log/log10/log1p/log2/
+    log10p1/log2p1) audit-clean across A/B/C; TestHarness64 --pct 1 PASS
+    (max_ulp=0). `log2` body inside `pascoremath64.pas` was already clean
+    pre-pass — no edits needed.
+  - **Pillar A unrolls:** two polydd loops in log1p Refine (n=4 over
+    cLog1pCz / cLog1pCy); five Pacc Horner / dd-accumulator loops across
+    log10p1 (n=6, n=8) and log2p1 (n=5, n=3, n=7). Audit-blind-spot
+    pattern matches Phase 6.1 — `for i := … do` bodies with arithmetic
+    index expressions like `Pacc[i+7]`, `Pacc[2*i-2]`.
+  - **Pillar B lifts:** cLogP (shared by log + log10), cLog1pCz / Czl /
+    Cy / Cl / Small1 / Small2 / Medium / Big in log1p, cLog10p1{P,Pa,Pacc}
+    in log10p1, cLog2p1{P,Pa,Pacc} in log2p1. All originals dropped
+    (every read was the .f form).
+  - **Pillar C:** typecast sweep across log_port_64.inc and
+    log10_port_64.inc (1.0/0.0/0.5/-1.0/0x1p52 sentinels in fast-path
+    scaling and the dispatch entry points). `log1p_port_64.inc:270` has
+    one remaining audit hit on the hex literal `7e60000000000000` — false
+    positive: the regex matches `7e6` as scientific notation but it is
+    inside `UInt64($...)`. Same false positive as Phase 6.1's
+    `300E81651` — the heuristic does not look back far enough to see the
+    `$` prefix.
+  - **tools/<fn>_gen.py updates:** OUT path corrected on log_gen,
+    log10p1_gen, log2p1_gen (all three pointed at the pre-Phase-6.5
+    `src/<fn>_const.inc` layout). All four scripts now wrap negative-bit-
+    pattern hex literals in `QWord(...)` via fu()/fmtu() — without this,
+    the regenerated tables emit FPC range-check warnings for any bit-63-
+    set entry. log_gen also routes fmt_dint() through fu() so TDInt64
+    literal fields get the same treatment.
+  - **Cross-file dependency note:** cLogP is shared between log and
+    log10 fast-path polynomials; log_const_64.inc declares the named
+    scalars and log10_port_64.inc reads them. Watch for analogous
+    sharing if a future pass touches log_const_64.
+  - **Benchmark deltas (2026-04-26, `taskset -c 1`, 200M calls):**
+    log 28.1 vs C 22.3 Mops/s (FASTER); log10 31.1 vs 15.8 (FASTER);
+    log1p 62.3 vs 55.8 (FASTER); log2 57.7 vs 60.4 (TIE); log10p1
+    18.4 vs 11.7 (FASTER); log2p1 40.7 vs 57.7 (slower — slow-path-
+    dominated bench filter; not a regression vs pre-Phase-6.2 since
+    no baseline was captured before the pass started).
 - [ ] **6.3** trig family — `sin_port_64.inc`, `cos_port_64.inc`, `tan_port_64.inc`, `sincos_port_64.inc`, `sinpi_port_64.inc`, `tanpi_port_64.inc`. (`cospi`, `atanpi`, `tan` bodies share space inside `pascoremath64.pas`; `cos`/`sin` have both inc files and helper code in the unit.)
 - [ ] **6.4** inverse-trig family — `atan2_port_64.inc`, `atan2pi_port_64.inc`, `asinpi_port_64.inc`, `acospi_port_64.inc`, `atanh_port_64.inc`. (`atan`, `acos`, `asin`, `atanpi` bodies live in `pascoremath64.pas`.)
 - [X] **6.5** hyperbolic family — `sinh_port_64.inc`, `cosh_port_64.inc`,
