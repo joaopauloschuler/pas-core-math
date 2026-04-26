@@ -136,7 +136,6 @@ function SinhZero(x: Double): Double;
 var
   x2, x2l, y0, y1, y2: Double;
   chp, clp, ch_c, e_tmp: Double;
-  i: Int32;
   t_u, w_u: Tb64u64;
 begin
   x2  := x * x;
@@ -144,17 +143,33 @@ begin
 
   y2 := x2 * (cSinhZeroCl0.f + x2 * (cSinhZeroCl1.f + x2 * cSinhZeroCl2.f));
 
-  // Seeded polydd over 5 coefficients
+  // Seeded polydd over 5 coefficients — Pillar A unroll of `for i := 3 downto 0`.
   chp := cSinhZeroCh[4, 0].f + y2;
   clp := ((cSinhZeroCh[4, 0].f - chp) + y2) + cSinhZeroCh[4, 1].f;
-  for i := 3 downto 0 do
-  begin
-    chp := pcr_muldd(x2, x2l, chp, clp, clp);
-    ch_c := chp + cSinhZeroCh[i, 0].f;
-    e_tmp := (cSinhZeroCh[i, 0].f - ch_c) + chp;
-    chp := ch_c;
-    clp := (clp + cSinhZeroCh[i, 1].f) + e_tmp;
-  end;
+
+  chp := pcr_muldd(x2, x2l, chp, clp, clp);
+  ch_c := chp + cSinhZeroCh[3, 0].f;
+  e_tmp := (cSinhZeroCh[3, 0].f - ch_c) + chp;
+  chp := ch_c;
+  clp := (clp + cSinhZeroCh[3, 1].f) + e_tmp;
+
+  chp := pcr_muldd(x2, x2l, chp, clp, clp);
+  ch_c := chp + cSinhZeroCh[2, 0].f;
+  e_tmp := (cSinhZeroCh[2, 0].f - ch_c) + chp;
+  chp := ch_c;
+  clp := (clp + cSinhZeroCh[2, 1].f) + e_tmp;
+
+  chp := pcr_muldd(x2, x2l, chp, clp, clp);
+  ch_c := chp + cSinhZeroCh[1, 0].f;
+  e_tmp := (cSinhZeroCh[1, 0].f - ch_c) + chp;
+  chp := ch_c;
+  clp := (clp + cSinhZeroCh[1, 1].f) + e_tmp;
+
+  chp := pcr_muldd(x2, x2l, chp, clp, clp);
+  ch_c := chp + cSinhZeroCh[0, 0].f;
+  e_tmp := (cSinhZeroCh[0, 0].f - ch_c) + chp;
+  chp := ch_c;
+  clp := (clp + cSinhZeroCh[0, 1].f) + e_tmp;
   y1 := chp; y2 := clp;
 
   y1 := pcr_mulddd_pd(y1, y2, x, y2);
