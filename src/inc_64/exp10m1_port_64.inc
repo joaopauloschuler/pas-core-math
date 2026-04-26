@@ -72,7 +72,7 @@ var
   d: Tb64u64;
 begin
   kd := pcr_roundeven(x * cExp10m1InvLog210.f);
-  if kd = 4194304.0 then kd := 4194303.0;
+  if kd = Double(4194304.0) then kd := Double(4194303.0);
 
   yh := pcr_fma(-kd, cExp10m1Log210H.f, x);  // exact
   pcr_fasttwosum(yh, yl, yh, -kd * cExp10m1Log210M.f);
