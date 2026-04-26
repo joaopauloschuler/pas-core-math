@@ -79,7 +79,7 @@ var
   ax: UInt64;
   ln22, ln21, ln20: Double;
   x2h, x2l, x3h, x3l, sh, sl: Double;
-  i, i1, i2, i3, i4, je, k: Int64;
+  i, i1, i2, i3, i4, je: Int64;
   L0, L1, L2: Double;
   t12, t34, th, tl, dh, dl, sh2, sl2: Double;
   xh, xl, ddh, ddl: Double;
@@ -106,14 +106,23 @@ begin
     // Seeded polyddd: n=5, x scalar. ch = fasttwosum(c[4][0], sl, &sl); cl = c[4][1] + sl
     pcr_fasttwosum(ch_, sl, cLog1pCz[4, 0].f, sl);
     cl_ := cLog1pCz[4, 1].f + sl;
-    for k := 3 downto 0 do
-    begin
-      ch_ := Log1pMulddd(x, ch_, cl_, cl_);
-      // fastsum(c[k][0], c[k][1], ch, cl, &cl)
-      pcr_fasttwosum(th_, tl_, cLog1pCz[k, 0].f, ch_);
-      cl_ := (cLog1pCz[k, 1].f + cl_) + tl_;
-      ch_ := th_;
-    end;
+    // Pillar A: unrolled k = 3, 2, 1, 0 (fixed trip count over cLog1pCz).
+    ch_ := Log1pMulddd(x, ch_, cl_, cl_);
+    pcr_fasttwosum(th_, tl_, cLog1pCz[3, 0].f, ch_);
+    cl_ := (cLog1pCz[3, 1].f + cl_) + tl_;
+    ch_ := th_;
+    ch_ := Log1pMulddd(x, ch_, cl_, cl_);
+    pcr_fasttwosum(th_, tl_, cLog1pCz[2, 0].f, ch_);
+    cl_ := (cLog1pCz[2, 1].f + cl_) + tl_;
+    ch_ := th_;
+    ch_ := Log1pMulddd(x, ch_, cl_, cl_);
+    pcr_fasttwosum(th_, tl_, cLog1pCz[1, 0].f, ch_);
+    cl_ := (cLog1pCz[1, 1].f + cl_) + tl_;
+    ch_ := th_;
+    ch_ := Log1pMulddd(x, ch_, cl_, cl_);
+    pcr_fasttwosum(th_, tl_, cLog1pCz[0, 0].f, ch_);
+    cl_ := (cLog1pCz[0, 1].f + cl_) + tl_;
+    ch_ := th_;
     sl := cl_;
     sh := ch_;
 
@@ -177,14 +186,23 @@ begin
     // Seeded polydd: n=5, ch=fasttwosum(cy[4][0], sl, &sl); cl = cy[4][1] + sl
     pcr_fasttwosum(ch_, sl, cLog1pCy[4, 0].f, sl);
     cl_ := cLog1pCy[4, 1].f + sl;
-    for k := 3 downto 0 do
-    begin
-      ch_ := Log1pMuldd(xh, xl, ch_, cl_, cl_);
-      // fastsum(cy[k][0], cy[k][1], ch, cl)
-      pcr_fasttwosum(th_, tl_, cLog1pCy[k, 0].f, ch_);
-      cl_ := (cLog1pCy[k, 1].f + cl_) + tl_;
-      ch_ := th_;
-    end;
+    // Pillar A: unrolled k = 3, 2, 1, 0 (fixed trip count over cLog1pCy).
+    ch_ := Log1pMuldd(xh, xl, ch_, cl_, cl_);
+    pcr_fasttwosum(th_, tl_, cLog1pCy[3, 0].f, ch_);
+    cl_ := (cLog1pCy[3, 1].f + cl_) + tl_;
+    ch_ := th_;
+    ch_ := Log1pMuldd(xh, xl, ch_, cl_, cl_);
+    pcr_fasttwosum(th_, tl_, cLog1pCy[2, 0].f, ch_);
+    cl_ := (cLog1pCy[2, 1].f + cl_) + tl_;
+    ch_ := th_;
+    ch_ := Log1pMuldd(xh, xl, ch_, cl_, cl_);
+    pcr_fasttwosum(th_, tl_, cLog1pCy[1, 0].f, ch_);
+    cl_ := (cLog1pCy[1, 1].f + cl_) + tl_;
+    ch_ := th_;
+    ch_ := Log1pMuldd(xh, xl, ch_, cl_, cl_);
+    pcr_fasttwosum(th_, tl_, cLog1pCy[0, 0].f, ch_);
+    cl_ := (cLog1pCy[0, 1].f + cl_) + tl_;
+    ch_ := th_;
     sl := cl_;
     sh := ch_;
 

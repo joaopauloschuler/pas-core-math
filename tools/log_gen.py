@@ -18,7 +18,12 @@ def b64(s):
     return struct.unpack('<Q', struct.pack('<d', f))[0]
 
 def fu(u):
-    return f"$%016X" % u
+    s = f"$%016X" % u
+    # Wrap negative-bit-pattern (bit 63 set) with QWord() so FPC range-check
+    # does not warn while parsing the literal as Int64.
+    if u >= (1 << 63):
+        return f"QWord({s})"
+    return s
 
 def slurp(p):
     with open(p) as f:
@@ -155,7 +160,7 @@ lines.append('')
 # Refine-path TDInt64 arrays: emit as initialised constant arrays.
 def fmt_dint(rec):
     hi, lo, ex, sgn = rec
-    return f'(hi:${hi:016X}; lo:${lo:016X}; ex:{ex}; sgn:{sgn})'
+    return f'(hi:{fu(hi)}; lo:{fu(lo)}; ex:{ex}; sgn:{sgn})'
 
 lines.append(f'  cLogInverse2: array[0..{N2-1}] of TDInt64 = (')
 for i in range(N2):
