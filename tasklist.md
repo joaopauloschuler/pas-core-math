@@ -528,10 +528,18 @@ pass doesn't blanket-apply the 64-bit recipe:
   reference except expm1f (138 vs C 161 — still the largest gap, may
   reward a future Pillar C pass).
 
-- [ ] **7.2** log family — `logf`, `log10f`, `log1pf`, `log2f`, `log10p1f`,
-  `log2p1f` regions. Pillar B candidates: `c_aln`, `c_l10`, `c_l2p1`,
-  `tl`, `tl10`, plus the small Horner tables. Note: `lix_l2p1` is
-  runtime-indexed → out of scope.
+- [x] **7.2** log family — `logf`, `log10f`, `log1pf`, `log2f`, `log10p1f`,
+  `log2p1f` regions. Pillar B done: lifted `bcoef`/`ccoef` (log2f),
+  `c[7]` and `tl[0]` (logf — `cL0..cL6`, `logf_tl0`), `b[7]`/`c[3]`
+  (log1pf — `b1p1..b1p7`, `c1p0..c1p3`), `b10`/`c10`/`tl10[0]` (log10f),
+  `c_l2p1[6]` (log2p1f), `c_l10[9]` (log10p1f) to named scalars. The
+  large runtime-indexed tables `tr`, `tl`, `tl10`, `tr10`, `ix_l2p1`,
+  `lix_l2p1`, `tr_l10`, `tl_l10`, `x0`, `lix` remain arrays (out of
+  scope — runtime-indexed). Audit B count: 488 → 427 (-61 reads).
+  Tests: all 42 functions pass at `--pct 1`.
+  Bench (taskset -c 1, AVX2): log2f 390 / logf 364 / log10f 340
+  (FASTER than C 271) / log1pf 298 (TIE) / log2p1f 201 / log10p1f 226
+  Mops/s. Note `c_aln` is in `pcr_powf` (misc family, 7.7), not log.
 
 - [ ] **7.3** trig family — `sinf`, `cosf`, `sincosf`, `tanf`, `sinpif`,
   `cospif`, `tanpif` regions. Pillar B candidates: `sn`, `cn`, the small
