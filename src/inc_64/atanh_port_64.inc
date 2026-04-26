@@ -311,22 +311,22 @@ begin
   xl := xl + th * t.f;
   xh := AcoshAddDD(xh, xl, shm, slm, xl);
 
-  sl2 := xh * (cAcoshRefineCl[0].f + xh * (cAcoshRefineCl[1].f + xh * cAcoshRefineCl[2].f));
+  sl2 := xh * (cAcoshRefineCl_0.f + xh * (cAcoshRefineCl_1.f + xh * cAcoshRefineCl_2.f));
   // Seeded polydd: n=3, seed *l = sl2 — Pillar A unroll of `for i1 := 1 downto 0`.
-  xh2 := cAcoshRefineCh[2, 0].f + sl2;
-  sh2 := ((cAcoshRefineCh[2, 0].f - xh2) + sl2) + cAcoshRefineCh[2, 1].f;
+  xh2 := cAcoshRefineChH_2.f + sl2;
+  sh2 := ((cAcoshRefineChH_2.f - xh2) + sl2) + cAcoshRefineChL_2.f;
 
   xh2 := pcr_muldd(xh, xl, xh2, sh2, sh2);
-  th  := xh2 + cAcoshRefineCh[1, 0].f;
-  tl  := (cAcoshRefineCh[1, 0].f - th) + xh2;
+  th  := xh2 + cAcoshRefineChH_1.f;
+  tl  := (cAcoshRefineChH_1.f - th) + xh2;
   xh2 := th;
-  sh2 := sh2 + tl + cAcoshRefineCh[1, 1].f;
+  sh2 := sh2 + tl + cAcoshRefineChL_1.f;
 
   xh2 := pcr_muldd(xh, xl, xh2, sh2, sh2);
-  th  := xh2 + cAcoshRefineCh[0, 0].f;
-  tl  := (cAcoshRefineCh[0, 0].f - th) + xh2;
+  th  := xh2 + cAcoshRefineChH_0.f;
+  tl  := (cAcoshRefineChH_0.f - th) + xh2;
   xh2 := th;
-  sh2 := sh2 + tl + cAcoshRefineCh[0, 1].f;
+  sh2 := sh2 + tl + cAcoshRefineChL_0.f;
   sh_ := pcr_muldd(xh, xl, xh2, sh2, sl2);
   sh_ := AcoshAddDD(sh_, sl2, el1, el2, sl2);
   sh_ := AcoshAddDD(sh_, sl2, L1, L2, sl2);
