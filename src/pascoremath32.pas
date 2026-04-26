@@ -282,10 +282,12 @@ end;
 // ── 2.02 cospif ──────────────────────────────────────────────────────────────
 function pcr_cospif(x: Single): Single;
 const
-  sn: array[0..2] of Double = (
-    1.142904749427467e-11, -2.488163196168101e-34, 1.625023320396236e-57);
-  cn: array[0..2] of Double = (
-    -6.531156331319305e-23, 7.109333835435933e-46, -3.0954114513195225e-69);
+  sn0: Double =  1.142904749427467e-11;
+  sn1: Double = -2.488163196168101e-34;
+  sn2: Double =  1.625023320396236e-57;
+  cn0: Double = -6.531156331319305e-23;
+  cn1: Double =  7.109333835435933e-46;
+  cn2: Double = -3.0954114513195225e-69;
 var
   ix: Tb32u32;
   e, m_int, s, p: Int32;
@@ -336,8 +338,8 @@ begin
     Exit;
   end;
   z := k; z2 := z * z;
-  fs := sn[0] + z2 * (sn[1] + z2 * sn[2]);
-  fc := cn[0] + z2 * (cn[1] + z2 * cn[2]);
+  fs := sn0 + z2 * (sn1 + z2 * sn2);
+  fc := cn0 + z2 * (cn1 + z2 * cn2);
   iq := UInt32(m_int) shr s; iq := (iq + 1) shr 1;
   is_idx := iq and 127;
   ic_idx := (iq + 32) and 127;
@@ -502,10 +504,12 @@ end;
 // ── 2.05 sinpif ──────────────────────────────────────────────────────────────
 function pcr_sinpif(x: Single): Single;
 const
-  sn: array[0..2] of Double = (
-    1.142904749427467e-11, -2.488163196168101e-34, 1.625023320396236e-57);
-  cn: array[0..2] of Double = (
-    -6.531156331319305e-23, 7.109333835435933e-46, -3.0954114513195225e-69);
+  sn0: Double =  1.142904749427467e-11;
+  sn1: Double = -2.488163196168101e-34;
+  sn2: Double =  1.625023320396236e-57;
+  cn0: Double = -6.531156331319305e-23;
+  cn1: Double =  7.109333835435933e-46;
+  cn2: Double = -3.0954114513195225e-69;
 var
   ix: Tb32u32;
   e, m_int, sgn, s, si: Int32;
@@ -551,8 +555,8 @@ begin
   end;
   k := Int32(UInt32(m_int) shl (31 - s));
   z := k; z2 := z * z;
-  fs := sn[0] + z2 * (sn[1] + z2 * sn[2]);
-  fc := cn[0] + z2 * (cn[1] + z2 * cn[2]);
+  fs := sn0 + z2 * (sn1 + z2 * sn2);
+  fc := cn0 + z2 * (cn1 + z2 * cn2);
   iq := UInt32(SarLongInt(m_int, s)); iq := (iq + 1) shr 1;
   is_idx := iq and 127;
   ic_idx := (iq + 32) and 127;
@@ -974,10 +978,14 @@ end;
 // ── 2.11 tanpif ──────────────────────────────────────────────────────────────
 function pcr_tanpif(x: Single): Single;
 const
-  cn: array[0..3] of Double = (
-    0.7853981633974484, -0.2805387264887832, 0.02201158908691473, -0.00023103959012326923);
-  cd: array[0..3] of Double = (
-    1.0, -0.6470611340915767, 0.0973140255480054, -0.0032269805489163333);
+  cn0: Double =  0.7853981633974484;
+  cn1: Double = -0.2805387264887832;
+  cn2: Double =  0.02201158908691473;
+  cn3: Double = -0.00023103959012326923;
+  cd0: Double =  1.0;
+  cd1: Double = -0.6470611340915767;
+  cd2: Double =  0.0973140255480054;
+  cd3: Double = -0.0032269805489163333;
 var
   ix: Tb32u32;
   e_bits: UInt32;
@@ -1048,8 +1056,8 @@ begin
     Exit;
   end;
   z := zf; z2 := z * z; z4 := z2 * z2;
-  r := (z - z*z2) * ((cn[0] + z2*cn[1]) + z4*(cn[2] + z2*cn[3])) /
-       (((cd[0] + z2*cd[1]) + z4*(cd[2] + z2*cd[3])) * (0.25 - z2));
+  r := (z - z*z2) * ((cn0 + z2*cn1) + z4*(cn2 + z2*cn3)) /
+       (((cd0 + z2*cd1) + z4*(cd2 + z2*cd3)) * (0.25 - z2));
   Result := r;
 end;
 

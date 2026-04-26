@@ -541,10 +541,19 @@ pass doesn't blanket-apply the 64-bit recipe:
   (FASTER than C 271) / log1pf 298 (TIE) / log2p1f 201 / log10p1f 226
   Mops/s. Note `c_aln` is in `pcr_powf` (misc family, 7.7), not log.
 
-- [ ] **7.3** trig family — `sinf`, `cosf`, `sincosf`, `tanf`, `sinpif`,
-  `cospif`, `tanpif` regions. Pillar B candidates: `sn`, `cn`, the small
-  Estrin/Horner blocks. Watch for the `cn_a2` / `cd_a2` / `cn_a2p` / `cd_a2p`
-  cross-listing under 7.4.
+- [x] **7.3** trig family — `sinf`, `cosf`, `sincosf`, `tanf`, `sinpif`,
+  `cospif`, `tanpif` regions. Pillar B done: lifted `sn`/`cn` to `sn0..sn2`,
+  `cn0..cn2` in both `cospif` and `sinpif` (identical 3-term Horner pairs);
+  lifted `cn`/`cd` to `cn0..cn3`, `cd0..cd3` in `tanpif` (numerator/denom
+  Estrin block). `sinf`, `cosf`, `sincosf`, `tanf` had no literal-indexed
+  reads in scope (audit-clean already; their coefficient blocks use
+  pre-lifted scalars, runtime-indexed `S_TABLE`, or u128 reduction paths).
+  Audit B count: 427 → 407 (-20 reads). Tests: all 42 pass at `--pct 1`.
+  Bench (taskset -c 1, AVX2): sinpif 456 (vs C 391, FASTER) /
+  cospif 375 (vs 352, FASTER) / tanpif 232 (vs 214, FASTER) /
+  sinf 216 (vs 214, TIE) / cosf 213 (vs 242) / sincosf 163 (vs 207) /
+  tanf 210 (vs 210, TIE). The non-pi trig regressions are unchanged
+  from baseline — the lift only touched the pi-variants.
 
 - [ ] **7.4** inverse-trig family — `atanf`, `atan2f`, `asinf`, `acosf`,
   `atanpif`, `atan2pif`, `asinpif`, `acospif`, `atanhf` regions. Pillar B
