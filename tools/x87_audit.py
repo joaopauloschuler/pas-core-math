@@ -64,6 +64,31 @@ ARRAY_READ_RE = re.compile(
     re.VERBOSE,
 )
 
+# Pillar B (32-bit variant): plain `name[<int>]` reads where `name` was
+# declared as `array[0..N] of Single|Double`. The 64-bit code-base uses
+# Tb64u64-typed arrays so reads always carry a `.f` suffix; the 32-bit
+# code-base declares plain Double/Single arrays, so the literal-indexed
+# reads have no `.f` suffix and are silently missed by ARRAY_READ_RE.
+PLAIN_ARRAY_DECL_RE = re.compile(
+    r"""
+    \b([A-Za-z_][A-Za-z0-9_]*)   # 1: array name
+    \s*:\s*                      # type colon
+    array\s*\[\s*\d+\s*\.\.\s*\d+\s*\]
+    \s*of\s*
+    (Single|Double)\b            # 2: element type
+    """,
+    re.VERBOSE | re.IGNORECASE,
+)
+PLAIN_ARRAY_READ_RE = re.compile(
+    r"""
+    \b([A-Za-z_][A-Za-z0-9_]*)   # 1: identifier
+    \[\s*(\d+)\s*\]              # 2: integer-literal index
+    (?!\s*\.f\b)                 # not the Tb64u64 .f field — that's already
+                                 # covered by ARRAY_READ_RE
+    """,
+    re.VERBOSE,
+)
+
 # Track whether we're inside a const block so we can suppress literal
 # warnings on declarations like `cFoo: Double = 1.5;`.
 CONST_RE = re.compile(r"^\s*const\b", re.IGNORECASE)
@@ -108,12 +133,29 @@ def is_int_literal(text: str) -> bool:
     return bool(re.fullmatch(r"\d+", text))
 
 
+def collect_plain_arrays(src: str) -> dict:
+    """Pre-pass: collect names declared as `array[0..N] of Single|Double`.
+
+    Returns {name: element_type} so callers can ignore identifiers that
+    are not in fact float arrays. Comments are stripped first so that a
+    commented-out declaration is not picked up.
+    """
+    out: dict = {}
+    for raw in src.splitlines():
+        code = strip_comments(raw)
+        for m in PLAIN_ARRAY_DECL_RE.finditer(code):
+            out[m.group(1)] = m.group(2).lower()
+    return out
+
+
 def audit_file(path: Path, want: set) -> list:
     findings = []
     try:
         src = path.read_text(encoding="utf-8", errors="replace")
     except OSError as e:
         return [(0, "?", f"cannot read: {e}")]
+
+    plain_arrays = collect_plain_arrays(src) if "b" in want else {}
 
     loop_vars: list = []  # stack of (var, indent) — heuristic; we only
                           # track for-loops at procedure-body depth.
@@ -137,6 +179,17 @@ def audit_file(path: Path, want: set) -> list:
             loop_vars.append(m.group(1).lower())
         elif END_RE.match(code) and loop_vars:
             loop_vars.pop()
+
+        # Pillar B (32-bit) — plain `name[<int>]` reads against arrays
+        # declared `array[0..N] of Single|Double`. Skip declaration lines
+        # so the `array[0..N]` token in the decl itself isn't matched.
+        if "b" in want and plain_arrays and not PLAIN_ARRAY_DECL_RE.search(code):
+            for m in PLAIN_ARRAY_READ_RE.finditer(code):
+                name = m.group(1)
+                idx = m.group(2)
+                if name in plain_arrays:
+                    findings.append((lineno, "B",
+                        f"literal-indexed read {name}[{idx}] (plain {plain_arrays[name]} array) — lift to named scalar"))
 
         # Pillar B/A — array reads.
         if "b" in want or "a" in want:

@@ -296,6 +296,7 @@ Apply this checklist to every function before marking it done:
 - [ ] `CORE_MATH_SUPPORT_ERRNO` blocks omitted (out of scope for Pascal port)
 - [ ] Exhaustive test passes (bit-exact match against C reference for all inputs)
 - [ ] C function `cr_<name>f` declared in `ccoremath32.pas`; Pascal equivalent named `pcr_<name>f` in `pascoremath32.pas`
+- [ ] x87-avoidance pass applied (Phase 7) — `tools/x87_audit.py` reports zero hits for the function. **Cast-selection rule**: pick the cast that matches the assignment target, not the literal in isolation. Accurate-path expressions assigning to `Double` accumulators want `Double(1.0)` even inside a binary32 function; fast-path `Single` helpers (e.g. `ir: array[0..1] of Single`) want `Single(1.0)`. Blanket `Single(...)` would silently downgrade dd/Horner refinement precision.
 
 ---
 
@@ -453,6 +454,149 @@ Benchmark baseline (2026-04-11, FPC 3.2.2 -O2, x86_64 Linux):
   - For non-integer negative x, `tgammaf` uses `while j_tg > 0 do w_tg *= z_tg` — up to ~44 iterations
   - Uniformly distributed benchmark inputs frequently hit this path
   - Consider precomputed product table or logarithm-based reduction for large |ii|
+
+---
+
+## Phase 7 — x87-avoidance pass (post-port optimization, binary32)
+
+Phase 7 mirrors `tasklist64.md` Phase 6 (Pillars A/B/C) but targets `src/pascoremath32.pas`.
+The goal is the same — keep FPC's code generator on SSE and out of the x87 FPU — but the
+shape of the work is different in three important ways, documented up front so a future
+pass doesn't blanket-apply the 64-bit recipe:
+
+1. **Monolithic file.** All 32-bit function bodies live inside `src/pascoremath32.pas`.
+   There is no `_port_32.inc` / `_const_32.inc` split and no `tools/*_gen.py` script,
+   so the "auto-generated reverts" footgun from 64-bit Phase 6 does not apply.
+2. **Cast type depends on the surrounding expression.** 64-bit Pillar C uses `Double(...)`
+   uniformly. In `pascoremath32.pas`, accurate paths declare coefficient arrays as
+   `array[0..N] of Double` even when the function consumes/produces `Single` — the bare
+   `1.0` in those expressions wants `Double(1.0)`, not `Single(1.0)`. Pick the cast that
+   matches the variable being assigned, not the literal in isolation. Single-typed
+   fast-path helpers (e.g. `ir: array[0..1] of Single`) want `Single(...)`.
+3. **`tools/x87_audit.py` has 32-bit-blind spots.** Its [B] heuristic looks for the
+   `Tb64u64`-style `cFoo[3].f` pattern (literal index + `.f` field). The 32-bit code
+   uses plain `array[0..N] of Double`, so literal-indexed reads have no `.f` suffix
+   and are silently skipped. As of 2026-04-26, baseline `--summary` reports
+   `pascoremath32.pas: A=0 B=0 C=422` — the C count is real, the B count is a
+   heuristic miss (actual: 580 literal-indexed reads across 73 distinct array names).
+   Subtask 7.0 must extend the auditor before any [B] pass-gate becomes meaningful.
+
+### Three pillars (same as 64-bit Phase 6, with the deltas above)
+
+- **Pillar A** — unroll fixed-trip-count polynomial loops. Already baseline-clean for
+  binary32 (only 6 `for` loops in the entire file; audit A=0). Spot-check during each
+  subtask, no dedicated work expected.
+- **Pillar B** — lift literal-indexed const-array reads to named scalars. Real work:
+  ~580 reads across ~73 arrays. Apply only to the small fixed-trip-count coefficient
+  tables; runtime-indexed lookup tables (`S_TABLE[0..127]`, `lix_asinh_acosh[0..128]`,
+  `c_table[…]`, the `array[0..63/64/127/128/157]` families) are out of scope — same
+  guard as `tasklist64.md:1183`.
+- **Pillar C** — `Single(...)` / `Double(...)` typecast on every bare float literal,
+  using the cast-selection rule above. ~422 hits per audit baseline.
+
+### Subtasks
+
+- [x] **7.0** Tooling & policy
+  - Extended `tools/x87_audit.py` with `PLAIN_ARRAY_DECL_RE` /
+    `PLAIN_ARRAY_READ_RE`: a pre-pass collects names declared as
+    `array[0..N] of {Single,Double}`, and any `<name>[<int>]` read (no
+    `.f` suffix) on those names is flagged as [B]. Declaration lines are
+    suppressed so the `array[0..N]` token in the decl itself is not
+    self-matched.
+  - Cast-selection rule documented in the per-function checklist (above):
+    cast matches the assignment target's type, not the literal.
+  - Re-baselined `--summary src/pascoremath32.pas` after the rule lands.
+  - **Baseline (2026-04-26, pre-rule auditor):** `A=0 B=0 C=422`.
+  - **Baseline (2026-04-26, post-rule auditor):** `A=0 B=571 C=422`.
+    The new [B] rule recovers the 32-bit literal-indexed reads that were
+    invisible under the Tb64u64 `.f`-suffix heuristic. (User-provided
+    manual estimate was 580; the 9-hit gap is in the noise — likely
+    multi-dim or commented-out reads not covered by the simple regex.)
+  - 64-bit files unaffected: `pascoremath64.pas: A=1 B=0 C=8`,
+    `pascoremathtypes.pas: A=0 B=0 C=30` after the change — no false
+    positives on the 64-bit code-base.
+
+- [ ] **7.1** exp family — `expf`, `exp2f`, `exp10f`, `expm1f`, `exp2m1f`,
+  `exp10m1f` regions of `pascoremath32.pas`. Pillar B candidates:
+  `b_exp10`, `c_exp10`, `c_e10`, `cp4_e10`..`cp9_e10`, `b10`, `ch_e`,
+  `c_pf`, `ce_pf` and any small `b`/`c` Horner tables in scope.
+
+- [ ] **7.2** log family — `logf`, `log10f`, `log1pf`, `log2f`, `log10p1f`,
+  `log2p1f` regions. Pillar B candidates: `c_aln`, `c_l10`, `c_l2p1`,
+  `tl`, `tl10`, plus the small Horner tables. Note: `lix_l2p1` is
+  runtime-indexed → out of scope.
+
+- [ ] **7.3** trig family — `sinf`, `cosf`, `sincosf`, `tanf`, `sinpif`,
+  `cospif`, `tanpif` regions. Pillar B candidates: `sn`, `cn`, the small
+  Estrin/Horner blocks. Watch for the `cn_a2` / `cd_a2` / `cn_a2p` / `cd_a2p`
+  cross-listing under 7.4.
+
+- [ ] **7.4** inverse-trig family — `atanf`, `atan2f`, `asinf`, `acosf`,
+  `atanpif`, `atan2pif`, `asinpif`, `acospif`, `atanhf` regions. Pillar B
+  candidates: `cn_a2`, `cd_a2`, `cn_a2p`, `cd_a2p`, `c_atanh_s`,
+  `c_atanh_acc`, `c_near_ac`. The `cn_a2p` / `cd_a2p` Estrin block is the
+  exemplar that motivated this phase — full lift to `cn_a2p_<i>` /
+  `cd_a2p_<i>` named scalars, drop the array if no other reader.
+
+- [ ] **7.5** hyperbolic family — `sinhf`, `coshf`, `tanhf`, `asinhf`,
+  `acoshf` regions. Pillar B candidates: `c_sinh`, `ch_sinh`, `cp_sinh`,
+  `c_asinh`, `cm_asinh`, `cp_asinh`, `cm_acosh`, `cp_acosh`. Note:
+  `lix_asinh_acosh[0..128]` is runtime-indexed → out of scope.
+
+- [ ] **7.6** special-functions family — `erff`, `erfcf`, `tgammaf`,
+  `lgammaf`, `lgammaf_as_r7`/`r8` regions. Pillar B candidates:
+  `c_erf_small`, `c_tg`, `stir2` / `stir4` / `stir8`, `rn_sm` / `rd_sm`
+  / `rn_md` / `rd_md` (already inlined per 6.3 — verify whether the
+  underlying arrays still exist post-inline), `CF_P1C` / `CF_P2C` /
+  `CF_Q1C` / `CF_Q2C` / `CF_ERR_E22`. **Cross-cutting catch:** if any
+  of these are referenced from two functions (analogous to 64-bit
+  `cAcoshC` / `cTanhExpCh` sharing — `tasklist64.md:1404–1411`), update
+  every reader in the same commit.
+
+- [ ] **7.7** miscellaneous — `hypotf`, `cbrtf`, `rsqrtf`, `powf`,
+  `compoundf`, plus any helpers (`muldd_f`, `polydd_f`, etc.). Spot-fix
+  Pillar C; B unlikely to apply outside `powf`. Verify
+  `tools/x87_audit.py` reports zero hits before close.
+
+### Subtask template (per function family)
+
+1. Run `python3 tools/x87_audit.py src/pascoremath32.pas` to get a current count;
+   note the baseline.
+2. Apply Pillar A — unroll any audit-flagged loops in scope. Commit.
+   Run `taskset -c 1 env Benchmark32 <fn>` + `TestHarness32 --pct 1`.
+3. Apply Pillar B — lift literal-indexed reads to named scalars. Drop the array
+   only after grepping `pascoremath32.pas` for other readers (cross-function
+   sharing risk per 64-bit Phase 6.4/6.5). Commit. Re-run.
+4. Apply Pillar C — typecast sweep using the Single/Double cast-selection rule.
+   Commit. Re-run.
+5. Verify the audit reports zero hits for the touched function(s). Record
+   Mops/s delta in the subtask note.
+
+### Bench expectation
+
+The 64-bit Phase 6 gains came largely from Pillar B unblocking constant folding
+(see `tasklist64.md:1413–1420`, +88 % sinh, +83 % acosh, +33 % expm1). For 32-bit,
+expect:
+- **Pillar B**: meaningful gains on the small-coefficient families (atan2f, the
+  Estrin blocks, the `c_atanh_acc` / `c_*_sm` Horner chains). This is the main
+  perf lever.
+- **Pillar C**: flat-to-small-positive — primarily codegen-correctness insurance.
+  A flat bench post-Pillar-C is not a failure signal.
+- **Pillar A**: N/A (already clean).
+
+### Sharp edges to remember (binary32-specific)
+
+- **Cast type matches the variable, not the literal.** `Double(1.0)` inside an
+  accurate-path expression assigning to a `Double` accumulator; `Single(1.0)`
+  inside a fast-path expression assigning to a `Single`. Blanket-replacing with
+  `Single(...)` would silently downgrade precision in the dd/Horner refinement
+  paths.
+- **No generators.** Edits stick — no regen step to keep in sync. Conversely,
+  there is no scripted way to mass-rewrite; every lift is a hand edit.
+- **Out-of-scope tables stay arrays.** `S_TABLE`, `lix_asinh_acosh`, `lix_l2p1`,
+  `c_table`, the `array[0..63/64/127/128/157]` families are runtime-indexed and
+  must remain arrays. Lifting them is wrong (and impossible without unrolling
+  the indexing function).
 
 ---
 
