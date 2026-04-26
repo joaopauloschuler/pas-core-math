@@ -1133,7 +1133,7 @@ starting this phase. Validate the qint arithmetic independently.
     - Field mapping `r0 → hh, r1 → hl, r2 → lh, r3 → ll` (r0 is most significant) — opposite of what one might expect from "rl/rh" naming in C.
     - The C `add_qint` recursive call `add_qint(r, b, a)` is replaced by a swap to avoid recursion in Pascal (matches existing `AddDInt` / `AddTInt` pattern).
     - `Mulu64u64` is marked `inline` but FPC declines to inline it inside this unit (note: "Call to subroutine ... marked as inline is not inlined") — acceptable for now; will revisit during pow benchmarking if mul-qint becomes a hotspot.
-- [ ] **5.02** `pow`     — 1951 lines *(dint + qint + fenv, bivariate)*
+- [X] **5.02** `pow`     — 1951 lines *(dint + qint + fenv, bivariate)*
   - **Scope (2026-04-25):** the largest single function in the binary64 suite. Source split:
     `pow.c` 1951 lines + `pow.h` 875 lines (helpers + tables P_1, Q_1, T1, T2, _INVERSE, _LOG_INV)
     + `dint.h` 1254 lines (tables _INVERSE_2_1, _INVERSE_2_2, _LOG_INV_2_1, _LOG_INV_2_2, T1_2, T2_2, P_2, Q_2, ~640 new lines beyond pascoremathtypes)
@@ -1223,22 +1223,40 @@ Splitting A/B/C into separate commits per file means a regression bisects to the
 
 ### Subtasks
 
-- [ ] **6.0** Tooling & policy
-  - Add the rule to *Key rules for the developer*: every Double-typed literal in `.inc`
-    math code is `Double(...)`-cast; literal-indexed constant-array reads in hot paths
-    are lifted to named `const` scalars; fixed-trip-count polynomial loops over
-    coefficient arrays are unrolled.
-  - Write `tmp/x87_audit.py` (or a bash grep) that flags untyped `[0-9]+\.[0-9]+`
-    literals not preceded by `Double(`, and `cFoo[i].f` reads where `i` is either a
-    literal (Pillar B candidate) or a loop variable (Pillar A candidate). Exit
-    condition for each subtask: grep is empty for that file.
-  - Add a per-function checklist row: *"x87-avoidance pass applied (Phase 6)"*.
+- [X] **6.0** Tooling & policy
+  - **Done (2026-04-26):** rule 12 added to *Key rules for the developer* covering
+    Pillars A/B/C; per-function checklist row added; `tools/x87_audit.py` written.
+  - **Auditor:** `tools/x87_audit.py` reports per-pillar counts (A=loop-indexed
+    `cFoo[i].f`, B=literal-indexed `cFoo[3].f`, C=untyped float literal). Use
+    `--summary` for a one-line-per-file overview, drop the flag for full
+    file:line:[pillar] output. Exit code is non-zero iff any file is dirty —
+    suitable for the per-file pass-gate. Naïve heuristics (line-level comment
+    stripping, no AST) — borderline triage is part of each subtask.
+  - **Baseline (`--summary` over `src/inc_64/*.inc` on 2026-04-26):** 38 files, of
+    which only `pow_const_64.inc` is fully clean. Heaviest C-pillar offenders:
+    `erf_const_64.inc` (246), `lgamma_port_64.inc` (168), `lgamma_const_64.inc`
+    (100), `tgamma_port_64.inc` (80), `pow_port_64.inc` (68 — most are `Double(...)`
+    typecasts inside expressions where the audit flags the inner literal; the
+    file is otherwise compliant). Heaviest B-pillar offenders: `tgamma_port_64.inc`
+    (45), `exp2m1_port_64.inc` (39), `acosh_port_64.inc` (32), `log1p_port_64.inc`
+    (32). Pillar A is sparse (under 6 hits per file) — fast to clear.
+  - **Discovery — `pascoremath64.pas` hosts many functions inline.** Phase 6's
+    per-family subtasks list `*_port_64.inc` files but several function bodies
+    (`rsqrt`, `cbrt`, `atan`, `log2`, `acos`, `tanh`, `cospi`, `asin`, `exp`,
+    `exp2`, `exp10`, `expm1`, `cos`, `sin`, `sinpi`, `atanpi`, `tan`) live
+    directly in `src/pascoremath64.pas`, not in separate `.inc` files. The
+    family subtasks 6.1–6.5 must therefore audit and patch the matching ranges
+    inside `pascoremath64.pas` as well — run `python3 tools/x87_audit.py
+    src/pascoremath64.pas` and triage by function. Sub-tasks updated below to
+    reference both targets.
 
-- [ ] **6.1** exp family — `exp_port_64.inc`, `exp2_port_64.inc`, `exp10_port_64.inc`, `expm1_port_64.inc`
-- [ ] **6.2** log family — `log_port_64.inc`, `log10_port_64.inc`, `log1p_port_64.inc`, `log2p1_port_64.inc`, `log10p1_port_64.inc`
-- [ ] **6.3** trig family — `sin_port_64.inc`, `cos_port_64.inc`, `tan_port_64.inc`, `sincos_port_64.inc`, `sinpi_port_64.inc`, `cospi_port_64.inc`, `tanpi_port_64.inc`
-- [ ] **6.4** inverse-trig family — `atan_port_64.inc`, `atan2_port_64.inc`, `atanpi_port_64.inc`, `atan2pi_port_64.inc`, `asin_port_64.inc`, `acos_port_64.inc`, `asinpi_port_64.inc`, `acospi_port_64.inc`
-- [ ] **6.5** hyperbolic family — `sinh_port_64.inc`, `cosh_port_64.inc`, `tanh_port_64.inc`, `asinh_port_64.inc`, `acosh_port_64.inc`, `atanh_port_64.inc`
+- [ ] **6.1** exp family — `exp`/`exp2`/`exp10`/`expm1` bodies live in
+  `pascoremath64.pas` (no separate `_port_64.inc`); plus `exp2m1_port_64.inc`
+  and `exp10m1_port_64.inc`.
+- [ ] **6.2** log family — `log_port_64.inc`, `log10_port_64.inc`, `log1p_port_64.inc`, `log2p1_port_64.inc`, `log10p1_port_64.inc`. (`log2` body lives in `pascoremath64.pas`.)
+- [ ] **6.3** trig family — `sin_port_64.inc`, `cos_port_64.inc`, `tan_port_64.inc`, `sincos_port_64.inc`, `sinpi_port_64.inc`, `tanpi_port_64.inc`. (`cospi`, `atanpi`, `tan` bodies share space inside `pascoremath64.pas`; `cos`/`sin` have both inc files and helper code in the unit.)
+- [ ] **6.4** inverse-trig family — `atan2_port_64.inc`, `atan2pi_port_64.inc`, `asinpi_port_64.inc`, `acospi_port_64.inc`, `atanh_port_64.inc`. (`atan`, `acos`, `asin`, `atanpi` bodies live in `pascoremath64.pas`.)
+- [ ] **6.5** hyperbolic family — `sinh_port_64.inc`, `cosh_port_64.inc`, `asinh_port_64.inc`, `acosh_port_64.inc`, `atanh_port_64.inc`. (`tanh` body lives in `pascoremath64.pas`.)
 - [ ] **6.6** special-functions family — `erf_port_64.inc`, `erfc_port_64.inc`, `tgamma_port_64.inc`, `lgamma_port_64.inc`
 - [ ] **6.7** miscellaneous — `hypot_port_64.inc`, `cbrt_port_64.inc`, `rsqrt_port_64.inc`, `pow_port_64.inc` (mostly already compliant; spot-fix only)
 
@@ -1280,6 +1298,7 @@ Apply this checklist to every function before marking it done:
 - [ ] C function `cr_<name>` declared in `ccoremath64.pas`; Pascal equivalent named `pcr_<name>` in `pascoremath64.pas`
 - [ ] All integer variables declared as `Int32` (not `Integer`) for explicit 32-bit signed intent
 - [ ] No redundant typecast patterns (see rule 11 below)
+- [ ] x87-avoidance pass applied (Phase 6) — `tools/x87_audit.py` reports zero hits
 
 ---
 
@@ -1464,3 +1483,22 @@ Apply this checklist to every function before marking it done:
 10. **Benchmark every function.** After each function passes sampling tests, run
     `Benchmark64.pas` and record the Mops/s ratio (Pascal vs C). A large gap signals
     missed inlining or suboptimal code generation.
+
+11. **Avoid x87 promotion in math code (Phase 6 policy).** In `.inc` math bodies and
+    the inline function bodies inside `pascoremath64.pas`:
+    - **Pillar A.** Unroll fixed-trip-count polynomial loops over coefficient arrays
+      (Horner / FMA chains over ≤~20 entries). Do not unroll input-dependent loops
+      (Ziv refinement, `as_sinpi` reductions, CORDIC steps).
+    - **Pillar B.** Replace literal-indexed `cFoo[3].f` reads with named scalar
+      `const cFoo_3: Double = …;` declared in the matching `*_const_64.inc`. Update
+      the auto-generator (`tmp/<fn>_gen.py`) in the same commit when one exists, or
+      the next regen reverts the work.
+    - **Pillar C.** Wrap every Double-typed numeric literal in expressions, return
+      values, and NaN sentinels with `Double(...)` (e.g. `Double(1.0) / x`). Does
+      not apply inside `const … : Double = …;` declarations.
+    Run `python3 tools/x87_audit.py <file>` to find violations; the audit must report
+    zero hits for the file before its Phase 6 subtask is closed.
+
+12. **Per-function checklist now includes:** *"x87-avoidance pass applied (Phase 6)"*
+    — verified by `tools/x87_audit.py` reporting zero hits across the function's
+    `_port_64.inc` plus its body inside `pascoremath64.pas`.
