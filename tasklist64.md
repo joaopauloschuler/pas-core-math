@@ -1418,7 +1418,7 @@ Splitting A/B/C into separate commits per file means a regression bisects to the
     appear to give FPC enough constant-folding visibility to pass C in
     most of the family; tanh and asinh are dominated by other work
     (sqrt, fma chains, Ziv refinement) so see less benefit.
-- [ ] **6.6** special-functions family — `erf_port_64.inc`, `erfc_port_64.inc`, `tgamma_port_64.inc`, `lgamma_port_64.inc`
+- [X] **6.6** special-functions family — `erf_port_64.inc`, `erfc_port_64.inc`, `tgamma_port_64.inc`, `lgamma_port_64.inc`
   - **Partial (2026-04-26):**
     - `erf_port_64.inc` audit-clean across A/B/C. Pillar A unrolled
       the cErfP-into-p[] copy loop and the two inner Horner loops in
@@ -1452,18 +1452,36 @@ Splitting A/B/C into separate commits per file means a regression bisects to the
     - `lgamma_port_64.inc` Pillar C done (168 untyped literals
       wrapped); B=37 and A=1 remain. (A hit similar false positive
       pattern likely.)
-  - **Remaining (Phase 6.6 close):**
-    - tgamma Pillar B: lift cTGSinpC[0..3], cTGSinpS[0..3],
-      cTGLogC[0..3], cTGExpC[0..4][0..1] (10), cTGLgBig[0..7][0..1]
-      (subset 0..7), cTGLgSml[0..12][0..1] (subset 0..12),
-      cTGSmallC[0..15], cTGMainC[10..17], cTGAccSmallC[0..7] —
-      all literal-indexed in hot paths, no parameter-passing
-      dependency. Update `tools/tgamma_gen.py` (OUT path +
-      QWord wrap + named-scalar emit) in same commit.
-    - lgamma Pillar B: similar small-array lifts.
-    - `tools/{tgamma,lgamma}_gen.py` OUT paths and fu()/fmt()
-      QWord wrapping not yet audited (safe to assume same fix
-      class as erf_gen / erfc_gen).
+  - **Done (2026-04-26, Phase 6.6 close):**
+    - tgamma Pillar B: lifted cTGSinpC[0..3], cTGSinpS[0..3],
+      cTGLogC[0..3], cTGExpC[0..4][0..1] (10), cTGLgBig[0..7][0..1],
+      cTGLgSml[0..12][0..1], cTGSmallC[0..15], cTGMainC[0..17] (full
+      ranges), cTGAccSmallC[0..7] to named Tb64u64 scalars. The
+      cTGLgBig/cTGLgSml arrays are still emitted because the
+      bArr-into-TGPolyDD construction was rewritten as inline open-
+      array constructors `[cTGLgBig_1_0, cTGLgBig_1_1]` reading the
+      named scalars — the bArr local variable was removed.
+    - lgamma Pillar A unroll: `for i := 0 to 7 do
+      cArrTinyQ[i] := cLgammaTinyQ[i].f` removed; q0..q6 read
+      cLgammaTinyQ_<i>.f directly.
+    - lgamma Pillar B: lifted cLgammaLogC[0..3], cLgammaLogAC[6..8,0],
+      cLgammaSinKx2C[0..1], cLgammaSinKx2Cl[0..2], cLgammaSinC[0..3],
+      cLgammaSinS[0..3], the 1-elt cLgammaSinC0/S0 arrays (now
+      _0 named scalar), cLgammaAsy{48,14,4}C[0,*],
+      cLgammaAsymC[0..1, 0..1], cLgammaAsymQ[0..4], cLgammaTinyQ[0..7].
+      Asy48C/Asy14C/Asy4C rows [1..N-1] kept as arrays (still
+      loop-indexed in the cArr-build sites).
+    - `tools/{tgamma,lgamma}_gen.py` updated in the same commits:
+      OUT path corrected to `src/inc_64/<fn>_const_64.inc`; fu()
+      helper added that wraps bit-63-set hex literals in
+      `QWord(...)` (same fix class as erf_gen / erfc_gen);
+      `emit_named_scalars_1d` / `emit_named_scalars_2d` helpers
+      added and invoked for each lifted table.
+    - Audit results: `lgamma_port_64.inc` clean (0 hits);
+      `tgamma_port_64.inc` 3 remaining hits, all confirmed false
+      positives at TGPoly3 dynamic-array parameter `ch[i]`.
+    - TestHarness64 --pct 1: lgamma PASS (max_ulp=0); tgamma still
+      692 mismatches max_ulp=0 (pre-existing).
   - **tgamma pre-existing FAIL (not introduced by Phase 6.6):**
     `TestHarness64 --pct 1 tgamma` reports 692 mismatches at
     max_ulp=0. Same value, different bit-pattern (sign-of-zero
