@@ -1419,6 +1419,56 @@ Splitting A/B/C into separate commits per file means a regression bisects to the
     most of the family; tanh and asinh are dominated by other work
     (sqrt, fma chains, Ziv refinement) so see less benefit.
 - [ ] **6.6** special-functions family — `erf_port_64.inc`, `erfc_port_64.inc`, `tgamma_port_64.inc`, `lgamma_port_64.inc`
+  - **Partial (2026-04-26):**
+    - `erf_port_64.inc` audit-clean across A/B/C. Pillar A unrolled
+      the cErfP-into-p[] copy loop and the two inner Horner loops in
+      ErfAccurateTiny (a=11..9 step -2 and a=7..1 step -2 with
+      skip-on-even — now 6 explicit iterations); the local p[] array
+      was eliminated entirely. Also unrolled the 5-iteration
+      cErfExAcc exception scan in ErfAccurate. Pillar B lifted
+      cErfC0[0..7], cErfP[0..14], and cErfExAcc[0..4, 0..2] to
+      named Tb64u64 scalars (8 + 15 + 15 = 38 named scalars).
+      `tools/erf_gen.py` updated: OUT path corrected from
+      `src/erf_const.inc` to `src/inc_64/erf_const_64.inc`; fu()
+      helper now wraps bit-63-set hex literals in `QWord(...)`
+      (same generator-bug class as Phase 6.1/6.2/6.5).
+      Bench (taskset -c 1, 200M calls): C 183.2 vs Pascal 197.0
+      Mops/s (FASTER).
+    - `erfc_port_64.inc` audit-clean across A/B/C. Pillar A unrolled
+      three exception scans: cErfcAsymptEx (22), cErfcAccNegEx (17),
+      cErfcAccPosEx (29). Pillar B lifted all three to
+      cErfcAsymptEx_<i>_<j>, cErfcAccNegEx_<i>_<j>,
+      cErfcAccPosEx_<i>_<j> Tb64u64 scalars (68 triples = 204
+      scalars). cErfcT[6][13], cErfcTacc[10][30], and cErfcE2[28]
+      kept as arrays (runtime-indexed by i in fast/accurate path,
+      and inside runtime-trip-count polydd loops). `tools/erfc_gen.py`
+      updated: OUT path + fu() QWord wrapping.
+      Bench: C 258.7 vs Pascal 74.4 Mops/s (Pascal slow-path-
+      dominated; per-call ldexp/exp dd chain, not a regression).
+    - `tgamma_port_64.inc` Pillar C done (80 untyped literals
+      wrapped); B=71 and A=2 remain. The 2 [A] hits are confirmed
+      false positives — `ch[i].f` is the dynamic-array parameter
+      of TGPoly3, not a const-array read.
+    - `lgamma_port_64.inc` Pillar C done (168 untyped literals
+      wrapped); B=37 and A=1 remain. (A hit similar false positive
+      pattern likely.)
+  - **Remaining (Phase 6.6 close):**
+    - tgamma Pillar B: lift cTGSinpC[0..3], cTGSinpS[0..3],
+      cTGLogC[0..3], cTGExpC[0..4][0..1] (10), cTGLgBig[0..7][0..1]
+      (subset 0..7), cTGLgSml[0..12][0..1] (subset 0..12),
+      cTGSmallC[0..15], cTGMainC[10..17], cTGAccSmallC[0..7] —
+      all literal-indexed in hot paths, no parameter-passing
+      dependency. Update `tools/tgamma_gen.py` (OUT path +
+      QWord wrap + named-scalar emit) in same commit.
+    - lgamma Pillar B: similar small-array lifts.
+    - `tools/{tgamma,lgamma}_gen.py` OUT paths and fu()/fmt()
+      QWord wrapping not yet audited (safe to assume same fix
+      class as erf_gen / erfc_gen).
+  - **tgamma pre-existing FAIL (not introduced by Phase 6.6):**
+    `TestHarness64 --pct 1 tgamma` reports 692 mismatches at
+    max_ulp=0. Same value, different bit-pattern (sign-of-zero
+    or NaN-payload divergence). Predates this phase; tracked
+    elsewhere. erf, erfc, lgamma all PASS pre/post.
 - [ ] **6.7** miscellaneous — `hypot_port_64.inc`, `cbrt_port_64.inc`, `rsqrt_port_64.inc`, `pow_port_64.inc` (mostly already compliant; spot-fix only)
 
 ### Sharp edges to remember
