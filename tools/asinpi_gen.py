@@ -17,7 +17,7 @@ import re, struct, os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC  = os.path.join(ROOT, '..', 'core-math', 'src', 'binary64', 'asinpi', 'asinpi.c')
-OUT  = os.path.join(ROOT, 'src', 'asinpi_const.inc')
+OUT  = os.path.join(ROOT, 'src', 'inc_64', 'asinpi_const_64.inc')
 
 text = open(SRC).read()
 
@@ -25,7 +25,11 @@ def b64hex(s):
     f = float.fromhex(s)
     return struct.unpack('<Q', struct.pack('<d', f))[0]
 
-def fu(u): return f"${u:016X}"
+def fu(u):
+    s = f"${u:016X}"
+    if u >= (1 << 63):
+        return f"QWord({s})"
+    return s
 
 # Slice array body by name: "<name>[]... = { ... };"
 def slice_body(pat):
@@ -196,34 +200,24 @@ lines.append('    ' + ', '.join(fu(v) for v in MAIN_B))
 lines.append('  );')
 lines.append('')
 
-lines.append('  // main: ch[4] doubles')
-lines.append('  cAsinpi_MainCh: array[0..3] of Tb64u64 = (')
-lines.append('    ' + ', '.join(f'(u: {fu(v)})' for v in MAIN_CH))
-lines.append('  );')
+lines.append('  // Phase 6.4/B: cAsinpi_MainCh[0..3] lifted to named Tb64u64 scalars')
+lines.append('  // (read only as `.f` from asinpi_port_64.inc).')
+for i, v in enumerate(MAIN_CH):
+    lines.append(f'  cAsinpi_MainCh_{i}: Tb64u64 = (u: {fu(v)});')
 lines.append('')
 
-lines.append('  // asinpi_small: 18 exception triples (x, y_h, y_l)')
-lines.append('  cAsinpi_SmallExcX: array[0..17] of Tb64u64 = (')
-for i in range(0, 18, 3):
-    chunk = SMALL_EXC[i:i+3]
-    s = ', '.join(f'(u: {fu(r[0])})' for r in chunk)
-    sep = ',' if i + 3 < 18 else ''
-    lines.append(f'    {s}{sep}')
-lines.append('  );')
-lines.append('  cAsinpi_SmallExcH: array[0..17] of Tb64u64 = (')
-for i in range(0, 18, 3):
-    chunk = SMALL_EXC[i:i+3]
-    s = ', '.join(f'(u: {fu(r[1])})' for r in chunk)
-    sep = ',' if i + 3 < 18 else ''
-    lines.append(f'    {s}{sep}')
-lines.append('  );')
-lines.append('  cAsinpi_SmallExcL: array[0..17] of Tb64u64 = (')
-for i in range(0, 18, 3):
-    chunk = SMALL_EXC[i:i+3]
-    s = ', '.join(f'(u: {fu(r[2])})' for r in chunk)
-    sep = ',' if i + 3 < 18 else ''
-    lines.append(f'    {s}{sep}')
-lines.append('  );')
+lines.append('  // Phase 6.4/A+B: asinpi_small 18 exception triples lifted to')
+lines.append('  // cAsinpi_SmallExc{X,H,L}_<i> named Tb64u64 scalars; the')
+lines.append('  // sign-branched unrolled match list in Asinpi_Small reads them')
+lines.append('  // with literal indices.')
+for i, r in enumerate(SMALL_EXC):
+    lines.append(f'  cAsinpi_SmallExcX_{i:02d}: Tb64u64 = (u: {fu(r[0])});')
+lines.append('')
+for i, r in enumerate(SMALL_EXC):
+    lines.append(f'  cAsinpi_SmallExcH_{i:02d}: Tb64u64 = (u: {fu(r[1])});')
+lines.append('')
+for i, r in enumerate(SMALL_EXC):
+    lines.append(f'  cAsinpi_SmallExcL_{i:02d}: Tb64u64 = (u: {fu(r[2])});')
 lines.append('')
 
 open(OUT, 'w').write('\n'.join(lines) + '\n')

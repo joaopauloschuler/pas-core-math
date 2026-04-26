@@ -6,6 +6,7 @@ const
   cAsinpi_INV_PI_L:    UInt64  = QWord($FE13ABE8FA9A6EE0);
   cAsinpi_ONE_OVER_PI_H: Tb64u64 = (u: $3FD45F306DC9C883);
   cAsinpi_ONE_OVER_PI_L: Tb64u64 = (u: QWord($BC76B01EC5417056));
+  cAsinpi_X1:          Tb64u64 = (u: $3FEFFF8133AA33E4);
   cAsinpi_Small_C1H:   Tb64u64 = (u: $3FD45F306DC9C883);
   cAsinpi_Small_C1L:   Tb64u64 = (u: QWord($BC76B01EC5417057));
   cAsinpi_Small_C3:    Tb64u64 = (u: $3FAB2995E7B7B606);
@@ -142,34 +143,71 @@ const
     QWord($AAAAAAAAAAAAAAAA), $0004CCCCCCCCCCCC, $0000002DB6DB6DB6, $0000000001F1C71C, $00000000000016E8
   );
 
-  // main: ch[4] doubles
-  cAsinpi_MainCh: array[0..3] of Tb64u64 = (
-    (u: $404FFB77E06E54AA), (u: QWord($C043B200D87CC0FE)), (u: $40379457FAF679E3), (u: QWord($C01DC7D5A91DFB7E))
-  );
+  // Phase 6.4/B: cAsinpi_MainCh[0..3] lifted to named Tb64u64 scalars
+  // (read only as `.f` from asinpi_port_64.inc).
+  cAsinpi_MainCh_0: Tb64u64 = (u: $404FFB77E06E54AA);
+  cAsinpi_MainCh_1: Tb64u64 = (u: QWord($C043B200D87CC0FE));
+  cAsinpi_MainCh_2: Tb64u64 = (u: $40379457FAF679E3);
+  cAsinpi_MainCh_3: Tb64u64 = (u: QWord($C01DC7D5A91DFB7E));
 
-  // asinpi_small: 18 exception triples (x, y_h, y_l)
-  cAsinpi_SmallExcX: array[0..17] of Tb64u64 = (
-    (u: $3D92D7F168888139), (u: $3DB3B75472D45185), (u: $3CA56A4AA740A5A7),
-    (u: $3CC6BF137C2D4708), (u: $3D4D57C381F54243), (u: $3E1A9AEE69418F0C),
-    (u: $3E27718543A5606A), (u: $3D293BA773B31EA1), (u: $3DECC5DFA12664A3),
-    (u: $3D4F067F55743EA4), (u: $3E3BB2E2254EC57B), (u: $3DF522191285FCF1),
-    (u: $3D3EC65C2DA06159), (u: $3CC68E6482549DB1), (u: $3DFD75F3ADFD53B6),
-    (u: $3CE8577CEC54AB80), (u: $3DC9A5E5A46AE2B1), (u: $3E16D0B888CCFA4A)
-  );
-  cAsinpi_SmallExcH: array[0..17] of Tb64u64 = (
-    (u: $3D77FE08F5284726), (u: $3D991A75C23A207F), (u: $3C8B44453E2404E7),
-    (u: $3CACF62BB838EC59), (u: $3D32AE2325F45589), (u: $3E00EFF9393E91DF),
-    (u: $3E0DD95F913D2D23), (u: $3D101057F17CEBA6), (u: $3DD25142C0254B86),
-    (u: $3D33C059D39F1D61), (u: $3E21A232520B30B8), (u: $3DDAE859C3537F4D),
-    (u: $3D239785114BAE2D), (u: $3CACB82F5DA3A6B6), (u: $3DE2C15B0E2BECE3),
-    (u: $3CCEFE2D4AA2D140), (u: $3DB053FAD95A3298), (u: $3DFD0CA30163B96F)
-  );
-  cAsinpi_SmallExcL: array[0..17] of Tb64u64 = (
-    (u: $36C77C696B55FC1D), (u: $36EE6032F672E328), (u: $35E4E1F71472791A),
-    (u: QWord($B94FFFFFFFFFFFFF)), (u: $39DFFFFFFFFFFFFF), (u: $3AAFFFFFFFFFFFFF),
-    (u: QWord($BAAFFFFFFFFFFFFF)), (u: $3641558B472BAE84), (u: $37147123997FF7E4),
-    (u: $3653B7145ED225E9), (u: QWord($B758C0AB8FB3B592)), (u: $373647BA0B3D335F),
-    (u: $36761BA6BC511061), (u: $36062DD725314F5B), (u: $3721275B80C55392),
-    (u: $361DC301C4666AC8), (u: $36F3CB00F4298933), (u: $375D42B0847637DF)
-  );
+  // Phase 6.4/A+B: asinpi_small 18 exception triples lifted to
+  // cAsinpi_SmallExc{X,H,L}_<i> named Tb64u64 scalars; the
+  // sign-branched unrolled match list in Asinpi_Small reads them
+  // with literal indices.
+  cAsinpi_SmallExcX_00: Tb64u64 = (u: $3D92D7F168888139);
+  cAsinpi_SmallExcX_01: Tb64u64 = (u: $3DB3B75472D45185);
+  cAsinpi_SmallExcX_02: Tb64u64 = (u: $3CA56A4AA740A5A7);
+  cAsinpi_SmallExcX_03: Tb64u64 = (u: $3CC6BF137C2D4708);
+  cAsinpi_SmallExcX_04: Tb64u64 = (u: $3D4D57C381F54243);
+  cAsinpi_SmallExcX_05: Tb64u64 = (u: $3E1A9AEE69418F0C);
+  cAsinpi_SmallExcX_06: Tb64u64 = (u: $3E27718543A5606A);
+  cAsinpi_SmallExcX_07: Tb64u64 = (u: $3D293BA773B31EA1);
+  cAsinpi_SmallExcX_08: Tb64u64 = (u: $3DECC5DFA12664A3);
+  cAsinpi_SmallExcX_09: Tb64u64 = (u: $3D4F067F55743EA4);
+  cAsinpi_SmallExcX_10: Tb64u64 = (u: $3E3BB2E2254EC57B);
+  cAsinpi_SmallExcX_11: Tb64u64 = (u: $3DF522191285FCF1);
+  cAsinpi_SmallExcX_12: Tb64u64 = (u: $3D3EC65C2DA06159);
+  cAsinpi_SmallExcX_13: Tb64u64 = (u: $3CC68E6482549DB1);
+  cAsinpi_SmallExcX_14: Tb64u64 = (u: $3DFD75F3ADFD53B6);
+  cAsinpi_SmallExcX_15: Tb64u64 = (u: $3CE8577CEC54AB80);
+  cAsinpi_SmallExcX_16: Tb64u64 = (u: $3DC9A5E5A46AE2B1);
+  cAsinpi_SmallExcX_17: Tb64u64 = (u: $3E16D0B888CCFA4A);
+
+  cAsinpi_SmallExcH_00: Tb64u64 = (u: $3D77FE08F5284726);
+  cAsinpi_SmallExcH_01: Tb64u64 = (u: $3D991A75C23A207F);
+  cAsinpi_SmallExcH_02: Tb64u64 = (u: $3C8B44453E2404E7);
+  cAsinpi_SmallExcH_03: Tb64u64 = (u: $3CACF62BB838EC59);
+  cAsinpi_SmallExcH_04: Tb64u64 = (u: $3D32AE2325F45589);
+  cAsinpi_SmallExcH_05: Tb64u64 = (u: $3E00EFF9393E91DF);
+  cAsinpi_SmallExcH_06: Tb64u64 = (u: $3E0DD95F913D2D23);
+  cAsinpi_SmallExcH_07: Tb64u64 = (u: $3D101057F17CEBA6);
+  cAsinpi_SmallExcH_08: Tb64u64 = (u: $3DD25142C0254B86);
+  cAsinpi_SmallExcH_09: Tb64u64 = (u: $3D33C059D39F1D61);
+  cAsinpi_SmallExcH_10: Tb64u64 = (u: $3E21A232520B30B8);
+  cAsinpi_SmallExcH_11: Tb64u64 = (u: $3DDAE859C3537F4D);
+  cAsinpi_SmallExcH_12: Tb64u64 = (u: $3D239785114BAE2D);
+  cAsinpi_SmallExcH_13: Tb64u64 = (u: $3CACB82F5DA3A6B6);
+  cAsinpi_SmallExcH_14: Tb64u64 = (u: $3DE2C15B0E2BECE3);
+  cAsinpi_SmallExcH_15: Tb64u64 = (u: $3CCEFE2D4AA2D140);
+  cAsinpi_SmallExcH_16: Tb64u64 = (u: $3DB053FAD95A3298);
+  cAsinpi_SmallExcH_17: Tb64u64 = (u: $3DFD0CA30163B96F);
+
+  cAsinpi_SmallExcL_00: Tb64u64 = (u: $36C77C696B55FC1D);
+  cAsinpi_SmallExcL_01: Tb64u64 = (u: $36EE6032F672E328);
+  cAsinpi_SmallExcL_02: Tb64u64 = (u: $35E4E1F71472791A);
+  cAsinpi_SmallExcL_03: Tb64u64 = (u: QWord($B94FFFFFFFFFFFFF));
+  cAsinpi_SmallExcL_04: Tb64u64 = (u: $39DFFFFFFFFFFFFF);
+  cAsinpi_SmallExcL_05: Tb64u64 = (u: $3AAFFFFFFFFFFFFF);
+  cAsinpi_SmallExcL_06: Tb64u64 = (u: QWord($BAAFFFFFFFFFFFFF));
+  cAsinpi_SmallExcL_07: Tb64u64 = (u: $3641558B472BAE84);
+  cAsinpi_SmallExcL_08: Tb64u64 = (u: $37147123997FF7E4);
+  cAsinpi_SmallExcL_09: Tb64u64 = (u: $3653B7145ED225E9);
+  cAsinpi_SmallExcL_10: Tb64u64 = (u: QWord($B758C0AB8FB3B592));
+  cAsinpi_SmallExcL_11: Tb64u64 = (u: $373647BA0B3D335F);
+  cAsinpi_SmallExcL_12: Tb64u64 = (u: $36761BA6BC511061);
+  cAsinpi_SmallExcL_13: Tb64u64 = (u: $36062DD725314F5B);
+  cAsinpi_SmallExcL_14: Tb64u64 = (u: $3721275B80C55392);
+  cAsinpi_SmallExcL_15: Tb64u64 = (u: $361DC301C4666AC8);
+  cAsinpi_SmallExcL_16: Tb64u64 = (u: $36F3CB00F4298933);
+  cAsinpi_SmallExcL_17: Tb64u64 = (u: $375D42B0847637DF);
 
