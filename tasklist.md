@@ -576,10 +576,25 @@ pass doesn't blanket-apply the 64-bit recipe:
   runtime-indexed `c_a2`/`c_a2p` Taylor table (atan2/atan2pi accurate
   path) — out of Pillar B scope.
 
-- [ ] **7.5** hyperbolic family — `sinhf`, `coshf`, `tanhf`, `asinhf`,
-  `acoshf` regions. Pillar B candidates: `c_sinh`, `ch_sinh`, `cp_sinh`,
-  `c_asinh`, `cm_asinh`, `cp_asinh`, `cm_acosh`, `cp_acosh`. Note:
-  `lix_asinh_acosh[0..128]` is runtime-indexed → out of scope.
+- [x] **7.5** hyperbolic family — `sinhf`, `coshf`, `tanhf`, `asinhf`,
+  `acoshf` regions. Pillar B done: lifted `cp_arr`/`c_arr`/`ch_arr`
+  (coshf → `cp_co_*`/`c_co_*`/`ch_co_*`), `cp_sinh`/`c_sinh`/`ch_sinh`
+  (sinhf → `cp_si_*`/`c_si_*`/`ch_si_*`), `c_asinh`/`cm_asinh`/`cp_asinh`
+  (asinhf → `c_as_*`/`cm_as_*`/`cp_as_*`), `c_near_ac`/`cm_acosh`/`cp_acosh`
+  (acoshf → `c_nac_*`/`cm_ac_*`/`cp_ac_*`). The literal-indexed read
+  `lix_asinh_acosh[128]` (which is `ln(2)`, the last entry of an
+  otherwise runtime-indexed table) was lifted to per-function named
+  scalars `lix_aa_128` (asinhf) and `lix_aa_ac128` (acoshf); the array
+  itself stays for the runtime-indexed `[j_a]`/`[j_ac]` reads. tanhf
+  had no [B] hits in scope. Audit B count: 296 → 230 (-66 reads).
+  Tests: all 42 pass at `--pct 1`.
+  Bench (taskset -c 1, AVX2, src LD_LIBRARY_PATH):
+  sinhf 395 (vs C 357, FASTER) / coshf 437 (vs 382, FASTER) /
+  acoshf 184 (vs 138, FASTER) / tanhf 301 (vs 341) / asinhf 245 (vs 258).
+  asinhf and tanhf gaps are unchanged from baseline — both routes are
+  dominated by runtime-indexed `lix_asinh_acosh[j]` table loads
+  (asinhf) or single-precision `roundeven`/`exp2` paths (tanhf), out
+  of Pillar B scope.
 
 - [ ] **7.6** special-functions family — `erff`, `erfcf`, `tgammaf`,
   `lgammaf`, `lgammaf_as_r7`/`r8` regions. Pillar B candidates:

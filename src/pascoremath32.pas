@@ -1101,11 +1101,17 @@ end;
 // ── 2.12 coshf ───────────────────────────────────────────────────────────────
 function pcr_coshf(x: Single): Single;
 const
-  c_arr: array[0..3] of Double = (
-    1.0, 0.021660849391257477, 0.0002345984913513542, 1.6938658699950235e-06);
-  ch_arr: array[0..6] of Double = (
-    1.0, 0.02166084939249829, 0.0002345961982022468, 1.6938509724129055e-06,
-    9.172562701702629e-09, 3.973729405780548e-11, 1.4345723178374038e-13);
+  c_co_0: Double = 1.0;
+  c_co_1: Double = 0.021660849391257477;
+  c_co_2: Double = 0.0002345984913513542;
+  c_co_3: Double = 1.6938658699950235e-06;
+  ch_co_0: Double = 1.0;
+  ch_co_1: Double = 0.02166084939249829;
+  ch_co_2: Double = 0.0002345961982022468;
+  ch_co_3: Double = 1.6938509724129055e-06;
+  ch_co_4: Double = 9.172562701702629e-09;
+  ch_co_5: Double = 3.973729405780548e-11;
+  ch_co_6: Double = 1.4345723178374038e-13;
   // tb[k] = 2^(k/32) * 0.5, stored as uint64 bit patterns
   tb_arr: array[0..31] of UInt64 = (
     UInt64($3FE0000000000000), UInt64($3FE059B0D3158574), UInt64($3FE0B5586CF9890F), UInt64($3FE11301D0125B51),
@@ -1117,8 +1123,10 @@ const
     UInt64($3FEAE89F995AD3AD), UInt64($3FEB7F76F2FB5E47), UInt64($3FEC199BDD85529C), UInt64($3FECB720DCEF9069),
     UInt64($3FED5818DCFBA487), UInt64($3FEDFC97337B9B5F), UInt64($3FEEA4AFA2A490DA), UInt64($3FEF50765B6E4540));
   iln2: Double = 46.16624130844683;
-  cp_arr: array[0..3] of Double = (
-    0.4999999999999984, 0.04166666666748819, 0.0013888887416776143, 2.4812354013894482e-05);
+  cp_co_0: Double = 0.4999999999999984;
+  cp_co_1: Double = 0.04166666666748819;
+  cp_co_2: Double = 0.0013888887416776143;
+  cp_co_3: Double = 2.4812354013894482e-05;
 var
   t: Tb32u32;
   z: Double;
@@ -1157,7 +1165,7 @@ begin
       Exit;
     end;
     z2 := z * z;
-    Result := Single(1.0 + z2 * ((cp_arr[0] + z2*cp_arr[1]) + (z2*z2)*(cp_arr[2] + z2*cp_arr[3])));
+    Result := Single(1.0 + z2 * ((cp_co_0 + z2*cp_co_1) + (z2*z2)*(cp_co_2 + z2*cp_co_3)));
     Exit;
   end;
   a_d := iln2 * z;
@@ -1181,8 +1189,8 @@ begin
   jm_shr5 := SarInt64(jm, 5);
   sp.u := tb_arr[jp_idx] + (UInt64(jp_shr5) shl 52);
   sm.u := tb_arr[jm_idx] + (UInt64(jm_shr5) shl 52);
-  te := c_arr[0] + h2 * c_arr[2];
-  to_ := c_arr[1] + h2 * c_arr[3];
+  te := c_co_0 + h2 * c_co_2;
+  to_ := c_co_1 + h2 * c_co_3;
   rp := sp.f * (te + h * to_);
   rm := sm.f * (te - h * to_);
   r := rp + rm;
@@ -1194,8 +1202,8 @@ begin
     iln2l := 2.026170940661134e-08;  // 0x1.5c17f0bbbe88p-26
     h := (iln2h * z - ia) + iln2l * z;
     h2 := h * h;
-    te := ch_arr[0] + h2*ch_arr[2] + (h2*h2)*(ch_arr[4] + h2*ch_arr[6]);
-    to_ := ch_arr[1] + h2*(ch_arr[3] + h2*ch_arr[5]);
+    te := ch_co_0 + h2*ch_co_2 + (h2*h2)*(ch_co_4 + h2*ch_co_6);
+    to_ := ch_co_1 + h2*(ch_co_3 + h2*ch_co_5);
     r := sp.f*(te + h*to_) + sm.f*(te - h*to_);
     ub_s := Single(r);
   end;
@@ -2451,11 +2459,21 @@ end;
 // ── 3.03 sinhf ────────────────────────────────────────────────────────────
 function pcr_sinhf(x: Single): Single;
 const
-  c_sinh: array[0..3] of Double = (1, 0.021660849391257477, 0.0002345984913513542, 1.6938658699950235e-06);
-  ch_sinh: array[0..6] of Double = (
-    1, 0.02166084939249829, 0.0002345961982022468, 1.6938509724129055e-06,
-    9.1725627017026289e-09, 3.973729405780548e-11, 1.4345723178374038e-13);
-  cp_sinh: array[0..3] of Double = (0.16666666666666666, 0.0083333333333572308, 0.00019841269076590929, 2.7565149135114762e-06);
+  c_si_0: Double = 1;
+  c_si_1: Double = 0.021660849391257477;
+  c_si_2: Double = 0.0002345984913513542;
+  c_si_3: Double = 1.6938658699950235e-06;
+  ch_si_0: Double = 1;
+  ch_si_1: Double = 0.02166084939249829;
+  ch_si_2: Double = 0.0002345961982022468;
+  ch_si_3: Double = 1.6938509724129055e-06;
+  ch_si_4: Double = 9.1725627017026289e-09;
+  ch_si_5: Double = 3.973729405780548e-11;
+  ch_si_6: Double = 1.4345723178374038e-13;
+  cp_si_0: Double = 0.16666666666666666;
+  cp_si_1: Double = 0.0083333333333572308;
+  cp_si_2: Double = 0.00019841269076590929;
+  cp_si_3: Double = 2.7565149135114762e-06;
   tb_sinh: array[0..31] of UInt64 = (
     UInt64($3FE0000000000000), UInt64($3FE059B0D3158574), UInt64($3FE0B5586CF9890F), UInt64($3FE11301D0125B51),
     UInt64($3FE172B83C7D517B), UInt64($3FE1D4873168B9AA), UInt64($3FE2387A6E756238), UInt64($3FE29E9DF51FDEE1),
@@ -2499,7 +2517,7 @@ begin
       Result := Single((x*Double(0.1666666716337204))*(x*x) + x); Exit;
     end;
     z2_s := zs*zs; z4_s := z2_s*z2_s;
-    Result := Single(zs + (z2_s*zs)*((cp_sinh[0] + z2_s*cp_sinh[1]) + z4_s*(cp_sinh[2] + z2_s*cp_sinh[3]))); Exit;
+    Result := Single(zs + (z2_s*zs)*((cp_si_0 + z2_s*cp_si_1) + z4_s*(cp_si_2 + z2_s*cp_si_3))); Exit;
   end;
   a_s := Double(46.166241308446828) * zs;
   {$IFDEF AVX2}
@@ -2518,8 +2536,8 @@ begin
   jm_s := -jp_s;
   sp_s.u := tb_sinh[jp_s and 31] + (UInt64(jp_s shr 5) shl 52);
   sm_s.u := tb_sinh[jm_s and 31] + (UInt64(jm_s shr 5) shl 52);
-  te_s := c_sinh[0] + h2_s*c_sinh[2];
-  to_s := (c_sinh[1] + h2_s*c_sinh[3]);
+  te_s := c_si_0 + h2_s*c_si_2;
+  to_s := (c_si_1 + h2_s*c_si_3);
   rp_s := sp_s.f*(te_s + h_s*to_s);
   rm_s := sm_s.f*(te_s - h_s*to_s);
   r_s := rp_s - rm_s;
@@ -2528,8 +2546,8 @@ begin
   if ub_s <> lb_s then begin
     h_s := (Double(46.16624128818512)*zs - ia_s) + Double(2.026170940661134e-08)*zs;
     h2_s := h_s*h_s;
-    te_s := ch_sinh[0] + h2_s*ch_sinh[2] + (h2_s*h2_s)*(ch_sinh[4] + h2_s*ch_sinh[6]);
-    to_s := ch_sinh[1] + h2_s*(ch_sinh[3] + h2_s*ch_sinh[5]);
+    te_s := ch_si_0 + h2_s*ch_si_2 + (h2_s*h2_s)*(ch_si_4 + h2_s*ch_si_6);
+    to_s := ch_si_1 + h2_s*(ch_si_3 + h2_s*ch_si_5);
     r_s := sp_s.f*(te_s + h_s*to_s) - sm_s.f*(te_s - h_s*to_s);
     ub_s := Single(r_s);
   end;
@@ -3111,11 +3129,24 @@ const
 // ── 3.08 asinhf ────────────────────────────────────────────────────────────
 function pcr_asinhf(x: Single): Single;
 const
-  c_asinh: array[0..7] of Double = (
-    0.1666666666666666, -0.074999999999870018, 0.044642857099780067, -0.03038193899998537, 0.022371820451468214, -0.017341279402218638, 0.013747204759994313, -0.0093574477267578029);
-  cm_asinh: array[0..2] of Double = (1.0000000000932958, -0.50000378550500935, 0.33332252602066714);
-  cp_asinh: array[0..5] of Double = (
-    1, -0.5, 0.33333333331462334, -0.24999999997581948, 0.20000326978745125, -0.16666993701509006);
+  c_as_0: Double = 0.1666666666666666;
+  c_as_1: Double = -0.074999999999870018;
+  c_as_2: Double = 0.044642857099780067;
+  c_as_3: Double = -0.03038193899998537;
+  c_as_4: Double = 0.022371820451468214;
+  c_as_5: Double = -0.017341279402218638;
+  c_as_6: Double = 0.013747204759994313;
+  c_as_7: Double = -0.0093574477267578029;
+  cm_as_0: Double = 1.0000000000932958;
+  cm_as_1: Double = -0.50000378550500935;
+  cm_as_2: Double = 0.33332252602066714;
+  cp_as_0: Double = 1;
+  cp_as_1: Double = -0.5;
+  cp_as_2: Double = 0.33333333331462334;
+  cp_as_3: Double = -0.24999999997581948;
+  cp_as_4: Double = 0.20000326978745125;
+  cp_as_5: Double = -0.16666993701509006;
+  lix_aa_128: Double = 0.69314718055994529;
 var
   tsi: Tb32u32;
   xs_a: Double;
@@ -3140,8 +3171,8 @@ begin
       Result := pcr_fmaf(x, -2.9802322387695312e-08, x); Exit;
     end;
     x2_a := xs_a*xs_a; x4_a := x2_a*x2_a; x8_a := x4_a*x4_a;
-    f_a := x2_a*(((c_asinh[0] + x2_a*c_asinh[1]) + x4_a*(c_asinh[2] + x2_a*c_asinh[3])) +
-                  x8_a*((c_asinh[4] + x2_a*c_asinh[5]) + x4_a*(c_asinh[6] + x2_a*c_asinh[7])));
+    f_a := x2_a*(((c_as_0 + x2_a*c_as_1) + x4_a*(c_as_2 + x2_a*c_as_3)) +
+                  x8_a*((c_as_4 + x2_a*c_as_5) + x4_a*(c_as_6 + x2_a*c_as_7)));
     Result := Single(xs_a - xs_a*f_a); Exit;
   end else begin
     if tsi.u >= $7F800000 then begin Result := x + x; Exit; end;
@@ -3154,12 +3185,12 @@ begin
     ww_a.u := m_a or (UInt64($3FF) shl 52);
     z_a := ww_a.f * ix_asinh_acosh[j_a] - 1.0;
     z2_a := z_a * z_a;
-    r_a.f := ((lix_asinh_acosh[128] * Double(e_a) + lix_asinh_acosh[j_a]) + z_a*cm_asinh[0]) + z2_a*(cm_asinh[1] + z_a*cm_asinh[2]);
+    r_a.f := ((lix_aa_128 * Double(e_a) + lix_asinh_acosh[j_a]) + z_a*cm_as_0) + z2_a*(cm_as_1 + z_a*cm_as_2);
     if ((r_a.u + 259000) and $0FFFFFFF) < 260000 then begin  // accurate path
       z2_a := z_a * z_a;
-      c0_a := cp_asinh[0] + z_a*cp_asinh[1];
-      c2_a := cp_asinh[2] + z_a*cp_asinh[3];
-      c4_a := cp_asinh[4] + z_a*cp_asinh[5];
+      c0_a := cp_as_0 + z_a*cp_as_1;
+      c2_a := cp_as_2 + z_a*cp_as_3;
+      c4_a := cp_as_4 + z_a*cp_as_5;
       c0_a := c0_a + z2_a*(c2_a + z2_a*c4_a);
       Lh_a := 0.693145751953125 * Double(e_a);
       Ll_a := Double(1.4286068203094173e-06) * Double(e_a);
@@ -3176,13 +3207,24 @@ end;
 // ── 3.09 acoshf ────────────────────────────────────────────────────────────
 function pcr_acoshf(x: Single): Single;
 const
-  c_near_ac: array[0..7] of Double = (
-    -0.08333333333328993, 0.018749999994215116, -0.0055803568456194285, 0.0018988638601201038,
-    -0.0006990184157670764, 0.00027017646829586764, -0.00010420707647055027, 3.116411306139845e-05);
-  cm_acosh: array[0..2] of Double = (
-    1.0000000000932958, -0.5000037855050093, 0.33332252602066714);
-  cp_acosh: array[0..5] of Double = (
-    1.0, -0.5, 0.33333333331462334, -0.24999999997581948, 0.20000326978745125, -0.16666993701509006);
+  c_nac_0: Double = -0.08333333333328993;
+  c_nac_1: Double = 0.018749999994215116;
+  c_nac_2: Double = -0.0055803568456194285;
+  c_nac_3: Double = 0.0018988638601201038;
+  c_nac_4: Double = -0.0006990184157670764;
+  c_nac_5: Double = 0.00027017646829586764;
+  c_nac_6: Double = -0.00010420707647055027;
+  c_nac_7: Double = 3.116411306139845e-05;
+  cm_ac_0: Double = 1.0000000000932958;
+  cm_ac_1: Double = -0.5000037855050093;
+  cm_ac_2: Double = 0.33332252602066714;
+  cp_ac_0: Double = 1.0;
+  cp_ac_1: Double = -0.5;
+  cp_ac_2: Double = 0.33333333331462334;
+  cp_ac_3: Double = -0.24999999997581948;
+  cp_ac_4: Double = 0.20000326978745125;
+  cp_ac_5: Double = -0.16666993701509006;
+  lix_aa_ac128: Double = 0.69314718055994529;
 var
   tv_ac: Tb32u32;
   tp_ac, ww_ac, r_ac: Tb64u64;
@@ -3212,8 +3254,8 @@ begin
     a_ac  := Sqrt(2.0 * zz_ac);
     z2_ac := zz_ac * zz_ac;
     z4_ac := z2_ac * z2_ac;
-    f_ac  := ((c_near_ac[0] + zz_ac*c_near_ac[1]) + z2_ac*(c_near_ac[2] + zz_ac*c_near_ac[3]))
-           + z4_ac*((c_near_ac[4] + zz_ac*c_near_ac[5]) + z2_ac*(c_near_ac[6] + zz_ac*c_near_ac[7]));
+    f_ac  := ((c_nac_0 + zz_ac*c_nac_1) + z2_ac*(c_nac_2 + zz_ac*c_nac_3))
+           + z4_ac*((c_nac_4 + zz_ac*c_nac_5) + z2_ac*(c_nac_6 + zz_ac*c_nac_7));
     Result := Single(a_ac + (a_ac * zz_ac) * f_ac);
     Exit;
   end
@@ -3228,13 +3270,13 @@ begin
     ww_ac.u := m64_ac or (UInt64($3FF) shl 52);
     zz_ac  := ww_ac.f * ix_asinh_acosh[j_ac] - 1.0;
     z2_ac  := zz_ac * zz_ac;
-    r_ac.f := ((lix_asinh_acosh[128]*Double(e_ac) + lix_asinh_acosh[j_ac]) + zz_ac*cm_acosh[0])
-            + z2_ac*(cm_acosh[1] + zz_ac*cm_acosh[2]);
+    r_ac.f := ((lix_aa_ac128*Double(e_ac) + lix_asinh_acosh[j_ac]) + zz_ac*cm_ac_0)
+            + z2_ac*(cm_ac_1 + zz_ac*cm_ac_2);
     if ((r_ac.u + 259000) and $0FFFFFFF) < 260000 then begin  // accurate path
       z2_ac := zz_ac * zz_ac;
-      c0_ac := cp_acosh[0] + zz_ac*cp_acosh[1];
-      c2_ac := cp_acosh[2] + zz_ac*cp_acosh[3];
-      c4_ac := cp_acosh[4] + zz_ac*cp_acosh[5];
+      c0_ac := cp_ac_0 + zz_ac*cp_ac_1;
+      c2_ac := cp_ac_2 + zz_ac*cp_ac_3;
+      c4_ac := cp_ac_4 + zz_ac*cp_ac_5;
       c0_ac := c0_ac + z2_ac*(c2_ac + z2_ac*c4_ac);
       Lh_ac := 0.693145751953125 * Double(e_ac);
       Ll_ac := Double(1.4286068203094173e-06) * Double(e_ac);
