@@ -75,61 +75,61 @@ procedure CpDInt(out r: TDInt64; const a: TDInt64); inline;
 // True if value is zero (hi = 0)
 function DIntZeroP(const a: TDInt64): Boolean; inline;
 // Compare absolute values: -1 / 0 / +1
-function CmpDIntAbs(const a, b: TDInt64): Integer;
+function CmpDIntAbs(const a, b: TDInt64): Integer; inline;
 // Add two TDInt64 values (error bounded by 2 ulp_128)
-procedure AddDInt(out r: TDInt64; const a, b: TDInt64);
+procedure AddDInt(out r: TDInt64; const a, b: TDInt64); inline;
 // Multiply two TDInt64 values (error bounded by 6 ulp_128)
-procedure MulDInt(out r: TDInt64; const a, b: TDInt64);
+procedure MulDInt(out r: TDInt64; const a, b: TDInt64); inline;
 // Multiply two TDInt64 values, assuming b.lo = 0 (error bounded by 2 ulp_128)
-procedure MulDInt21(out r: TDInt64; const a, b: TDInt64);
+procedure MulDInt21(out r: TDInt64; const a, b: TDInt64); inline;
 // Multiply two TDInt64 values, assuming both a.lo = b.lo = 0; the 128-bit
 // product is exact (ported from mul_dint_11 in core-math/src/binary64/pow/dint.h).
-procedure MulDInt11(out r: TDInt64; const a, b: TDInt64);
+procedure MulDInt11(out r: TDInt64; const a, b: TDInt64); inline;
 // Add two TDInt64 values, assuming both a.lo = b.lo = 0 (error 1-2 ulp_64;
 // ported from add_dint_11 in core-math/src/binary64/pow/dint.h).
-procedure AddDInt11(out r: TDInt64; const a, b: TDInt64);
+procedure AddDInt11(out r: TDInt64; const a, b: TDInt64); inline;
 // Truncate a TDInt64 to a signed 64-bit integer (rounding toward zero)
 // — ported from dint_toi in core-math/src/binary64/pow/pow.h. Note that
 // the dint format here uses ex=1 for value 1.0, so the C formula
 // `hi >> (63 - ex)` becomes `hi >> (64 - ex)` in our convention.
-function DIntToI(const a: TDInt64): Int64;
+function DIntToI(const a: TDInt64): Int64; inline;
 // Multiply a TDInt64 by a signed 64-bit integer (ported from mul_dint_2 in
 // core-math/src/binary64/log/dint.h). Caller must ensure |b| fits the dint
 // range — currently safe for log/log10 where |b| <= 1074.
-procedure MulDIntInt(out r: TDInt64; b: Int64; const a: TDInt64);
+procedure MulDIntInt(out r: TDInt64; b: Int64; const a: TDInt64); inline;
 // Normalize X so that X.hi has its most significant bit set (if X <> 0).
 // Used by the 2*pi range-reduction routines (sin/cos/tan/sincos).
-procedure NormalizeDInt(var X: TDInt64);
+procedure NormalizeDInt(var X: TDInt64); inline;
 // Convert Double to TDInt64
-procedure DIntFromD(out a: TDInt64; b: Double);
+procedure DIntFromD(out a: TDInt64; b: Double); inline;
 // Convert TDInt64 to Double (modifies a via subnormalise; pass a copy if const needed)
-function DToD(var a: TDInt64): Double;
+function DToD(var a: TDInt64): Double; inline;
 
 // ------- tint64_t (192-bit) arithmetic -------
 // All operations ported faithfully from core-math/src/binary64/atan2/tint.h.
 
 procedure CpTInt(out r: TInt64; const a: TInt64); inline;
 function TIntZeroP(const a: TInt64): Boolean; inline;
-function CmpTIntAbs(const a, b: TInt64): Integer;
+function CmpTIntAbs(const a, b: TInt64): Integer; inline;
 // Right shift the significand (h, m, l) by k bits. Does not touch ex/sgn.
-procedure RShiftTInt(var r: TInt64; const b: TInt64; k: Integer);
+procedure RShiftTInt(var r: TInt64; const b: TInt64; k: Integer); inline;
 // Left shift the significand (h, m, l) by k bits. Does not touch ex/sgn.
-procedure LShiftTInt(var r: TInt64; const b: TInt64; k: Integer);
+procedure LShiftTInt(var r: TInt64; const b: TInt64; k: Integer); inline;
 // r := a + b   (error bounded by 2 ulps in 192-bit)
-procedure AddTInt(out r: TInt64; const a, b: TInt64);
+procedure AddTInt(out r: TInt64; const a, b: TInt64); inline;
 // r := a * b   (error bounded by 10 ulps in 192-bit; alias-safe)
-procedure MulTInt(out r: TInt64; const a, b: TInt64);
+procedure MulTInt(out r: TInt64; const a, b: TInt64); inline;
 // Convert Double to TInt64 (exact for finite, non-NaN inputs; defined for 0)
-procedure TIntFromD(out a: TInt64; b: Double);
+procedure TIntFromD(out a: TInt64; b: Double); inline;
 // Convert TInt64 to Double with directed rounding driven by err (in ulps of l).
 // y, x are pass-through inputs used only for the worst-case panic message.
-function TIntToD(const a: TInt64; err: UInt64; y, x: Double): Double;
+function TIntToD(const a: TInt64; err: UInt64; y, x: Double): Double; inline;
 // r := 1 / A   (relative error < 2^-103.9; A must be non-zero)
-procedure InvTInt(out r: TInt64; const A: TInt64);
+procedure InvTInt(out r: TInt64; const A: TInt64); inline;
 // r := b / a   (relative error < 2^-185.53)
-procedure DivTInt(out r: TInt64; const b, a: TInt64);
+procedure DivTInt(out r: TInt64; const b, a: TInt64); inline;
 // Convenience: r := bd / ad, both Doubles
-procedure DivTIntD(out r: TInt64; bd, ad: Double);
+procedure DivTIntD(out r: TInt64; bd, ad: Double); inline;
 
 // ------- qint64_t (256-bit) arithmetic -------
 // All operations ported faithfully from core-math/src/binary64/pow/qint.h.
@@ -140,34 +140,34 @@ procedure CpQInt(out r: TQInt64; const a: TQInt64); inline;
 // True if value is zero (r0 = r1 = 0; matches C check on rh)
 function QIntZeroP(const a: TQInt64): Boolean; inline;
 // Compare absolute values: -1 / 0 / +1 (full 256-bit precision)
-function CmpQIntAbs(const a, b: TQInt64): Integer;
+function CmpQIntAbs(const a, b: TQInt64): Integer; inline;
 // Compare absolute values using only the upper 128 bits
-function CmpQIntAbs22(const a, b: TQInt64): Integer;
+function CmpQIntAbs22(const a, b: TQInt64): Integer; inline;
 // r := a + b (error bounded by 2 ulps in 256-bit; alias-safe)
-procedure AddQInt(out r: TQInt64; const a, b: TQInt64);
+procedure AddQInt(out r: TQInt64; const a, b: TQInt64); inline;
 // Same as AddQInt but only considers upper 2 limbs (error < 2 ulps in 128-bit)
-procedure AddQInt22(out r: TQInt64; const a, b: TQInt64);
+procedure AddQInt22(out r: TQInt64; const a, b: TQInt64); inline;
 // r := a * b (error < 14 ulps in 256-bit)
-procedure MulQInt(out r: TQInt64; const a, b: TQInt64);
+procedure MulQInt(out r: TQInt64; const a, b: TQInt64); inline;
 // Same as MulQInt but only considers upper 3 limbs of a and b (error < 6 ulps)
-procedure MulQInt33(out r: TQInt64; const a, b: TQInt64);
+procedure MulQInt33(out r: TQInt64; const a, b: TQInt64); inline;
 // Same as MulQInt but only considers upper limb of b (error < 2 ulps)
-procedure MulQInt41(out r: TQInt64; const a, b: TQInt64);
+procedure MulQInt41(out r: TQInt64; const a, b: TQInt64); inline;
 // Same as MulQInt but uses upper 3 limbs of a, upper limb of b (no error)
-procedure MulQInt31(out r: TQInt64; const a, b: TQInt64);
+procedure MulQInt31(out r: TQInt64; const a, b: TQInt64); inline;
 // Same as MulQInt but uses upper 2 limbs of a and b (no error)
-procedure MulQInt22(out r: TQInt64; const a, b: TQInt64);
+procedure MulQInt22(out r: TQInt64; const a, b: TQInt64); inline;
 // Same as MulQInt but uses upper 2 limbs of a, upper limb of b (no error)
-procedure MulQInt21(out r: TQInt64; const a, b: TQInt64);
+procedure MulQInt21(out r: TQInt64; const a, b: TQInt64); inline;
 // Same as MulQInt but uses upper limb of a and b only (no error)
-procedure MulQInt11(out r: TQInt64; const a, b: TQInt64);
+procedure MulQInt11(out r: TQInt64; const a, b: TQInt64); inline;
 // Multiply integer b by qint a (error < 2 ulps); ported from mul_qint_2
-procedure MulQIntInt(out r: TQInt64; b: Int64; const a: TQInt64);
+procedure MulQIntInt(out r: TQInt64; b: Int64; const a: TQInt64); inline;
 // Truncate a TQInt64 to a signed 64-bit integer (rounding toward zero).
 // Ported from qint_toi in core-math/src/binary64/pow/pow.h. QInt convention
 // here matches C exactly (ex of QINT_ONE is 0), so the C formula
 // `hh >> (63 - ex)` applies as-is.
-function QIntToI(const a: TQInt64): Int64;
+function QIntToI(const a: TQInt64): Int64; inline;
 
 const
   cNaNSingle: Single = 0.0/0.0;       // x86 indefinite: 0xFFC00000 (negative quiet NaN)
@@ -326,7 +326,7 @@ function Mulu64u64(a, b: UInt64): TUInt128;
 var
   rlo, rhi: UInt64;
 begin
-  Result := Default(TUInt128);
+  //Result := Default(TUInt128);
   asm
     mov  rax, a
     mul  b           // rdx:rax = a * b
@@ -342,7 +342,7 @@ end;
 var
   MulLo, Temp1, Temp2: UInt64;
 begin
-  Result := Default(TUInt128);
+  //Result := Default(TUInt128);
   MulLo := uint64(uint32(a)) * uint64(uint32(b));
   Temp1 := (a shr 32) * uint64(uint32(b)) + (MulLo shr 32);
   Temp2 := uint64(uint32(a)) * (b shr 32) + uint64(uint32(Temp1));
@@ -365,7 +365,7 @@ begin
   Result := a.hi = 0;
 end;
 
-function CmpDIntAbs(const a, b: TDInt64): Integer;
+function CmpDIntAbs(const a, b: TDInt64): Integer; inline;
 begin
   if a.hi = 0 then begin
     if b.hi = 0 then Result := 0 else Result := -1;
@@ -384,7 +384,7 @@ end;
 
 // Subnormal rounding used inside DToD — modifies a in place.
 // Ported faithfully from subnormalize_dint in sin.c.
-procedure SubnormalizeDInt(var a: TDInt64);
+procedure SubnormalizeDInt(var a: TDInt64); inline;
 var
   ex: UInt64;
   hi, md, lo: UInt64;
@@ -422,7 +422,7 @@ end;
 // Ported from add_dint in sin.c.
 // NOTE: Pascal identifiers are case-insensitive; local 128-bit vars are
 // named vA/vB/vC/vD/vE to avoid collision with the parameters a/b.
-procedure AddDInt(out r: TDInt64; const a, b: TDInt64);
+procedure AddDInt(out r: TDInt64; const a, b: TDInt64); inline;
 var
   pa, pb, ptmp: TDInt64;
   vA, vB, vBorig, vC, vD, vE: TUInt128;
@@ -525,7 +525,7 @@ end;
 
 // Ported from mul_dint in sin.c.
 // NOTE: overlap between r and a is allowed (inputs saved to locals first).
-procedure MulDInt(out r: TDInt64; const a, b: TDInt64);
+procedure MulDInt(out r: TDInt64; const a, b: TDInt64); inline;
 var
   m1, m2, rr: TUInt128;
   ah, bh, al, bl: UInt64;
@@ -566,7 +566,7 @@ end;
 // Ported from mul_dint_21 in core-math/src/binary64/cos/cos.c:
 // "Multiply two dint64_t numbers, assuming the low part of b is zero,
 //  with error bounded by 2 ulps."
-procedure MulDInt21(out r: TDInt64; const a, b: TDInt64);
+procedure MulDInt21(out r: TDInt64; const a, b: TDInt64); inline;
 var
   hi, lo: TUInt128;
   ah, al, bh: UInt64;
@@ -599,7 +599,7 @@ end;
 
 // Ported from mul_dint_11 in core-math/src/binary64/pow/dint.h.
 // Both operand low limbs are assumed zero; the 128-bit product is exact.
-procedure MulDInt11(out r: TDInt64; const a, b: TDInt64);
+procedure MulDInt11(out r: TDInt64; const a, b: TDInt64); inline;
 var
   hi: TUInt128;
   ex: UInt64;
@@ -618,7 +618,7 @@ end;
 
 // Ported from add_dint_11 in core-math/src/binary64/pow/dint.h.
 // Both operand low limbs are assumed zero; error bounded by 2 ulps_64.
-procedure AddDInt11(out r: TDInt64; const a, b: TDInt64);
+procedure AddDInt11(out r: TDInt64; const a, b: TDInt64); inline;
 var
   pa, pb: TDInt64;
   uA, uB, uC, tmp64: UInt64;
@@ -691,7 +691,7 @@ end;
 
 // Ported from dint_toi in core-math/src/binary64/pow/pow.h.
 // Truncates toward zero; assumes |a| < 2^63 (caller guards).
-function DIntToI(const a: TDInt64): Int64;
+function DIntToI(const a: TDInt64): Int64; inline;
 var
   shift: Integer;
   r: UInt64;
@@ -707,7 +707,7 @@ end;
 
 // Ported from mul_dint_2 in core-math/src/binary64/log/dint.h.
 // Multiplies a dint by an Int64; result has same convention as input.
-procedure MulDIntInt(out r: TDInt64; b: Int64; const a: TDInt64);
+procedure MulDIntInt(out r: TDInt64; b: Int64; const a: TDInt64); inline;
 var
   c: UInt64;
   t, l, sum: TUInt128;
@@ -768,7 +768,7 @@ end;
 
 // Ported from normalize() in core-math/src/binary64/cos/cos.c:
 // shift left so X.hi has its MSB set (if X <> 0); adjust ex accordingly.
-procedure NormalizeDInt(var X: TDInt64);
+procedure NormalizeDInt(var X: TDInt64); inline;
 var
   cnt: Integer;
 begin
@@ -788,7 +788,7 @@ begin
 end;
 
 // Ported from dint_fromd / fast_extract in sin.c.
-procedure DIntFromD(out a: TDInt64; b: Double);
+procedure DIntFromD(out a: TDInt64; b: Double); inline;
 var
   xu: Tb64u64;
   e: Int64;
@@ -811,7 +811,7 @@ end;
 
 // Ported from dint_tod in sin.c.
 // Calls SubnormalizeDInt which may modify a.
-function DToD(var a: TDInt64): Double;
+function DToD(var a: TDInt64): Double; inline;
 var
   ru, eu: Tb64u64;
   rd: Double;
@@ -878,7 +878,7 @@ begin
   Result := a.h = 0;
 end;
 
-function CmpTIntAbs(const a, b: TInt64): Integer;
+function CmpTIntAbs(const a, b: TInt64): Integer; inline;
 begin
   if a.h = 0 then begin
     if b.h = 0 then Result := 0 else Result := -1;
@@ -898,7 +898,7 @@ begin
 end;
 
 // Right shift only the (h, m, l) significand. Caller manages ex/sgn.
-procedure RShiftTInt(var r: TInt64; const b: TInt64; k: Integer);
+procedure RShiftTInt(var r: TInt64; const b: TInt64; k: Integer); inline;
 var bh, bm, bl: UInt64;
 begin
   bh := b.h; bm := b.m; bl := b.l;
@@ -929,7 +929,7 @@ begin
 end;
 
 // Left shift only the (h, m, l) significand. Caller manages ex/sgn.
-procedure LShiftTInt(var r: TInt64; const b: TInt64; k: Integer);
+procedure LShiftTInt(var r: TInt64; const b: TInt64; k: Integer); inline;
 var bh, bm, bl: UInt64;
 begin
   bh := b.h; bm := b.m; bl := b.l;
@@ -969,7 +969,7 @@ begin
 end;
 
 // Ported from add_tint in tint.h.
-procedure AddTInt(out r: TInt64; const a, b: TInt64);
+procedure AddTInt(out r: TInt64; const a, b: TInt64); inline;
 var
   pa, pb, ptmp, t: TInt64;
   sh: UInt64;
@@ -1076,7 +1076,7 @@ begin
 end;
 
 // Ported from mul_tint in tint.h.
-procedure MulTInt(out r: TInt64; const a, b: TInt64);
+procedure MulTInt(out r: TInt64; const a, b: TInt64); inline;
 var
   ah, am, al, bh, bm, bl: UInt64;
   rh, rm1, rm2, rl1, rl2, rl3: TUInt128;
@@ -1141,7 +1141,7 @@ begin
 end;
 
 // Ported from tint_fromd in tint.h. Defined for 0 (yields h=m=l=0).
-procedure TIntFromD(out a: TInt64; b: Double);
+procedure TIntFromD(out a: TInt64; b: Double); inline;
 var
   u: Tb64u64;
   ax: UInt64;
@@ -1165,7 +1165,7 @@ begin
 end;
 
 // Ported from tint_tod in tint.h. Calls Math.Ldexp for the final exponent fold.
-function TIntToD(const a: TInt64; err: UInt64; y, x: Double): Double;
+function TIntToD(const a: TInt64; err: UInt64; y, x: Double): Double; inline;
 const
   S: array[0..1] of Double = (1.0, -1.0);
 var
@@ -1250,7 +1250,7 @@ begin
 end;
 
 // Ported from inv_tint in tint.h.
-procedure InvTInt(out r: TInt64; const A: TInt64);
+procedure InvTInt(out r: TInt64; const A: TInt64); inline;
 var
   q: TInt64;
   ad: Double;
@@ -1269,7 +1269,7 @@ begin
 end;
 
 // Ported from div_tint in tint.h.
-procedure DivTInt(out r: TInt64; const b, a: TInt64);
+procedure DivTInt(out r: TInt64; const b, a: TInt64); inline;
 var
   Y, Z: TInt64;
 begin
@@ -1283,7 +1283,7 @@ begin
 end;
 
 // Ported from div_tint_d in tint.h.
-procedure DivTIntD(out r: TInt64; bd, ad: Double);
+procedure DivTIntD(out r: TInt64; bd, ad: Double); inline;
 var
   A, B: TInt64;
 begin
@@ -1357,7 +1357,7 @@ begin
   Result := (a.r0 = 0) and (a.r1 = 0);
 end;
 
-function CmpQIntAbs(const a, b: TQInt64): Integer;
+function CmpQIntAbs(const a, b: TQInt64): Integer; inline;
 begin
   if a.ex > b.ex then begin Result := 1; Exit; end;
   if a.ex < b.ex then begin Result := -1; Exit; end;
@@ -1372,7 +1372,7 @@ begin
   Result := 0;
 end;
 
-function CmpQIntAbs22(const a, b: TQInt64): Integer;
+function CmpQIntAbs22(const a, b: TQInt64): Integer; inline;
 begin
   if a.ex > b.ex then begin Result := 1; Exit; end;
   if a.ex < b.ex then begin Result := -1; Exit; end;
@@ -1384,7 +1384,7 @@ begin
 end;
 
 // Ported from add_qint in qint.h.
-procedure AddQInt(out r: TQInt64; const a, b: TQInt64);
+procedure AddQInt(out r: TQInt64; const a, b: TQInt64); inline;
 var
   pa, pb, ptmp: TQInt64;
   ah, al, bh, bl, ch, cl, t: TUInt128;
@@ -1561,7 +1561,7 @@ begin
 end;
 
 // Ported from add_qint_22 in qint.h.
-procedure AddQInt22(out r: TQInt64; const a, b: TQInt64);
+procedure AddQInt22(out r: TQInt64; const a, b: TQInt64); inline;
 var
   pa, pb, ptmp: TQInt64;
   ah, bh, ch: TUInt128;
@@ -1645,7 +1645,7 @@ end;
 // variants. ulow5 = low 64 bits of t5 (post-shift), ulow4 = low 64 bits of t4.
 procedure QMulFinish(var r: TQInt64;
                      const t6: TUInt128; ulow5, ulow4: UInt64;
-                     a_ex, b_ex: Int64; a_sgn, b_sgn: Byte);
+                     a_ex, b_ex: Int64; a_sgn, b_sgn: Byte); inline;
 var
   ex: UInt64;
   rh, rl: TUInt128;
@@ -1674,7 +1674,7 @@ begin
 end;
 
 // Ported from mul_qint in qint.h. Error < 14 ulps.
-procedure MulQInt(out r: TQInt64; const a, b: TQInt64);
+procedure MulQInt(out r: TQInt64; const a, b: TQInt64); inline;
 var
   r33, r32, r23, r31, r13, r22, r30, r03, r21, r12: TUInt128;
   t6, t5, t4, t3: TUInt128;
@@ -1726,7 +1726,7 @@ begin
 end;
 
 // Ported from mul_qint_33 in qint.h. Error < 6 ulps.
-procedure MulQInt33(out r: TQInt64; const a, b: TQInt64);
+procedure MulQInt33(out r: TQInt64; const a, b: TQInt64); inline;
 var
   r33, r32, r23, r31, r13, r22, r21, r12: TUInt128;
   t6, t5, t4, t3, tmp: TUInt128;
@@ -1766,7 +1766,7 @@ begin
 end;
 
 // Ported from mul_qint_41 in qint.h. Error < 2 ulps.
-procedure MulQInt41(out r: TQInt64; const a, b: TQInt64);
+procedure MulQInt41(out r: TQInt64; const a, b: TQInt64); inline;
 var
   r33, r23, r13, r03: TUInt128;
   t6, t5, t4, t3, tmp: TUInt128;
@@ -1797,7 +1797,7 @@ begin
 end;
 
 // Ported from mul_qint_31 in qint.h. Exact (no error).
-procedure MulQInt31(out r: TQInt64; const a, b: TQInt64);
+procedure MulQInt31(out r: TQInt64; const a, b: TQInt64); inline;
 var
   r33, r23, r13: TUInt128;
   t6, t5, t4, tmp: TUInt128;
@@ -1822,7 +1822,7 @@ begin
 end;
 
 // Ported from mul_qint_22 in qint.h. Exact.
-procedure MulQInt22(out r: TQInt64; const a, b: TQInt64);
+procedure MulQInt22(out r: TQInt64; const a, b: TQInt64); inline;
 var
   r33, r32, r23, r22: TUInt128;
   t6, t5, t4, tmp: TUInt128;
@@ -1849,7 +1849,7 @@ begin
 end;
 
 // Ported from mul_qint_21 in qint.h. Exact.
-procedure MulQInt21(out r: TQInt64; const a, b: TQInt64);
+procedure MulQInt21(out r: TQInt64; const a, b: TQInt64); inline;
 var
   r33, r23: TUInt128;
   t6, t5, tmp: TUInt128;
@@ -1868,7 +1868,7 @@ begin
 end;
 
 // Ported from mul_qint_11 in qint.h. Exact.
-procedure MulQInt11(out r: TQInt64; const a, b: TQInt64);
+procedure MulQInt11(out r: TQInt64; const a, b: TQInt64); inline;
 var
   t6: TUInt128;
   ex: UInt64;
@@ -1886,7 +1886,7 @@ begin
 end;
 
 // Ported from mul_qint_2 in qint.h. Error < 2 ulps.
-procedure MulQIntInt(out r: TQInt64; b: Int64; const a: TQInt64);
+procedure MulQIntInt(out r: TQInt64; b: Int64; const a: TQInt64); inline;
 var
   c: UInt64;
   k: Integer;
@@ -1949,7 +1949,7 @@ begin
 end;
 
 // Ported from qint_toi in pow.h. Truncates toward zero. ex < 0 → 0.
-function QIntToI(const a: TQInt64): Int64;
+function QIntToI(const a: TQInt64): Int64; inline;
 var
   r: UInt64;
 begin
