@@ -121,7 +121,7 @@ procedure AddTInt(out r: TInt64; const a, b: TInt64); inline;
 // Skips the 80-byte entry copies and the swap copy. Wrong results if r aliases.
 procedure AddTInt_NoAlias(out r: TInt64; const a, b: TInt64); inline;
 // r := a * b   (error bounded by 10 ulps in 192-bit; alias-safe)
-procedure MulTInt(out r: TInt64; const a, b: TInt64); inline;
+procedure MulTInt(out r: TInt64; const a, b: TInt64); {$IFNDEF AVX2} inline; {$ENDIF}
 // Convert Double to TInt64 (exact for finite, non-NaN inputs; defined for 0)
 procedure TIntFromD(out a: TInt64; b: Double); inline;
 // Convert TInt64 to Double with directed rounding driven by err (in ulps of l).
@@ -1211,7 +1211,81 @@ begin
   r.sgn := pa^.sgn;
 end;
 
-// Ported from mul_tint in tint.h.
+// Ported from mul_tint in tint.h. AVX2 path: a single asm block doing the
+// six 64x64 partial products with chained ADC, then SHLD-based normalize.
+{$IFDEF AVX2}
+procedure MulTInt(out r: TInt64; const a, b: TInt64); assembler; nostackframe;
+asm
+  // SysV ABI: rdi=@r, rsi=@a, rdx=@b
+  // TInt64 layout: m@0, h@8, l@16, ex@24, sgn@32
+  // mul writes rdx:rax, so move @b out of rdx first.
+  mov rcx, rdx
+  xor r8, r8                    // rl_v = 0  (bits 192..255 of conceptual product)
+  xor r9, r9                    // rm_v = 0  (bits 256..319)
+  xor r10, r10                  // rh_v = 0  (bits 320..383)
+
+  // 1) ah * bh  -> bits 256..383
+  mov rax, [rsi+8]              // ah
+  mul qword ptr [rcx+8]         // rdx:rax = ah*bh
+  add r9, rax
+  adc r10, rdx
+
+  // 2) ah * bm  -> bits 192..319
+  mov rax, [rsi+8]
+  mul qword ptr [rcx+0]
+  add r8, rax
+  adc r9, rdx
+  adc r10, 0
+
+  // 3) am * bh  -> bits 192..319
+  mov rax, [rsi+0]
+  mul qword ptr [rcx+8]
+  add r8, rax
+  adc r9, rdx
+  adc r10, 0
+
+  // 4) ah * bl  -> bits 128..255 (only HIGH 64 contributes; LOW 64 dropped)
+  mov rax, [rsi+8]
+  mul qword ptr [rcx+16]
+  add r8, rdx
+  adc r9, 0
+  adc r10, 0
+
+  // 5) am * bm
+  mov rax, [rsi+0]
+  mul qword ptr [rcx+0]
+  add r8, rdx
+  adc r9, 0
+  adc r10, 0
+
+  // 6) al * bh
+  mov rax, [rsi+16]
+  mul qword ptr [rcx+8]
+  add r8, rdx
+  adc r9, 0
+  adc r10, 0
+
+  // r.ex = a.ex + b.ex; r.sgn = a.sgn xor b.sgn
+  mov rax, [rsi+24]
+  add rax, [rcx+24]
+  mov rdx, [rsi+32]
+  xor rdx, [rcx+32]
+  mov [rdi+32], rdx
+
+  // Normalize (left shift 1, dec ex) if top bit of r10 (rh_v) is 0.
+  test r10, r10
+  js @@no_norm
+  shld r10, r9, 1
+  shld r9, r8, 1
+  shl r8, 1
+  dec rax
+@@no_norm:
+  mov [rdi+24], rax             // r.ex
+  mov [rdi+8],  r10             // r.h
+  mov [rdi+0],  r9              // r.m
+  mov [rdi+16], r8              // r.l
+end;
+{$ELSE}
 procedure MulTInt(out r: TInt64; const a, b: TInt64); inline;
 var
   ah, am, al, bh, bm, bl: UInt64;
@@ -1278,6 +1352,7 @@ begin
   end;
   r.h := rh_v; r.m := rm_v; r.l := rl_v;
 end;
+{$ENDIF}
 
 // Ported from tint_fromd in tint.h. Defined for 0 (yields h=m=l=0).
 procedure TIntFromD(out a: TInt64; b: Double); inline;
