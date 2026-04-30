@@ -236,22 +236,83 @@ begin
 end;
 
 // ----------------------------------------------------------------------------
+// Saturate fast-path: handles |x| > 0x1.7afb48dc96626p+2 entirely in registers,
+// avoiding the variant-record store-load round-trip for the common case where
+// the input is huge (which on the random-bit benchmark is ~50% of inputs).
+// Returns True iff the saturate region was hit; in that case, r holds erf(x).
+function ErfSaturate(x: Double; out r: Double): Boolean;
+{$IFDEF AVX2}
+// System V AMD64 ABI: xmm0=x, rdi=@r, returns al.
+assembler; nostackframe;
+asm
+  vmovq    rax, xmm0
+  mov      rcx, rax
+  shl      rcx, 1                          // rcx = |x| bit-encoding (sign stripped)
+  mov      r8,  $802F5F691B92CC4C            // ($4017AFB48DC96626 shl 1) = sat threshold
+  cmp      rcx, r8
+  jbe      @@fall
+  mov      r8,  $FFE0000000000000            // ($7FF0000000000000 shl 1) = +Inf encoding
+  cmp      rcx, r8
+  ja       @@nan
+  je       @@inf
+  // regular saturate: r := os - 0x1p-54 * os, with os = copysign(1.0, x)
+  mov      r9,  $8000000000000000
+  and      rax, r9                          // sign(x)
+  mov      r9,  $3FF0000000000000
+  or       rax, r9                          // bits of os
+  vmovq    xmm1, rax
+  mov      r9,  $3C90000000000000            // bits of 0x1p-54
+  vmovq    xmm2, r9
+  vmulsd   xmm2, xmm2, xmm1
+  vsubsd   xmm0, xmm1, xmm2
+  vmovsd   qword ptr [rdi], xmm0
+  mov      al,  1
+  ret
+@@nan:
+  vaddsd   xmm0, xmm0, xmm0                 // x+x propagates NaN payload
+  vmovsd   qword ptr [rdi], xmm0
+  mov      al,  1
+  ret
+@@inf:
+  mov      r9,  $8000000000000000
+  and      rax, r9
+  mov      r9,  $3FF0000000000000
+  or       rax, r9
+  vmovq    xmm0, rax
+  vmovsd   qword ptr [rdi], xmm0
+  mov      al,  1
+  ret
+@@fall:
+  xor      eax, eax
+end;
+{$ELSE}
+var
+  ix: Tb64u64;
+  os: Double;
+begin
+  ix.f := Abs(x);
+  if ix.u > UInt64($4017AFB48DC96626) then
+  begin
+    if ix.u > UInt64($7FF0000000000000) then begin r := x + x; Result := True; Exit; end;
+    os := pcr_copysign(Double(1.0), x);
+    if ix.u = UInt64($7FF0000000000000) then begin r := os; Result := True; Exit; end;
+    r := os - Double(5.5511151231257827e-17) * os;
+    Result := True;
+    Exit;
+  end;
+  Result := False;
+end;
+{$ENDIF}
+
+// ----------------------------------------------------------------------------
 function pcr_erf(x: Double): Double;
 var
   ix, t, u, v: Tb64u64;
-  z, h, l, err, sx, y, yscaled, res, left, right, os: Double;
+  z, h, l, err, sx, y, yscaled, res, left, right: Double;
 begin
+  if ErfSaturate(x, Result) then Exit;
   z := pcr_fabs(x);
   ix.f := z;
-  // |x| > 0x1.7afb48dc96626p+2 → saturate
-  if ix.u > UInt64($4017AFB48DC96626) then
-  begin
-    os := pcr_copysign(Double(1.0), x);
-    if ix.u > UInt64($7FF0000000000000) then begin Result := x + x; Exit; end; // NaN
-    if ix.u = UInt64($7FF0000000000000) then begin Result := os; Exit; end;    // +/-Inf
-    Result := os - Double(5.5511151231257827e-17) * os; // os - 0x1p-54 * os
-    Exit;
-  end;
 
   // Tiny: |x| < 2^-61
   if ix.u < UInt64($3C20000000000000) then
