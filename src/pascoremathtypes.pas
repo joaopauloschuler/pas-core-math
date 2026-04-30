@@ -971,15 +971,85 @@ begin
   else Result := 128 + clzll64(l);
 end;
 
+// 192-bit unsigned subtract on the (m,h,l) triple of TInt64.
+// Caller guarantees |a| >= |b| so there is no borrow out. ex/sgn untouched.
+// Self-aliasing of r with a or b is safe (reads of a/b at offset N happen
+// before writes to r at offset N).
+{$IFDEF AVX2}
+// SysV x86-64 ABI: rdi=@r, rsi=@a, rdx=@b. TInt64 layout: m@0, h@8, l@16.
+procedure Sub192(out r: TInt64; const a, b: TInt64); assembler; nostackframe;
+asm
+  mov rax, [rsi+16]      // a.l
+  sub rax, [rdx+16]      // - b.l
+  mov [rdi+16], rax      // r.l
+  mov rax, [rsi]         // a.m
+  sbb rax, [rdx]         // - b.m - borrow
+  mov [rdi], rax         // r.m
+  mov rax, [rsi+8]       // a.h
+  sbb rax, [rdx+8]       // - b.h - borrow
+  mov [rdi+8], rax       // r.h
+end;
+{$ELSE}
+procedure Sub192(out r: TInt64; const a, b: TInt64); inline;
+var
+  th, tm, tl, borrow: UInt64;
+begin
+  tl := a.l - b.l;
+  borrow := UInt64(b.l > a.l);
+  tm := a.m - b.m - borrow;
+  if a.m < b.m then borrow := 1
+  else if (a.m = b.m) and (borrow = 1) then borrow := 1
+  else borrow := 0;
+  th := a.h - b.h - borrow;
+  r.l := tl; r.m := tm; r.h := th;
+end;
+{$ENDIF}
+
+// 192-bit unsigned add on the (m,h,l) triple of TInt64; returns 1 if the
+// sum overflows out of the top bit, 0 otherwise. ex/sgn untouched.
+// Self-aliasing of r with a or b is safe.
+{$IFDEF AVX2}
+function Add192Cy(out r: TInt64; const a, b: TInt64): UInt64; assembler; nostackframe;
+asm
+  mov rax, [rsi+16]      // a.l
+  add rax, [rdx+16]      // + b.l
+  mov [rdi+16], rax      // r.l
+  mov rax, [rsi]         // a.m
+  adc rax, [rdx]         // + b.m + carry
+  mov [rdi], rax         // r.m
+  mov rax, [rsi+8]       // a.h
+  adc rax, [rdx+8]       // + b.h + carry
+  mov [rdi+8], rax       // r.h
+  setc al                // carry-out into AL
+  movzx rax, al          // zero-extend to 64-bit Result (RAX)
+end;
+{$ELSE}
+function Add192Cy(out r: TInt64; const a, b: TInt64): UInt64; inline;
+var
+  th, tm, tl, c: UInt64;
+begin
+  tl := a.l + b.l;
+  c := UInt64(tl < a.l);
+  tm := a.m + b.m + c;
+  // carry-out of m: tm < a.m, OR (tm = a.m AND c = 1)
+  if tm < a.m then c := 1
+  else if (tm = a.m) and (c = 1) then c := 1
+  else c := 0;
+  th := a.h + b.h + c;
+  if th < a.h then Result := 1
+  else if (th = a.h) and (c = 1) then Result := 1
+  else Result := 0;
+  r.l := tl; r.m := tm; r.h := th;
+end;
+{$ENDIF}
+
 // Ported from add_tint in tint.h.
 procedure AddTInt(out r: TInt64; const a, b: TInt64); inline;
 var
   pa, pb, ptmp, t: TInt64;
   sh: UInt64;
   ex, ex1: Integer;
-  th, tm, tl: UInt64;
-  rl, cl, ch, borrow: UInt64;
-  pa_hu, t_hu, r_hu, cl_hu: TUInt128;
+  ch: UInt64;
   cmp: Integer;
 begin
   pa := a; pb := b;  // local copies handle aliasing
@@ -1010,17 +1080,7 @@ begin
   else begin t.h := 0; t.m := 0; t.l := 0; end;
 
   if (pa.sgn xor pb.sgn) <> 0 then begin
-    // Subtract: t := pa - t (192-bit subtraction, no borrow out since |pa| > |pb|)
-    tl := pa.l - t.l;
-    borrow := UInt64(t.l > pa.l);
-    tm := pa.m - t.m - borrow;
-    // borrow out of the m subtraction: one if (pa.m < t.m) OR (pa.m == t.m and borrow)
-    if pa.m < t.m then borrow := 1
-    else if (pa.m = t.m) and (borrow = 1) then borrow := 1
-    else borrow := 0;
-    th := pa.h - t.h - borrow;
-    t.h := th; t.m := tm; t.l := tl;
-
+    Sub192(t, pa, t);   // t := pa - t (no borrow out, |pa| > |pb|)
     ex := clz192(t.h, t.m, t.l);
     if (ex <= 1) or (sh = 0) then begin
       LShiftTInt(r, t, ex);
@@ -1028,50 +1088,28 @@ begin
     end
     else begin
       // ex >= 2 and sh >= 1: redo with no neglected low bits of pb
-      // Shift t := pb << (ex - sh), r := pa << ex, then t := r - t.
       LShiftTInt(t, pb, ex - Integer(sh));
       LShiftTInt(r, pa, ex);
-      tl := r.l - t.l;
-      borrow := UInt64(t.l > r.l);
-      tm := r.m - t.m - borrow;
-      if r.m < t.m then borrow := 1
-      else if (r.m = t.m) and (borrow = 1) then borrow := 1
-      else borrow := 0;
-      th := r.h - t.h - borrow;
-      t.h := th; t.m := tm; t.l := tl;
+      Sub192(t, r, t);   // t := r - t
       ex1 := clz192(t.h, t.m, t.l);
       LShiftTInt(r, t, ex1);
       r.ex := pa.ex - (ex + ex1);
     end;
   end
   else begin
-    // Same signs: 192-bit addition.  In C, _h is the high u128 (m,h pair); we
-    // use TUInt128 here for parity with the C's u128 add + overflow detection.
-    pa_hu.lo := pa.m; pa_hu.hi := pa.h;
-    t_hu.lo  := t.m;  t_hu.hi  := t.h;
-    rl := pa.l + t.l;
-    cl := UInt64(rl < pa.l);
-    AddU128(r_hu, pa_hu, t_hu);
-    // ch := (r_hu < pa_hu) as u128
-    if (r_hu.hi < pa_hu.hi) or
-       ((r_hu.hi = pa_hu.hi) and (r_hu.lo < pa_hu.lo)) then ch := 1
-    else ch := 0;
-    // r_hu += cl
-    cl_hu.lo := cl; cl_hu.hi := 0;
-    AddU128(r_hu, r_hu, cl_hu);
-    // overflow of r_hu when adding cl: result < cl as u128 ⇒ result.hi = 0 ∧ result.lo < cl
-    if (r_hu.hi = 0) and (r_hu.lo < cl) then Inc(ch);
+    // Same signs: 192-bit add into t, with ch = carry-out of bit 192.
+    ch := Add192Cy(t, pa, t);
     if ch <> 0 then begin
       // 193-bit overflow: shift result right by 1, insert ch=1 at MSB of h.
-      r.l := (r_hu.lo shl 63) or (rl shr 1);
-      r.m := (r_hu.hi shl 63) or (r_hu.lo shr 1);
-      r.h := (ch shl 63) or (r_hu.hi shr 1);
+      r.l := (t.m shl 63) or (t.l shr 1);
+      r.m := (t.h shl 63) or (t.m shr 1);
+      r.h := (ch shl 63) or (t.h shr 1);
       r.ex := pa.ex + 1;
     end
     else begin
-      r.l := rl;
-      r.m := r_hu.lo;
-      r.h := r_hu.hi;
+      r.l := t.l;
+      r.m := t.m;
+      r.h := t.h;
       r.ex := pa.ex;
     end;
   end;
@@ -1087,9 +1125,7 @@ var
   t: TInt64;
   sh: UInt64;
   ex, ex1: Integer;
-  th, tm, tl: UInt64;
-  rl, cl, ch, borrow: UInt64;
-  pa_hu, t_hu, r_hu, cl_hu: TUInt128;
+  ch: UInt64;
   cmp: Integer;
 begin
   cmp := CmpTIntAbs(a, b);
@@ -1117,15 +1153,7 @@ begin
   else begin t.h := 0; t.m := 0; t.l := 0; end;
 
   if (pa^.sgn xor pb^.sgn) <> 0 then begin
-    tl := pa^.l - t.l;
-    borrow := UInt64(t.l > pa^.l);
-    tm := pa^.m - t.m - borrow;
-    if pa^.m < t.m then borrow := 1
-    else if (pa^.m = t.m) and (borrow = 1) then borrow := 1
-    else borrow := 0;
-    th := pa^.h - t.h - borrow;
-    t.h := th; t.m := tm; t.l := tl;
-
+    Sub192(t, pa^, t);   // t := pa - t
     ex := clz192(t.h, t.m, t.l);
     if (ex <= 1) or (sh = 0) then begin
       LShiftTInt(r, t, ex);
@@ -1134,41 +1162,24 @@ begin
     else begin
       LShiftTInt(t, pb^, ex - Integer(sh));
       LShiftTInt(r, pa^, ex);
-      tl := r.l - t.l;
-      borrow := UInt64(t.l > r.l);
-      tm := r.m - t.m - borrow;
-      if r.m < t.m then borrow := 1
-      else if (r.m = t.m) and (borrow = 1) then borrow := 1
-      else borrow := 0;
-      th := r.h - t.h - borrow;
-      t.h := th; t.m := tm; t.l := tl;
+      Sub192(t, r, t);
       ex1 := clz192(t.h, t.m, t.l);
       LShiftTInt(r, t, ex1);
       r.ex := pa^.ex - (ex + ex1);
     end;
   end
   else begin
-    pa_hu.lo := pa^.m; pa_hu.hi := pa^.h;
-    t_hu.lo  := t.m;   t_hu.hi  := t.h;
-    rl := pa^.l + t.l;
-    cl := UInt64(rl < pa^.l);
-    AddU128(r_hu, pa_hu, t_hu);
-    if (r_hu.hi < pa_hu.hi) or
-       ((r_hu.hi = pa_hu.hi) and (r_hu.lo < pa_hu.lo)) then ch := 1
-    else ch := 0;
-    cl_hu.lo := cl; cl_hu.hi := 0;
-    AddU128(r_hu, r_hu, cl_hu);
-    if (r_hu.hi = 0) and (r_hu.lo < cl) then Inc(ch);
+    ch := Add192Cy(t, pa^, t);
     if ch <> 0 then begin
-      r.l := (r_hu.lo shl 63) or (rl shr 1);
-      r.m := (r_hu.hi shl 63) or (r_hu.lo shr 1);
-      r.h := (ch shl 63) or (r_hu.hi shr 1);
+      r.l := (t.m shl 63) or (t.l shr 1);
+      r.m := (t.h shl 63) or (t.m shr 1);
+      r.h := (ch shl 63) or (t.h shr 1);
       r.ex := pa^.ex + 1;
     end
     else begin
-      r.l := rl;
-      r.m := r_hu.lo;
-      r.h := r_hu.hi;
+      r.l := t.l;
+      r.m := t.m;
+      r.h := t.h;
       r.ex := pa^.ex;
     end;
   end;
