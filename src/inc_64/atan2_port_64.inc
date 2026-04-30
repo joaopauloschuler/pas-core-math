@@ -176,11 +176,11 @@ begin
   t := y / x;
 
   if t = Double(0.0) then begin
-    if x > 0 then begin
+    if x > Double(0.0) then begin
       Result := t;            // atan(0) = +/-0 with sign(t)
       Exit;
     end;
-    if y > 0 then
+    if y > Double(0.0) then
       Result := cAtan2PiH.f + cAtan2PiL.f
     else
       Result := -cAtan2PiH.f - cAtan2PiL.f;
@@ -188,7 +188,7 @@ begin
   end;
 
   corr := pcr_fma(t, x, -y);
-  if (corr = Double(0.0)) and (x > 0) then begin
+  if (corr = Double(0.0)) and (x > Double(0.0)) then begin
     // t exact
     if Abs(t) <= cAtan2TinyT.f then begin
       ay := Abs(y);
@@ -210,7 +210,7 @@ begin
   if inv then DivTIntD(z, x, y) else DivTIntD(z, y, x);
 
   // Tiny-z exact-t shortcut for x>0: |y/x| < 2^-96
-  if (not inv) and (x > 0) and (z.ex <= -96) then begin
+  if (not inv) and (x > Double(0.0)) and (z.ex <= -96) then begin
     // z->l -= 2; z->m -= (z->l < 2); z->h -= (z->m < 1);
     // Faithful port — C uses post-decrement comparisons; in practice z->l is
     // a large noise word, so the conditional branches almost never fire.
@@ -252,7 +252,7 @@ begin
     err := 524;
   end;
 
-  if x < 0 then begin
+  if x < Double(0.0) then begin
     if z.sgn = 0 then begin
       z.sgn := 1;
       AddTInt(z, TINT_PI, z);
