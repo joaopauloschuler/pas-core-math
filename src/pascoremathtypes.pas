@@ -117,6 +117,9 @@ procedure RShiftTInt(var r: TInt64; const b: TInt64; k: Integer); inline;
 procedure LShiftTInt(var r: TInt64; const b: TInt64; k: Integer); inline;
 // r := a + b   (error bounded by 2 ulps in 192-bit)
 procedure AddTInt(out r: TInt64; const a, b: TInt64); inline;
+// Same as AddTInt but caller GUARANTEES r is distinct from a and b.
+// Skips the 80-byte entry copies and the swap copy. Wrong results if r aliases.
+procedure AddTInt_NoAlias(out r: TInt64; const a, b: TInt64); inline;
 // r := a * b   (error bounded by 10 ulps in 192-bit; alias-safe)
 procedure MulTInt(out r: TInt64; const a, b: TInt64); inline;
 // Convert Double to TInt64 (exact for finite, non-NaN inputs; defined for 0)
@@ -1073,6 +1076,103 @@ begin
     end;
   end;
   r.sgn := pa.sgn;
+end;
+
+// Same body as AddTInt but the |a|>=|b| selection is done with pointers
+// (no record copies on entry, no swap copy). Caller must ensure r does not
+// alias a or b.
+procedure AddTInt_NoAlias(out r: TInt64; const a, b: TInt64); inline;
+var
+  pa, pb: ^TInt64;
+  t: TInt64;
+  sh: UInt64;
+  ex, ex1: Integer;
+  th, tm, tl: UInt64;
+  rl, cl, ch, borrow: UInt64;
+  pa_hu, t_hu, r_hu, cl_hu: TUInt128;
+  cmp: Integer;
+begin
+  cmp := CmpTIntAbs(a, b);
+  case cmp of
+    0:
+      begin
+        if (a.sgn xor b.sgn) <> 0 then begin
+          CpTInt(r, TINT_ZERO);
+          Exit;
+        end;
+        CpTInt(r, a);
+        Inc(r.ex);
+        Exit;
+      end;
+    -1:
+      begin pa := @b; pb := @a; end;
+  else
+    begin pa := @a; pb := @b; end;
+  end;
+
+  // From here |pa^| > |pb^|, so pa^.ex >= pb^.ex
+  sh := UInt64(pa^.ex - pb^.ex);
+  t.ex := 0; t.sgn := 0;
+  if sh < 192 then RShiftTInt(t, pb^, Integer(sh))
+  else begin t.h := 0; t.m := 0; t.l := 0; end;
+
+  if (pa^.sgn xor pb^.sgn) <> 0 then begin
+    tl := pa^.l - t.l;
+    borrow := UInt64(t.l > pa^.l);
+    tm := pa^.m - t.m - borrow;
+    if pa^.m < t.m then borrow := 1
+    else if (pa^.m = t.m) and (borrow = 1) then borrow := 1
+    else borrow := 0;
+    th := pa^.h - t.h - borrow;
+    t.h := th; t.m := tm; t.l := tl;
+
+    ex := clz192(t.h, t.m, t.l);
+    if (ex <= 1) or (sh = 0) then begin
+      LShiftTInt(r, t, ex);
+      r.ex := pa^.ex - ex;
+    end
+    else begin
+      LShiftTInt(t, pb^, ex - Integer(sh));
+      LShiftTInt(r, pa^, ex);
+      tl := r.l - t.l;
+      borrow := UInt64(t.l > r.l);
+      tm := r.m - t.m - borrow;
+      if r.m < t.m then borrow := 1
+      else if (r.m = t.m) and (borrow = 1) then borrow := 1
+      else borrow := 0;
+      th := r.h - t.h - borrow;
+      t.h := th; t.m := tm; t.l := tl;
+      ex1 := clz192(t.h, t.m, t.l);
+      LShiftTInt(r, t, ex1);
+      r.ex := pa^.ex - (ex + ex1);
+    end;
+  end
+  else begin
+    pa_hu.lo := pa^.m; pa_hu.hi := pa^.h;
+    t_hu.lo  := t.m;   t_hu.hi  := t.h;
+    rl := pa^.l + t.l;
+    cl := UInt64(rl < pa^.l);
+    AddU128(r_hu, pa_hu, t_hu);
+    if (r_hu.hi < pa_hu.hi) or
+       ((r_hu.hi = pa_hu.hi) and (r_hu.lo < pa_hu.lo)) then ch := 1
+    else ch := 0;
+    cl_hu.lo := cl; cl_hu.hi := 0;
+    AddU128(r_hu, r_hu, cl_hu);
+    if (r_hu.hi = 0) and (r_hu.lo < cl) then Inc(ch);
+    if ch <> 0 then begin
+      r.l := (r_hu.lo shl 63) or (rl shr 1);
+      r.m := (r_hu.hi shl 63) or (r_hu.lo shr 1);
+      r.h := (ch shl 63) or (r_hu.hi shr 1);
+      r.ex := pa^.ex + 1;
+    end
+    else begin
+      r.l := rl;
+      r.m := r_hu.lo;
+      r.h := r_hu.hi;
+      r.ex := pa^.ex;
+    end;
+  end;
+  r.sgn := pa^.sgn;
 end;
 
 // Ported from mul_tint in tint.h.

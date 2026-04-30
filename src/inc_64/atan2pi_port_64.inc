@@ -161,7 +161,7 @@ function Atan2piAccurate(y, x: Double): Double;
 var
   absy, absx: Double;
   inv: Boolean;
-  z, p, q: TInt64;
+  z, p, q, p_tmp, q_tmp: TInt64;
   i: Integer;
   err: UInt64;
   sz: UInt64;
@@ -216,10 +216,10 @@ begin
   CpTInt(p, cAtan2P[29]);
   CpTInt(q, cAtan2Q[29]);
   for i := 28 downto 0 do begin
-    MulTInt(p, p, z);
-    MulTInt(q, q, z);
-    AddTInt(p, p, cAtan2P[i]);
-    AddTInt(q, q, cAtan2Q[i]);
+    MulTInt(p_tmp, p, z);
+    MulTInt(q_tmp, q, z);
+    AddTInt_NoAlias(p, p_tmp, cAtan2P[i]);
+    AddTInt_NoAlias(q, q_tmp, cAtan2Q[i]);
   end;
   MulTInt(p, p, z);
   DivTInt(z, p, q);
