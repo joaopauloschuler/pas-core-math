@@ -971,6 +971,31 @@ begin
   else Result := 128 + clzll64(l);
 end;
 
+// Unsigned 64x64 -> 128 multiply with the high/low halves written through
+// out parameters (no record round-trip). Used by MulTInt to keep the 6
+// partial products in plain UInt64 registers/locals.
+{$IFDEF AVX2}
+// SysV: rdi=@hi, rsi=@lo, rdx=a, rcx=b. mul leaves product in rdx:rax.
+procedure Mul64x64(out hi, lo: UInt64; a, b: UInt64); assembler; nostackframe;
+asm
+  mov rax, rdx           // a
+  mul rcx                // a * b -> rdx:rax (high:low)
+  mov [rdi], rdx         // *hi = high
+  mov [rsi], rax         // *lo = low
+end;
+{$ELSE}
+procedure Mul64x64(out hi, lo: UInt64; a, b: UInt64); inline;
+var
+  MulLo, Temp1, Temp2: UInt64;
+begin
+  MulLo := uint64(uint32(a)) * uint64(uint32(b));
+  Temp1 := (a shr 32) * uint64(uint32(b)) + (MulLo shr 32);
+  Temp2 := uint64(uint32(a)) * (b shr 32) + uint64(uint32(Temp1));
+  lo := (Temp2 shl 32) or (MulLo and $FFFFFFFF);
+  hi := (a shr 32) * (b shr 32) + (Temp1 shr 32) + (Temp2 shr 32);
+end;
+{$ENDIF}
+
 // 192-bit unsigned subtract on the (m,h,l) triple of TInt64.
 // Caller guarantees |a| >= |b| so there is no borrow out. ex/sgn untouched.
 // Self-aliasing of r with a or b is safe (reads of a/b at offset N happen
@@ -1190,10 +1215,10 @@ end;
 procedure MulTInt(out r: TInt64; const a, b: TInt64); inline;
 var
   ah, am, al, bh, bm, bl: UInt64;
-  rh, rm1, rm2, rl1, rl2, rl3: TUInt128;
-  rsum: TUInt128;
+  rh_hi, rh_lo, rm1_hi, rm1_lo, rm2_hi, rm2_lo: UInt64;
+  rl1_hi, rl1_lo, rl2_hi, rl2_lo, rl3_hi, rl3_lo: UInt64;
   rh_v, rm_v, rl_v: UInt64;
-  hh, lo, cm: UInt64;
+  hh, lo, cm, sum_lo, sum_hi: UInt64;
   rex_a, rex_b: Int64;
   rsgn: UInt64;
 begin
@@ -1202,38 +1227,41 @@ begin
   ah := a.h; am := a.m; al := a.l;
   bh := b.h; bm := b.m; bl := b.l;
 
-  rh  := Mulu64u64(ah, bh);
-  rm1 := Mulu64u64(ah, bm);
-  rm2 := Mulu64u64(am, bh);
-  rl1 := Mulu64u64(ah, bl);
-  rl2 := Mulu64u64(am, bm);
-  rl3 := Mulu64u64(al, bh);
+  Mul64x64(rh_hi,  rh_lo,  ah, bh);
+  Mul64x64(rm1_hi, rm1_lo, ah, bm);
+  Mul64x64(rm2_hi, rm2_lo, am, bh);
+  Mul64x64(rl1_hi, rl1_lo, ah, bl);
+  Mul64x64(rl2_hi, rl2_lo, am, bm);
+  Mul64x64(rl3_hi, rl3_lo, al, bh);
+  // rl1_lo, rl2_lo, rl3_lo are discarded; only the high words contribute.
 
-  rh_v := rh.hi;
-  rm_v := rh.lo;
-  rl_v := rm1.lo;
+  rh_v := rh_hi;
+  rm_v := rh_lo;
+  rl_v := rm1_lo;
 
   // Accumulate rm1's high part into rm_v (carry to rh_v)
-  hh := rm1.hi;
+  hh := rm1_hi;
   rm_v := rm_v + hh;
   if rm_v < hh then Inc(rh_v);
 
   // Accumulate rm2 (lo into rl_v with carry-out cm; hi into rm_v)
-  lo := rm2.lo;
-  hh := rm2.hi;
+  lo := rm2_lo;
+  hh := rm2_hi;
   rl_v := rl_v + lo;
   cm := UInt64(rl_v < lo);
   rm_v := rm_v + hh;
   if rm_v < hh then Inc(rh_v);
 
-  // Accumulate (rl1.hi + rl2.hi + rl3.hi) into (rl_v, cm)
-  rsum.lo := rl1.hi; rsum.hi := 0;
-  rsum := rsum + rl2.hi;
-  rsum := rsum + rl3.hi;
-  lo := rsum.lo;
-  cm := cm + rsum.hi;
-  rl_v := rl_v + lo;
-  if rl_v < lo then Inc(cm);
+  // Accumulate (rl1_hi + rl2_hi + rl3_hi) into (rl_v, cm)
+  sum_lo := rl1_hi;
+  sum_hi := 0;
+  sum_lo := sum_lo + rl2_hi;
+  if sum_lo < rl2_hi then Inc(sum_hi);
+  sum_lo := sum_lo + rl3_hi;
+  if sum_lo < rl3_hi then Inc(sum_hi);
+  cm := cm + sum_hi;
+  rl_v := rl_v + sum_lo;
+  if rl_v < sum_lo then Inc(cm);
 
   // Accumulate cm into rm_v (carry to rh_v)
   rm_v := rm_v + cm;
