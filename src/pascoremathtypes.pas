@@ -975,6 +975,18 @@ end;
 // out parameters (no record round-trip). Used by MulTInt to keep the 6
 // partial products in plain UInt64 registers/locals.
 {$IFDEF AVX2}
+{$IFDEF MSWINDOWS}
+// Win64 ABI: rcx=@hi, rdx=@lo, r8=a, r9=b. mul writes rdx:rax, so we must
+// move @lo out of rdx before issuing mul.
+procedure Mul64x64(out hi, lo: UInt64; a, b: UInt64); assembler; nostackframe;
+asm
+  mov r10, rdx           // preserve @lo (rdx is about to be clobbered)
+  mov rax, r8            // a
+  mul r9                 // rdx:rax = a*b
+  mov [rcx], rdx         // *hi = high
+  mov [r10], rax         // *lo = low
+end ['rax', 'rcx', 'r10'];
+{$ELSE}
 // SysV: rdi=@hi, rsi=@lo, rdx=a, rcx=b. mul leaves product in rdx:rax.
 procedure Mul64x64(out hi, lo: UInt64; a, b: UInt64); assembler; nostackframe;
 asm
@@ -983,6 +995,7 @@ asm
   mov [rdi], rdx         // *hi = high
   mov [rsi], rax         // *lo = low
 end ['rax', 'rdx'];
+{$ENDIF}
 {$ELSE}
 procedure Mul64x64(out hi, lo: UInt64; a, b: UInt64); inline;
 var
@@ -1001,6 +1014,21 @@ end;
 // Self-aliasing of r with a or b is safe (reads of a/b at offset N happen
 // before writes to r at offset N).
 {$IFDEF AVX2}
+{$IFDEF MSWINDOWS}
+// Win64 ABI: rcx=@r, rdx=@a, r8=@b. TInt64 layout: m@0, h@8, l@16.
+procedure Sub192(out r: TInt64; const a, b: TInt64); assembler; nostackframe;
+asm
+  mov rax, [rdx+16]      // a.l
+  sub rax, [r8+16]       // - b.l
+  mov [rcx+16], rax      // r.l
+  mov rax, [rdx]         // a.m
+  sbb rax, [r8]          // - b.m - borrow
+  mov [rcx], rax         // r.m
+  mov rax, [rdx+8]       // a.h
+  sbb rax, [r8+8]        // - b.h - borrow
+  mov [rcx+8], rax       // r.h
+end ['rax','rcx','rdx','r8'];
+{$ELSE}
 // SysV x86-64 ABI: rdi=@r, rsi=@a, rdx=@b. TInt64 layout: m@0, h@8, l@16.
 procedure Sub192(out r: TInt64; const a, b: TInt64); assembler; nostackframe;
 asm
@@ -1014,6 +1042,7 @@ asm
   sbb rax, [rdx+8]       // - b.h - borrow
   mov [rdi+8], rax       // r.h
 end ['rax'];
+{$ENDIF}
 {$ELSE}
 procedure Sub192(out r: TInt64; const a, b: TInt64); inline;
 var
@@ -1034,6 +1063,24 @@ end;
 // sum overflows out of the top bit, 0 otherwise. ex/sgn untouched.
 // Self-aliasing of r with a or b is safe.
 {$IFDEF AVX2}
+{$IFDEF MSWINDOWS}
+// Win64 ABI: rcx=@r, rdx=@a, r8=@b. Result returned in rax.
+function Add192Cy(out r: TInt64; const a, b: TInt64): UInt64; assembler; nostackframe;
+asm
+  mov rax, [rdx+16]      // a.l
+  add rax, [r8+16]       // + b.l
+  mov [rcx+16], rax      // r.l
+  mov rax, [rdx]         // a.m
+  adc rax, [r8]          // + b.m + carry
+  mov [rcx], rax         // r.m
+  mov rax, [rdx+8]       // a.h
+  adc rax, [r8+8]        // + b.h + carry
+  mov [rcx+8], rax       // r.h
+  setc al                // carry-out into AL
+  movzx rax, al          // zero-extend to 64-bit Result (RAX)
+end ['rax','rcx','rdx','r8'];
+{$ELSE}
+// SysV x86-64 ABI: rdi=@r, rsi=@a, rdx=@b. Result returned in rax.
 function Add192Cy(out r: TInt64; const a, b: TInt64): UInt64; assembler; nostackframe;
 asm
   mov rax, [rsi+16]      // a.l
@@ -1048,6 +1095,7 @@ asm
   setc al                // carry-out into AL
   movzx rax, al          // zero-extend to 64-bit Result (RAX)
 end ['rax'];
+{$ENDIF}
 {$ELSE}
 function Add192Cy(out r: TInt64; const a, b: TInt64): UInt64; inline;
 var
@@ -1214,6 +1262,88 @@ end;
 // Ported from mul_tint in tint.h. AVX2 path: a single asm block doing the
 // six 64x64 partial products with chained ADC, then SHLD-based normalize.
 {$IFDEF AVX2}
+{$IFDEF MSWINDOWS}
+procedure MulTInt(out r: TInt64; const a, b: TInt64); assembler; nostackframe;
+asm
+  // Win64 ABI: rcx=@r, rdx=@a, r8=@b. We need 8 live registers but Win64
+  // exposes only 7 volatile ones, so we save rsi/rdi and reuse them as @a/@r
+  // — that lets the body match the SysV variant exactly.
+  // TInt64 layout: m@0, h@8, l@16, ex@24, sgn@32
+  push rsi
+  push rdi
+  mov rdi, rcx                  // @r
+  mov rsi, rdx                  // @a (rdx will be clobbered by mul)
+  mov rcx, r8                   // @b (rcx as base for [rcx+N])
+
+  xor r8, r8                    // rl_v = 0
+  xor r9, r9                    // rm_v = 0
+  xor r10, r10                  // rh_v = 0
+
+  // 1) ah * bh  -> bits 256..383
+  mov rax, [rsi+8]
+  mul qword ptr [rcx+8]
+  add r9, rax
+  adc r10, rdx
+
+  // 2) ah * bm  -> bits 192..319
+  mov rax, [rsi+8]
+  mul qword ptr [rcx+0]
+  add r8, rax
+  adc r9, rdx
+  adc r10, 0
+
+  // 3) am * bh  -> bits 192..319
+  mov rax, [rsi+0]
+  mul qword ptr [rcx+8]
+  add r8, rax
+  adc r9, rdx
+  adc r10, 0
+
+  // 4) ah * bl  -> bits 128..255 (only HIGH 64 contributes)
+  mov rax, [rsi+8]
+  mul qword ptr [rcx+16]
+  add r8, rdx
+  adc r9, 0
+  adc r10, 0
+
+  // 5) am * bm
+  mov rax, [rsi+0]
+  mul qword ptr [rcx+0]
+  add r8, rdx
+  adc r9, 0
+  adc r10, 0
+
+  // 6) al * bh
+  mov rax, [rsi+16]
+  mul qword ptr [rcx+8]
+  add r8, rdx
+  adc r9, 0
+  adc r10, 0
+
+  // r.ex = a.ex + b.ex; r.sgn = a.sgn xor b.sgn
+  mov rax, [rsi+24]
+  add rax, [rcx+24]
+  mov rdx, [rsi+32]
+  xor rdx, [rcx+32]
+  mov [rdi+32], rdx
+
+  // Normalize (left shift 1, dec ex) if top bit of r10 (rh_v) is 0.
+  test r10, r10
+  js @@no_norm
+  shld r10, r9, 1
+  shld r9, r8, 1
+  shl r8, 1
+  dec rax
+@@no_norm:
+  mov [rdi+24], rax             // r.ex
+  mov [rdi+8],  r10             // r.h
+  mov [rdi+0],  r9              // r.m
+  mov [rdi+16], r8              // r.l
+
+  pop rdi
+  pop rsi
+end ['rax', 'rcx', 'rdx', 'r8', 'r9', 'r10', 'rdi', 'rsi'];
+{$ELSE}
 procedure MulTInt(out r: TInt64; const a, b: TInt64); assembler; nostackframe;
 asm
   // SysV ABI: rdi=@r, rsi=@a, rdx=@b
@@ -1285,6 +1415,7 @@ asm
   mov [rdi+0],  r9              // r.m
   mov [rdi+16], r8              // r.l
 end ['rax', 'rcx', 'rdx', 'r8', 'r9', 'r10'];
+{$ENDIF}
 {$ELSE}
 procedure MulTInt(out r: TInt64; const a, b: TInt64); inline;
 var
