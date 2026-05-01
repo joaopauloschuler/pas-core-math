@@ -505,7 +505,20 @@ begin
     end;
     if x >= -cErfcSatTinyBd.f then
     begin
+      // Result := pcr_fma(-x, 2^-54, 1.0)  inlined: 1.0 - x*2^-54
+      {$IFDEF AVX2}
+      asm
+        movsd        xmm0, x
+        mov          r8,  $3C90000000000000
+        vmovq        xmm1, r8
+        mov          r8,  $3FF0000000000000
+        vmovq        xmm2, r8
+        vfnmadd213sd xmm0, xmm1, xmm2
+        movsd        Result, xmm0
+      end ['r8', 'xmm0', 'xmm1', 'xmm2'];
+      {$ELSE}
       Result := pcr_fma(-x, cErfcP54.f, Double(1.0));
+      {$ENDIF}
       Exit;
     end;
   end
@@ -522,7 +535,20 @@ begin
     end;
     if x <= cErfcSatTinyPos.f then
     begin
+      // Result := pcr_fma(-x, 2^-54, 1.0)  inlined: 1.0 - x*2^-54
+      {$IFDEF AVX2}
+      asm
+        movsd        xmm0, x
+        mov          r8,  $3C90000000000000
+        vmovq        xmm1, r8
+        mov          r8,  $3FF0000000000000
+        vmovq        xmm2, r8
+        vfnmadd213sd xmm0, xmm1, xmm2
+        movsd        Result, xmm0
+      end ['r8', 'xmm0', 'xmm1', 'xmm2'];
+      {$ELSE}
       Result := pcr_fma(-x, cErfcP54.f, Double(1.0));
+      {$ENDIF}
       Exit;
     end;
   end;

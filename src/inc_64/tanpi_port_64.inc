@@ -112,7 +112,7 @@ end;
 function TanpiHwFma(a, b, c: Double): Double; assembler; nostackframe;
 asm
   vfmadd213sd  xmm0, xmm1, xmm2
-end;
+end ['xmm0'];
 {$ELSE}
 function TanpiHwFma(a, b, c: Double): Double; inline;
 begin

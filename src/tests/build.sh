@@ -109,6 +109,10 @@ fi
 
 FPC_FLAGS="-O3 -Fi.. -Fu.. -FE$BIN_DIR -Fl$SRC_DIR $@"
 
+# ---- Clean compiled Pascal artifacts ----
+find "$SRC_DIR" -maxdepth 1 \( -name '*.ppu' -o -name '*.o' -o -name '*.compiled' -o -name '*.s' \) -delete
+find "$BIN_DIR" -maxdepth 1 \( -name '*.ppu' -o -name '*.o' -o -name '*.compiled' -o -name '*.s' \) -delete
+
 # ---- Step 2: Compile TestHarness32 ----
 echo
 echo "Compiling TestHarness32.pas ..."
@@ -175,10 +179,6 @@ else
   echo "Skipping binary64 test programs (libcoremath64.so not present)."
   echo "Run 'bash build.sh' after porting functions to enable binary64 tests."
 fi
-
-# ---- Clean compiled Pascal artifacts ----
-find "$SRC_DIR" -maxdepth 1 \( -name '*.ppu' -o -name '*.o' -o -name '*.compiled' -o -name '*.s' \) -delete
-find "$BIN_DIR" -maxdepth 1 \( -name '*.ppu' -o -name '*.o' -o -name '*.compiled' -o -name '*.s' \) -delete
 
 echo
 echo "Build complete."

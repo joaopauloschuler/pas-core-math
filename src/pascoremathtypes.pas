@@ -982,7 +982,7 @@ asm
   mul rcx                // a * b -> rdx:rax (high:low)
   mov [rdi], rdx         // *hi = high
   mov [rsi], rax         // *lo = low
-end;
+end ['rax', 'rdx'];
 {$ELSE}
 procedure Mul64x64(out hi, lo: UInt64; a, b: UInt64); inline;
 var
@@ -1013,7 +1013,7 @@ asm
   mov rax, [rsi+8]       // a.h
   sbb rax, [rdx+8]       // - b.h - borrow
   mov [rdi+8], rax       // r.h
-end;
+end ['rax'];
 {$ELSE}
 procedure Sub192(out r: TInt64; const a, b: TInt64); inline;
 var
@@ -1047,7 +1047,7 @@ asm
   mov [rdi+8], rax       // r.h
   setc al                // carry-out into AL
   movzx rax, al          // zero-extend to 64-bit Result (RAX)
-end;
+end ['rax'];
 {$ELSE}
 function Add192Cy(out r: TInt64; const a, b: TInt64): UInt64; inline;
 var
@@ -1284,7 +1284,7 @@ asm
   mov [rdi+8],  r10             // r.h
   mov [rdi+0],  r9              // r.m
   mov [rdi+16], r8              // r.l
-end;
+end ['rax', 'rcx', 'rdx', 'r8', 'r9', 'r10'];
 {$ELSE}
 procedure MulTInt(out r: TInt64; const a, b: TInt64); inline;
 var
