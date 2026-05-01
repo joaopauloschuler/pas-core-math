@@ -121,7 +121,7 @@ function pcr_fmaf(x, y, z: Single): Single;
 assembler;
 asm
   vfmadd213ss xmm0, xmm1, xmm2
-end;
+end ['xmm0'];
 {$ELSE}
 begin
   // 80-bit fallback: correctly rounded for singles (Extended has enough mantissa bits).
@@ -525,7 +525,7 @@ function pcr_fma(x, y, z: Double): Double;
 assembler;
 asm
   vfmadd213sd xmm0, xmm1, xmm2
-end;
+end ['xmm0'];
 {$ELSE}
 begin
   // 80-bit fallback (double-rounding — not true FMA; may lose 1 ULP in rare cases).
@@ -581,7 +581,7 @@ function pcr_roundevenf(x: Single): Single;
 assembler;
 asm
   roundss xmm0, xmm0, 12
-end;
+end ['xmm0'];
 {$ELSE}
 // Portable fallback: round to nearest even using bit manipulation.
 // For |x| >= 2^23 the value is already an integer.
@@ -653,7 +653,7 @@ function pcr_roundeven(x: Double): Double;
 assembler;
 asm
   roundsd xmm0, xmm0, 12
-end;
+end ['xmm0'];
 {$ELSE}
 // Portable fallback: round to nearest even using bit manipulation.
 var
@@ -695,7 +695,7 @@ function pcr_fmaxf(x, y: Single): Single;
 assembler;
 asm
   maxss xmm0, xmm1
-end;
+end ['xmm0'];
 {$ELSE}
 begin
   if IsNan(x) then Result := y
@@ -712,7 +712,7 @@ function pcr_fmax(x, y: Double): Double;
 assembler;
 asm
   maxsd xmm0, xmm1
-end;
+end ['xmm0'];
 {$ELSE}
 begin
   if IsNan(x) then Result := y
@@ -729,7 +729,7 @@ function pcr_fminf(x, y: Single): Single;
 assembler;
 asm
   minss xmm0, xmm1
-end;
+end ['xmm0'];
 {$ELSE}
 begin
   if IsNan(x) then Result := y
@@ -746,7 +746,7 @@ function pcr_fmin(x, y: Double): Double;
 assembler;
 asm
   minsd xmm0, xmm1
-end;
+end ['xmm0'];
 {$ELSE}
 begin
   if IsNan(x) then Result := y
