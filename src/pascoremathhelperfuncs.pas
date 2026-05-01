@@ -536,12 +536,12 @@ end;
 
 function pcr_fabsf(x: Single): Single;
 begin
-  Result := Abs(x);
+  if x >= Single(0.0) then Result := x else Result := -x;
 end;
 
 function pcr_fabs(x: Double): Double;
 begin
-  Result := Abs(x);
+  if x >= Single(0.0) then Result := x else Result := -x;
 end;
 
 function pcr_copysignf(x, y: Single): Single;
