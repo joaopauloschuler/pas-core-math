@@ -895,7 +895,7 @@ var r: DWord;
 begin
   asm
     stmxcsr r
-  end;
+  end [];
   Result := r;
 end;
 {$ELSE}
@@ -909,7 +909,7 @@ procedure pcr_set_mxcsr(flag: DWord);
 begin
   asm
     ldmxcsr flag
-  end;
+  end [];
 end;
 {$ELSE}
 begin
