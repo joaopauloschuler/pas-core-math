@@ -195,11 +195,13 @@ Any mismatch is reported as a failure with the input value and both outputs.
 
 > Benchmark numbers below are for the **binary32** port. binary64 benchmarking is in progress; run `bin/Benchmark64` and `bin/BenchmarkFPC64` for current numbers on your hardware.
 
-### binary32 — pas-core-math vs FPC builtins (50 million calls per function, x86_64 Linux)
+### binary32 — pas-core-math vs FPC builtins (50 million calls per function)
 
 FPC's built-in math functions operate on `Double` internally even for `Single` inputs. pas-core-math targets `Single` precision throughout, which, in part, explains why it is substantially faster.
 
 **On average, pas-core-math is ~2.4× faster than FPC builtins on Windows. On Linux, pas-core-math is 6-20× faster than FPC builtins.**
+
+### binary64 — pas-core-math vs FPC builtins
 
 This Single-vs-Double-internal asymmetry does **not** apply to binary64 — FPC's `Math` unit is natively `Double`, so the binary64 speedup story will be different (and is expected to be flatter). Numbers will be added once the binary64 port stabilises.
 
