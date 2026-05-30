@@ -5710,15 +5710,19 @@ function sincos_rbig(u: UInt32; q: PInteger): Double;
 var
   e_exp, k, s, i_val, sgn: Int32;
   m, p3h, p3l, p2l, p1l: UInt64;
+{$IFNDEF AVX2}
+  p0, p1, p2, p3: TUInt128;
+{$ENDIF}
   a_val: Int64;
   sm: Int64;
 begin
   e_exp := Int32((u shr 23) and $FF);
   m := UInt64((u and $007FFFFF) or $800000);
-  // Four chained 128-bit products in a single asm block (Intel syntax).
+  // Four chained 128-bit products. Only p1l, p2l, p3l, p3h are needed after.
+  {$IFDEF AVX2}
+  // Single asm block (Intel syntax): four 'mul' instructions.
   // Uses sincos_ipi_N typed constants directly to avoid pre-loading to stack.
   // p0 = m * ipi0; chain carry: p1 = m * ipi1 + p0.hi, etc.
-  // Only p1l, p2l, p3l, p3h are needed after this block.
   asm
     mov  rax, m
     mul  sincos_ipi_0
@@ -5745,6 +5749,17 @@ begin
     mov  p3l, rax       // p3l = p3.lo
     mov  p3h, rdx       // p3h = p3.hi
   end ['rax', 'rdx'];
+  {$ELSE}
+  // Pure-Pascal fallback: four 128-bit products via Mulu64u64, carry-chained.
+  p0 := Mulu64u64(m, sincos_ipi_0);
+  p1 := Mulu64u64(m, sincos_ipi_1); p1 := p1 + p0.hi;
+  p2 := Mulu64u64(m, sincos_ipi_2); p2 := p2 + p1.hi;
+  p3 := Mulu64u64(m, sincos_ipi_3); p3 := p3 + p2.hi;
+  p3h := p3.hi;
+  p3l := p3.lo;
+  p2l := p2.lo;
+  p1l := p1.lo;
+  {$ENDIF}
   k := e_exp - 124;
   s := k - 23;
   if s < 64 then begin
@@ -6112,11 +6127,15 @@ function tanf_rbig(u: UInt32; q: PInteger): Double;
 var
   e_exp, k, s_shift, i_val, sgn: Int32;
   m_val, p3h, p3l, p2l, p1l: UInt64;
+{$IFNDEF AVX2}
+  p0, p1, p2, p3: TUInt128;
+{$ENDIF}
   a_val: Int64;
   sm: Int64;
 begin
   e_exp := Int32((u shr 23) and $FF);
   m_val := UInt64((u and $007FFFFF) or $800000);
+  {$IFDEF AVX2}
   asm
     mov  rax, m_val
     mul  sincos_ipi_0
@@ -6143,6 +6162,17 @@ begin
     mov  p3l, rax
     mov  p3h, rdx
   end ['rax', 'rdx'];
+  {$ELSE}
+  // Pure-Pascal fallback: four 128-bit products via Mulu64u64, carry-chained.
+  p0 := Mulu64u64(m_val, sincos_ipi_0);
+  p1 := Mulu64u64(m_val, sincos_ipi_1); p1 := p1 + p0.hi;
+  p2 := Mulu64u64(m_val, sincos_ipi_2); p2 := p2 + p1.hi;
+  p3 := Mulu64u64(m_val, sincos_ipi_3); p3 := p3 + p2.hi;
+  p3h := p3.hi;
+  p3l := p3.lo;
+  p2l := p2.lo;
+  p1l := p1.lo;
+  {$ENDIF}
   k       := e_exp - 127;   // tanf uses e-127; sincos_rbig uses e-124
   s_shift := k - 23;
   if s_shift < 64 then begin
